@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import AuthGuard from "./components/AuthGuard";
 import StaffGuard from "./components/StaffGuard";
+import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import StaffLoginPage from "./pages/StaffLoginPage";
 
@@ -15,7 +16,7 @@ export default function App() {
   return (
     <Routes>
       {/* Public */}
-      <Route path="/" element={<Placeholder name="LandingPage" />} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/staff-login" element={<StaffLoginPage />} />
       <Route path="/register" element={<Placeholder name="RegisterPage" />} />
