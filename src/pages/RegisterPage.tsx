@@ -10,7 +10,7 @@ const MUTED = "#666666";
 const SURFACE = "#111";
 const RED = "#f44336";
 
-function slugify(str) {
+function slugify(str: string): string {
   return str
     .toLowerCase()
     .trim()
@@ -25,9 +25,9 @@ const BUSINESS_TYPES = [
   { value: "barbershop", label: "Barbershop" },
   { value: "salon",      label: "Salon" },
   { value: "hotel",      label: "Hotel" },
-];
+] as const;
 
-const inputStyle = {
+const inputStyle: React.CSSProperties = {
   width: "100%",
   background: SURFACE,
   border: `1px solid ${BORDER}`,
@@ -39,7 +39,7 @@ const inputStyle = {
   boxSizing: "border-box",
 };
 
-const labelStyle = {
+const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: 12,
   fontWeight: 700,
@@ -49,10 +49,17 @@ const labelStyle = {
   marginBottom: 8,
 };
 
+type FormState = {
+  businessName: string;
+  email: string;
+  password: string;
+  type: string;
+};
+
 export default function RegisterPage() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormState>({
     businessName: "",
     email: "",
     password: "",
@@ -61,11 +68,12 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function set(field) {
-    return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  function set(field: keyof FormState) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [field]: e.target.value }));
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
 
