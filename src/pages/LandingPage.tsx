@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const ACCENT = "#E8C547";
@@ -29,6 +30,16 @@ function QRMark() {
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  function handleWaitlist(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email) return;
+    console.log("Waitlist signup:", email);
+    setSubmitted(true);
+    setEmail("");
+  }
 
   return (
     <div style={{ background: BG, minHeight: "100vh", color: TEXT, fontFamily: "sans-serif", display: "flex", flexDirection: "column" }}>
@@ -100,6 +111,61 @@ export default function LandingPage() {
           </div>
         ))}
       </div>
+
+      {/* Waitlist */}
+      <section style={{ background: BG, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "80px 24px", textAlign: "center" }}>
+        <p style={{ fontSize: 11, letterSpacing: 4, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>
+          Early access
+        </p>
+        <h2 style={{ fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 900, letterSpacing: -1, color: TEXT, marginBottom: 14 }}>
+          Be the first in.
+        </h2>
+        <p style={{ fontSize: 16, color: MUTED, marginBottom: 40, lineHeight: 1.7 }}>
+          Early access pricing for the first 50 restaurants.
+        </p>
+        {submitted ? (
+          <div style={{ display: "inline-block", border: `1px solid ${ACCENT}`, borderRadius: 10, padding: "16px 32px", color: ACCENT, fontWeight: 700, fontSize: 15 }}>
+            You're on the list.
+          </div>
+        ) : (
+          <form onSubmit={handleWaitlist} style={{ display: "flex", gap: 0, maxWidth: 460, margin: "0 auto" }}>
+            <input
+              type="email"
+              required
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={{
+                flex: 1,
+                background: "#111",
+                border: `1px solid ${BORDER}`,
+                borderRight: "none",
+                borderRadius: "10px 0 0 10px",
+                padding: "14px 18px",
+                color: TEXT,
+                fontSize: 14,
+                outline: "none",
+              }}
+            />
+            <button
+              type="submit"
+              style={{
+                background: ACCENT,
+                border: "none",
+                borderRadius: "0 10px 10px 0",
+                padding: "14px 24px",
+                color: BG,
+                fontWeight: 800,
+                fontSize: 14,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Notify me
+            </button>
+          </form>
+        )}
+      </section>
 
       {/* Footer */}
       <footer style={{ borderTop: `1px solid ${BORDER}`, padding: "20px 32px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
