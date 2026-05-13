@@ -17,8 +17,12 @@ type Business = {
 
 type Location = { id: string; name: string; label: string | null; is_active: boolean };
 type Order    = { id: string; status: string; total: number; created_at: string };
+type Category = { id: string; name: string; display_order: number };
+type MenuItem = { id: string; category_id: string; name: string; price: number; description: string | null; is_available: boolean };
 
 type Tab = "tables" | "menu" | "orders";
+
+const EMPTY_ITEM = { name: "", price: "", description: "", category_id: "" };
 
 // ── Styles ───────────────────────────────────────────────────
 const card: React.CSSProperties = {
@@ -61,7 +65,8 @@ export default function DashboardPage() {
   const [business, setBusiness]     = useState<Business | null>(null);
   const [locations, setLocations]   = useState<Location[]>([]);
   const [orders, setOrders]         = useState<Order[]>([]);
-  const [menuCount, setMenuCount]   = useState(0);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [menuItems, setMenuItems]   = useState<MenuItem[]>([]);
   const [tab, setTab]               = useState<Tab>("tables");
   const [loading, setLoading]       = useState(true);
 
@@ -71,6 +76,18 @@ export default function DashboardPage() {
   const [tableError, setTableError]     = useState("");
   const [tableSaving, setTableSaving]   = useState(false);
 
+  // Add category form
+  const [addingCat, setAddingCat]   = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [catError, setCatError]     = useState("");
+  const [catSaving, setCatSaving]   = useState(false);
+
+  // Add item form
+  const [addingItem, setAddingItem]   = useState(false);
+  const [itemForm, setItemForm]       = useState(EMPTY_ITEM);
+  const [itemError, setItemError]     = useState("");
+  const [itemSaving, setItemSaving]   = useState(false);
+
   useEffect(() => {
     if (!session?.user.id) return;
     void load(session.user.id);
@@ -79,47 +96,30 @@ export default function DashboardPage() {
   async function load(userId: string) {
     setLoading(true);
 
-    const [bizRes, locRes, ordRes, menuRes] = await Promise.all([
-      supabase.from("businesses").select("*").eq("owner_id", userId).single(),
-      supabase.from("locations").select("id, name, label, is_active").eq("business_id",
-        // subquery workaround: fetch after we have bizId
-        "00000000-0000-0000-0000-000000000000"
-      ).limit(0), // placeholder — refetched below
-      Promise.resolve({ data: [] as Order[], error: null }),
-      Promise.resolve({ data: [] as { id: string }[], error: null }),
-    ]);
-
+    const bizRes = await supabase.from("businesses").select("*").eq("owner_id", userId).single();
     const biz = bizRes.data as Business | null;
     setBusiness(biz);
 
     if (biz) {
-      const [locFull, ordFull, menuFull] = await Promise.all([
-        supabase
-          .from("locations")
-          .select("id, name, label, is_active")
-          .eq("business_id", biz.id)
-          .order("name"),
-        supabase
-          .from("orders")
-          .select("id, status, total, created_at")
-          .eq("business_id", biz.id)
-          .order("created_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("menu_items")
-          .select("id", { count: "exact", head: true })
-          .in("category_id",
-            (await supabase
-              .from("menu_categories")
-              .select("id")
-              .eq("business_id", biz.id)
-            ).data?.map((c) => c.id) ?? []
-          ),
+      const [locRes, ordRes, catRes] = await Promise.all([
+        supabase.from("locations").select("id, name, label, is_active").eq("business_id", biz.id).order("name"),
+        supabase.from("orders").select("id, status, total, created_at").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(20),
+        supabase.from("menu_categories").select("id, name, display_order").eq("business_id", biz.id).order("display_order"),
       ]);
 
-      setLocations((locFull.data as Location[]) ?? []);
-      setOrders((ordFull.data as Order[]) ?? []);
-      setMenuCount(menuFull.count ?? 0);
+      const cats = (catRes.data as Category[]) ?? [];
+      setLocations((locRes.data as Location[]) ?? []);
+      setOrders((ordRes.data as Order[]) ?? []);
+      setCategories(cats);
+
+      if (cats.length > 0) {
+        const itemRes = await supabase
+          .from("menu_items")
+          .select("id, category_id, name, price, description, is_available")
+          .in("category_id", cats.map((c) => c.id))
+          .order("display_order");
+        setMenuItems((itemRes.data as MenuItem[]) ?? []);
+      }
     }
 
     setLoading(false);
@@ -148,6 +148,47 @@ export default function DashboardPage() {
     setNewTableName("");
     setAddingTable(false);
     setTableSaving(false);
+  }
+
+  async function addCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!business || !newCatName.trim()) return;
+    setCatError("");
+    setCatSaving(true);
+    const { data, error } = await supabase
+      .from("menu_categories")
+      .insert({ business_id: business.id, name: newCatName.trim(), display_order: categories.length, is_visible: true })
+      .select("id, name, display_order")
+      .single();
+    if (error) { setCatError(error.message); setCatSaving(false); return; }
+    setCategories((prev) => [...prev, data as Category]);
+    setNewCatName("");
+    setAddingCat(false);
+    setCatSaving(false);
+  }
+
+  async function addMenuItem(e: React.FormEvent) {
+    e.preventDefault();
+    if (!itemForm.name.trim() || !itemForm.category_id) return;
+    setItemError("");
+    setItemSaving(true);
+    const { data, error } = await supabase
+      .from("menu_items")
+      .insert({
+        category_id:   itemForm.category_id,
+        name:          itemForm.name.trim(),
+        price:         parseFloat(itemForm.price) || 0,
+        description:   itemForm.description.trim() || null,
+        is_available:  true,
+        display_order: menuItems.filter((i) => i.category_id === itemForm.category_id).length,
+      })
+      .select("id, category_id, name, price, description, is_available")
+      .single();
+    if (error) { setItemError(error.message); setItemSaving(false); return; }
+    setMenuItems((prev) => [...prev, data as MenuItem]);
+    setItemForm(EMPTY_ITEM);
+    setAddingItem(false);
+    setItemSaving(false);
   }
 
   async function downloadQR(loc: Location) {
@@ -183,7 +224,7 @@ export default function DashboardPage() {
   const checklist = [
     { label: "Create account",        done: true },
     { label: "Add a table or location", done: locations.length > 0 },
-    { label: "Add menu items",         done: menuCount > 0 },
+    { label: "Add menu items",         done: menuItems.length > 0 },
     { label: "Receive first order",    done: orders.length > 0 },
   ];
   const checklistDone = checklist.filter((c) => c.done).length;
@@ -254,6 +295,9 @@ export default function DashboardPage() {
                 {t}
                 {t === "tables" && locations.length > 0 && (
                   <span style={{ marginLeft: 8, background: BORDER, borderRadius: 12, padding: "2px 8px", fontSize: 11, color: MUTED }}>{locations.length}</span>
+                )}
+                {t === "menu" && menuItems.length > 0 && (
+                  <span style={{ marginLeft: 8, background: BORDER, borderRadius: 12, padding: "2px 8px", fontSize: 11, color: MUTED }}>{menuItems.length}</span>
                 )}
                 {t === "orders" && orders.length > 0 && (
                   <span style={{ marginLeft: 8, background: BORDER, borderRadius: 12, padding: "2px 8px", fontSize: 11, color: MUTED }}>{orders.length}</span>
@@ -334,12 +378,144 @@ export default function DashboardPage() {
 
           {/* Menu tab */}
           {tab === "menu" && (
-            <div>
-              {menuCount === 0 ? (
-                <Empty message="No menu items yet." sub="Add categories and items to build your digital menu." />
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+              {/* Toolbar */}
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => { setAddingCat(true); setAddingItem(false); }}
+                  style={{ background: "none", border: `1px solid ${ACCENT}`, borderRadius: 8, padding: "10px 20px", color: ACCENT, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                >
+                  + Add category
+                </button>
+                {categories.length > 0 && (
+                  <button
+                    onClick={() => { setAddingItem(true); setAddingCat(false); setItemForm({ ...EMPTY_ITEM, category_id: categories[0].id }); }}
+                    style={{ background: ACCENT, border: "none", borderRadius: 8, padding: "10px 20px", color: BG, fontWeight: 800, fontSize: 13, cursor: "pointer" }}
+                  >
+                    + Add item
+                  </button>
+                )}
+              </div>
+
+              {/* Add category form */}
+              {addingCat && (
+                <form onSubmit={addCategory} style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>New category</p>
+                  <input
+                    autoFocus required
+                    placeholder="e.g. Starters"
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }}
+                  />
+                  {catError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{catError}</p>}
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button type="submit" disabled={catSaving} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: catSaving ? "not-allowed" : "pointer" }}>
+                      {catSaving ? "Saving…" : "Add category"}
+                    </button>
+                    <button type="button" onClick={() => { setAddingCat(false); setNewCatName(""); setCatError(""); }} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Add item form */}
+              {addingItem && (
+                <form onSubmit={addMenuItem} style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>New menu item</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Name *</label>
+                      <input
+                        required autoFocus
+                        placeholder="e.g. Caesar Salad"
+                        value={itemForm.name}
+                        onChange={(e) => setItemForm((f) => ({ ...f, name: e.target.value }))}
+                        style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Price *</label>
+                      <input
+                        required type="number" min="0" step="0.01"
+                        placeholder="0.00"
+                        value={itemForm.price}
+                        onChange={(e) => setItemForm((f) => ({ ...f, price: e.target.value }))}
+                        style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Description</label>
+                    <input
+                      placeholder="Optional description"
+                      value={itemForm.description}
+                      onChange={(e) => setItemForm((f) => ({ ...f, description: e.target.value }))}
+                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Category *</label>
+                    <select
+                      required
+                      value={itemForm.category_id}
+                      onChange={(e) => setItemForm((f) => ({ ...f, category_id: e.target.value }))}
+                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none", cursor: "pointer" }}
+                    >
+                      <option value="">Select category</option>
+                      {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  {itemError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{itemError}</p>}
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button type="submit" disabled={itemSaving} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: itemSaving ? "not-allowed" : "pointer" }}>
+                      {itemSaving ? "Saving…" : "Add item"}
+                    </button>
+                    <button type="button" onClick={() => { setAddingItem(false); setItemForm(EMPTY_ITEM); setItemError(""); }} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Menu list grouped by category */}
+              {categories.length === 0 ? (
+                <Empty message="No categories yet." sub="Create a category first, then add items to it." />
               ) : (
-                <div style={{ ...card, color: MUTED, fontSize: 14 }}>
-                  {menuCount} menu item{menuCount !== 1 ? "s" : ""} across your categories.
+                <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+                  {categories.map((cat) => {
+                    const items = menuItems.filter((i) => i.category_id === cat.id);
+                    return (
+                      <div key={cat.id}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                          <h3 style={{ fontWeight: 800, fontSize: 15, color: TEXT, margin: 0 }}>{cat.name}</h3>
+                          <span style={{ color: MUTED, fontSize: 12 }}>{items.length} item{items.length !== 1 ? "s" : ""}</span>
+                        </div>
+                        {items.length === 0 ? (
+                          <p style={{ color: MUTED, fontSize: 13, paddingLeft: 4 }}>No items yet.</p>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {items.map((item) => (
+                              <div key={item.id} style={{ ...card, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                    <span style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</span>
+                                    {!item.is_available && <span style={{ ...badge(MUTED), fontSize: 10 }}>unavailable</span>}
+                                  </div>
+                                  {item.description && <span style={{ color: MUTED, fontSize: 12 }}>{item.description}</span>}
+                                </div>
+                                <span style={{ fontWeight: 800, fontSize: 15, color: ACCENT, whiteSpace: "nowrap" }}>
+                                  ${Number(item.price).toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
