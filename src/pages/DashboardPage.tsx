@@ -892,6 +892,52 @@ export default function DashboardPage() {
                   )}
                 </div>
 
+                {/* ── Income Statement ─────────────────────────── */}
+                <div style={{ ...card }}>
+                  <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>
+                    Income Statement — Last 30 Days
+                  </p>
+
+                  {/* Revenue block */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: MUTED, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Revenue</div>
+                    <StmtRow label="Orders (completed)" value={orderRevenue} color={GREEN} />
+                    <StmtRow label="Manual entries" value={manualTotal} color={GREEN} />
+                    <StmtDivider />
+                    <StmtRow label="Total Revenue" value={totalRevenue} color={GREEN} bold />
+                  </div>
+
+                  {/* Expenses block — grouped by category */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: MUTED, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Expenses</div>
+                    {(() => {
+                      const byCategory: Record<string, number> = {};
+                      expenses.forEach((e) => {
+                        byCategory[e.category] = (byCategory[e.category] ?? 0) + Number(e.amount);
+                      });
+                      return Object.entries(byCategory).length === 0
+                        ? <div style={{ color: MUTED, fontSize: 13, paddingLeft: 8, marginBottom: 8 }}>No expenses recorded.</div>
+                        : Object.entries(byCategory).map(([cat, amt]) => (
+                          <StmtRow key={cat} label={cat} value={amt} color={RED} negate />
+                        ));
+                    })()}
+                    <StmtDivider />
+                    <StmtRow label="Total Expenses" value={totalExpenses} color={RED} bold negate />
+                  </div>
+
+                  {/* Net */}
+                  <div style={{ borderTop: `2px solid ${BORDER}`, paddingTop: 14 }}>
+                    <StmtRow
+                      label="Net Profit / (Loss)"
+                      value={Math.abs(net)}
+                      color={net >= 0 ? GREEN : RED}
+                      bold
+                      prefix={net < 0 ? "(" : ""}
+                      suffix={net < 0 ? ")" : ""}
+                    />
+                  </div>
+                </div>
+
                 {/* Expenses */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -978,6 +1024,23 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+function StmtRow({ label, value, color, bold, negate, prefix = "", suffix = "" }: {
+  label: string; value: number; color: string; bold?: boolean; negate?: boolean; prefix?: string; suffix?: string;
+}) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "5px 8px", marginBottom: 2 }}>
+      <span style={{ fontSize: 14, color: bold ? TEXT : MUTED, fontWeight: bold ? 800 : 400 }}>{label}</span>
+      <span style={{ fontSize: 14, color, fontWeight: bold ? 900 : 600, fontFamily: "monospace" }}>
+        {prefix}{negate ? "−" : ""}${value.toFixed(2)}{suffix}
+      </span>
+    </div>
+  );
+}
+
+function StmtDivider() {
+  return <div style={{ borderTop: `1px solid ${BORDER}`, margin: "8px 8px 10px" }} />;
 }
 
 function Empty({ message, sub }: { message: string; sub: string }) {
