@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { useAuth } from "../lib/useAuth";
 import { supabase } from "../lib/supabase";
 import { ACCENT, BG, BORDER, MUTED, SURFACE, TEXT, GREEN, RED } from "../constants/theme";
@@ -64,6 +65,12 @@ export default function DashboardPage() {
   const [tab, setTab]               = useState<Tab>("tables");
   const [loading, setLoading]       = useState(true);
 
+  // Add table form
+  const [addingTable, setAddingTable]   = useState(false);
+  const [newTableName, setNewTableName] = useState("");
+  const [tableError, setTableError]     = useState("");
+  const [tableSaving, setTableSaving]   = useState(false);
+
   useEffect(() => {
     if (!session?.user.id) return;
     void load(session.user.id);
@@ -116,6 +123,41 @@ export default function DashboardPage() {
     }
 
     setLoading(false);
+  }
+
+  async function addTable(e: React.FormEvent) {
+    e.preventDefault();
+    if (!business || !newTableName.trim()) return;
+    setTableError("");
+    setTableSaving(true);
+
+    const slug = newTableName.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const { data, error } = await supabase
+      .from("locations")
+      .insert({ business_id: business.id, name: newTableName.trim(), slug, is_active: true })
+      .select("id, name, label, is_active")
+      .single();
+
+    if (error) {
+      setTableError(error.message);
+      setTableSaving(false);
+      return;
+    }
+
+    setLocations((prev) => [...prev, data as Location]);
+    setNewTableName("");
+    setAddingTable(false);
+    setTableSaving(false);
+  }
+
+  async function downloadQR(loc: Location) {
+    if (!business) return;
+    const url = `${window.location.origin}/scan/${business.id}/${loc.id}`;
+    const dataUrl = await QRCode.toDataURL(url, { width: 512, margin: 2 });
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = `qr-${loc.name.toLowerCase().replace(/\s+/g, "-")}.png`;
+    a.click();
   }
 
   if (loading) {
@@ -222,18 +264,67 @@ export default function DashboardPage() {
 
           {/* Tables tab */}
           {tab === "tables" && (
-            <div>
-              {locations.length === 0 ? (
-                <Empty message="No tables yet." sub="Add your first table or location to generate a QR code." />
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+              {/* Add table button / inline form */}
+              {addingTable ? (
+                <form onSubmit={addTable} style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>New table</p>
+                  <input
+                    autoFocus
+                    required
+                    placeholder="e.g. Table 4"
+                    value={newTableName}
+                    onChange={(e) => setNewTableName(e.target.value)}
+                    style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }}
+                  />
+                  {tableError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{tableError}</p>}
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      type="submit"
+                      disabled={tableSaving}
+                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: tableSaving ? "not-allowed" : "pointer" }}
+                    >
+                      {tableSaving ? "Saving…" : "Add table"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAddingTable(false); setNewTableName(""); setTableError(""); }}
+                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
+                <div>
+                  <button
+                    onClick={() => setAddingTable(true)}
+                    style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "11px 22px", fontWeight: 800, fontSize: 14, cursor: "pointer" }}
+                  >
+                    + Add table
+                  </button>
+                </div>
+              )}
+
+              {/* Table list */}
+              {locations.length === 0 ? (
+                <Empty message="No tables yet." sub="Add your first table to generate a QR code." />
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
                   {locations.map((loc) => (
-                    <div key={loc.id} style={{ ...card, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div key={loc.id} style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
                       <div style={{ fontWeight: 800, fontSize: 15 }}>{loc.name}</div>
                       {loc.label && <div style={{ color: MUTED, fontSize: 13 }}>{loc.label}</div>}
-                      <span style={{ ...badge(loc.is_active ? GREEN : MUTED), alignSelf: "flex-start", marginTop: 4 }}>
+                      <span style={{ ...badge(loc.is_active ? GREEN : MUTED), alignSelf: "flex-start" }}>
                         {loc.is_active ? "active" : "inactive"}
                       </span>
+                      <button
+                        onClick={() => downloadQR(loc)}
+                        style={{ marginTop: 4, background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 14px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "left" }}
+                      >
+                        ↓ Download QR
+                      </button>
                     </div>
                   ))}
                 </div>
