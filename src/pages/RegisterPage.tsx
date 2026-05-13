@@ -73,6 +73,24 @@ export default function RegisterPage() {
       setForm((f) => ({ ...f, [field]: e.target.value }));
   }
 
+  async function insertBusiness(userId: string) {
+    const slug = slugify(form.businessName) || `business-${Date.now()}`;
+    const { error: bizError } = await supabase.from("businesses").insert({
+      owner_id:            userId,
+      name:                form.businessName.trim(),
+      slug,
+      type:                form.type,
+      plan:                "starter",
+      subscription_status: "trialing",
+    });
+    if (bizError) {
+      setError(bizError.message);
+      setLoading(false);
+      return;
+    }
+    navigate("/dashboard");
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -95,31 +113,25 @@ export default function RegisterPage() {
       return;
     }
 
-    const userId = authData.user?.id;
-    if (!userId) {
-      setError("Account created — check your email to confirm, then log in.");
-      setLoading(false);
+    // Session is immediately available — email confirmation is off
+    if (authData.session?.user.id) {
+      await insertBusiness(authData.session.user.id);
       return;
     }
 
-    const slug = slugify(form.businessName) || `business-${Date.now()}`;
+    // No immediate session — email confirmation required.
+    // Wait for SIGNED_IN before inserting the business row.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session?.user.id) {
+          subscription.unsubscribe();
+          await insertBusiness(session.user.id);
+        }
+      }
+    );
 
-    const { error: bizError } = await supabase.from("businesses").insert({
-      owner_id:            userId,
-      name:                form.businessName.trim(),
-      slug,
-      type:                form.type,
-      plan:                "starter",
-      subscription_status: "trialing",
-    });
-
-    if (bizError) {
-      setError(bizError.message);
-      setLoading(false);
-      return;
-    }
-
-    navigate("/dashboard");
+    setError("Check your email to confirm your account, then return here.");
+    setLoading(false);
   }
 
   return (
