@@ -117,11 +117,15 @@ export default function DashboardPage() {
   const [expenseForm, setExpenseForm]         = useState(EMPTY_EXPENSE);
   const [expenseError, setExpenseError]       = useState("");
   const [expenseSaving, setExpenseSaving]     = useState(false);
-  const [addingRevenue, setAddingRevenue]     = useState(false);
-  const [revenueForm, setRevenueForm]         = useState(EMPTY_REVENUE);
-  const [revenueError, setRevenueError]       = useState("");
-  const [revenueSaving, setRevenueSaving]     = useState(false);
-  const [noRevenueTable, setNoRevenueTable]   = useState(false);
+  const [addingRevenue, setAddingRevenue]       = useState(false);
+  const [revenueForm, setRevenueForm]           = useState(EMPTY_REVENUE);
+  const [revenueError, setRevenueError]         = useState("");
+  const [revenueSaving, setRevenueSaving]       = useState(false);
+  const [noRevenueTable, setNoRevenueTable]     = useState(false);
+  const [editingRevenueId, setEditingRevenueId] = useState<string | null>(null);
+  const [editRevenueForm, setEditRevenueForm]   = useState(EMPTY_REVENUE);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [editExpenseForm, setEditExpenseForm]   = useState(EMPTY_EXPENSE);
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -268,6 +272,50 @@ export default function DashboardPage() {
   async function updateOrderStatus(orderId: string, newStatus: string) {
     const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
     if (!error) setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
+  }
+
+  async function updateRevenue(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingRevenueId) return;
+    const { error } = await supabase.from("manual_revenue").update({
+      amount:      parseFloat(editRevenueForm.amount),
+      category:    editRevenueForm.category,
+      description: editRevenueForm.description.trim() || null,
+      date:        editRevenueForm.date,
+    }).eq("id", editingRevenueId);
+    if (error) return;
+    setManualRevenue((prev) => prev.map((r) => r.id === editingRevenueId
+      ? { ...r, amount: parseFloat(editRevenueForm.amount), category: editRevenueForm.category, description: editRevenueForm.description || null, date: editRevenueForm.date }
+      : r));
+    setEditingRevenueId(null);
+  }
+
+  async function deleteRevenue(id: string) {
+    if (!window.confirm("Delete this revenue entry?")) return;
+    const { error } = await supabase.from("manual_revenue").delete().eq("id", id);
+    if (!error) setManualRevenue((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  async function updateExpense(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingExpenseId) return;
+    const { error } = await supabase.from("business_expenses").update({
+      amount:       parseFloat(editExpenseForm.amount),
+      category:     editExpenseForm.category.trim(),
+      description:  editExpenseForm.description.trim() || null,
+      expense_date: editExpenseForm.expense_date,
+    }).eq("id", editingExpenseId);
+    if (error) return;
+    setExpenses((prev) => prev.map((exp) => exp.id === editingExpenseId
+      ? { ...exp, amount: parseFloat(editExpenseForm.amount), category: editExpenseForm.category, description: editExpenseForm.description || null, expense_date: editExpenseForm.expense_date }
+      : exp));
+    setEditingExpenseId(null);
+  }
+
+  async function deleteExpense(id: string) {
+    if (!window.confirm("Delete this expense?")) return;
+    const { error } = await supabase.from("business_expenses").delete().eq("id", id);
+    if (!error) setExpenses((prev) => prev.filter((e) => e.id !== id));
   }
 
   async function addManualRevenue(e: React.FormEvent) {
@@ -878,14 +926,41 @@ export default function DashboardPage() {
 
                   {!noRevenueTable && manualRevenue.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {manualRevenue.map((r) => (
+                      {manualRevenue.map((r) => editingRevenueId === r.id ? (
+                        <form key={r.id} onSubmit={updateRevenue} style={{ ...card, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <select required value={editRevenueForm.category} onChange={(e) => setEditRevenueForm((f) => ({ ...f, category: e.target.value }))}
+                              style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }}>
+                              {REVENUE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <input required type="number" min="0" step="0.01" value={editRevenueForm.amount} onChange={(e) => setEditRevenueForm((f) => ({ ...f, amount: e.target.value }))}
+                              style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }} />
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <input placeholder="Description" value={editRevenueForm.description} onChange={(e) => setEditRevenueForm((f) => ({ ...f, description: e.target.value }))}
+                              style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }} />
+                            <input required type="date" value={editRevenueForm.date} onChange={(e) => setEditRevenueForm((f) => ({ ...f, date: e.target.value }))}
+                              style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none", colorScheme: "dark" }} />
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button type="submit" style={{ background: GREEN, color: BG, border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>Save</button>
+                            <button type="button" onClick={() => setEditingRevenueId(null)} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: MUTED, fontSize: 12, cursor: "pointer" }}>Cancel</button>
+                          </div>
+                        </form>
+                      ) : (
                         <div key={r.id} style={{ ...card, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                             <span style={{ fontWeight: 700, fontSize: 14 }}>{r.category}</span>
                             {r.description && <span style={{ color: MUTED, fontSize: 12 }}>{r.description}</span>}
                             <span style={{ color: MUTED, fontSize: 11, fontFamily: "monospace" }}>{r.date}</span>
                           </div>
-                          <span style={{ fontWeight: 800, fontSize: 15, color: GREEN }}>+${Number(r.amount).toFixed(2)}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span style={{ fontWeight: 800, fontSize: 15, color: GREEN }}>+${Number(r.amount).toFixed(2)}</span>
+                            <button onClick={() => { setEditingRevenueId(r.id); setEditRevenueForm({ category: r.category, amount: String(r.amount), description: r.description ?? "", date: r.date }); }}
+                              style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, cursor: "pointer" }}>Edit</button>
+                            <button onClick={() => deleteRevenue(r.id)}
+                              style={{ background: "none", border: `1px solid ${RED}44`, borderRadius: 6, padding: "5px 10px", color: RED, fontSize: 11, cursor: "pointer" }}>Delete</button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1003,14 +1078,39 @@ export default function DashboardPage() {
                     <Empty message="No expenses yet." sub="Track costs to see your net profit." />
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {expenses.map((exp) => (
+                      {expenses.map((exp) => editingExpenseId === exp.id ? (
+                        <form key={exp.id} onSubmit={updateExpense} style={{ ...card, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <input required placeholder="Category" value={editExpenseForm.category} onChange={(e) => setEditExpenseForm((f) => ({ ...f, category: e.target.value }))}
+                              style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }} />
+                            <input required type="number" min="0" step="0.01" value={editExpenseForm.amount} onChange={(e) => setEditExpenseForm((f) => ({ ...f, amount: e.target.value }))}
+                              style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }} />
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <input placeholder="Description" value={editExpenseForm.description} onChange={(e) => setEditExpenseForm((f) => ({ ...f, description: e.target.value }))}
+                              style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }} />
+                            <input required type="date" value={editExpenseForm.expense_date} onChange={(e) => setEditExpenseForm((f) => ({ ...f, expense_date: e.target.value }))}
+                              style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none", colorScheme: "dark" }} />
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button type="submit" style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>Save</button>
+                            <button type="button" onClick={() => setEditingExpenseId(null)} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: MUTED, fontSize: 12, cursor: "pointer" }}>Cancel</button>
+                          </div>
+                        </form>
+                      ) : (
                         <div key={exp.id} style={{ ...card, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                             <span style={{ fontWeight: 700, fontSize: 14 }}>{exp.category}</span>
                             {exp.description && <span style={{ color: MUTED, fontSize: 12 }}>{exp.description}</span>}
                             <span style={{ color: MUTED, fontSize: 11, fontFamily: "monospace" }}>{exp.expense_date}</span>
                           </div>
-                          <span style={{ fontWeight: 800, fontSize: 15, color: RED }}>−${Number(exp.amount).toFixed(2)}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span style={{ fontWeight: 800, fontSize: 15, color: RED }}>−${Number(exp.amount).toFixed(2)}</span>
+                            <button onClick={() => { setEditingExpenseId(exp.id); setEditExpenseForm({ category: exp.category, amount: String(exp.amount), description: exp.description ?? "", expense_date: exp.expense_date }); }}
+                              style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, cursor: "pointer" }}>Edit</button>
+                            <button onClick={() => deleteExpense(exp.id)}
+                              style={{ background: "none", border: `1px solid ${RED}44`, borderRadius: 6, padding: "5px 10px", color: RED, fontSize: 11, cursor: "pointer" }}>Delete</button>
+                          </div>
                         </div>
                       ))}
                     </div>
