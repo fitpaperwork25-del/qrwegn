@@ -3,6 +3,7 @@ import AuthGuard from "./components/AuthGuard";
 import StaffGuard from "./components/StaffGuard";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 import StaffLoginPage from "./pages/StaffLoginPage";
 
 // Placeholders — replace with real pages as they are built
@@ -19,7 +20,7 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/staff-login" element={<StaffLoginPage />} />
-      <Route path="/register" element={<Placeholder name="RegisterPage" />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/onboarding" element={<Placeholder name="OnboardingPage" />} />
       <Route path="/onboarding-complete" element={<Placeholder name="OnboardingComplete" />} />
       <Route path="/pricing" element={<Placeholder name="PricingPage" />} />
