@@ -218,7 +218,7 @@ const styles = {
   page: { background: dark, minHeight: '100vh', color: text, fontFamily: 'system-ui, sans-serif', paddingBottom: 100 },
   header: { padding: '20px 16px 12px', borderBottom: `1px solid ${border}` },
   bizName: { margin: 0, fontSize: 22, fontWeight: 700, color: gold },
-  catNav: { display: 'flex', gap: 8, padding: '12px 16px', overflowX: 'auto', borderBottom: `1px solid ${border}`, scrollbarWidth: 'none' },
+  catNav: { display: 'flex', flexWrap: 'nowrap', gap: 8, padding: '12px 16px', overflowX: 'auto', overflowY: 'hidden', borderBottom: `1px solid ${border}`, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' },
   catBtn: { background: 'transparent', border: `1px solid ${border}`, color: muted, borderRadius: 20, padding: '6px 14px', fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' },
   catBtnActive: { background: gold, borderColor: gold, color: '#000', fontWeight: 600 },
   menuArea: { padding: '0 16px' },

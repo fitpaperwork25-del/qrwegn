@@ -99,8 +99,8 @@ export default function DashboardPage() {
   const [itemSaving, setItemSaving]   = useState(false);
 
   // Orders expand + items cache
-  const [expandedOrderId, setExpandedOrderId]     = useState<string | null>(null);
-  const [orderItemsCache, setOrderItemsCache]     = useState<Record<string, OrderItem[]>>({});
+  const [expandedOrders, setExpandedOrders]   = useState<Set<string>>(new Set());
+  const [orderItemsCache, setOrderItemsCache] = useState<Record<string, OrderItem[]>>({});
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -206,8 +206,12 @@ export default function DashboardPage() {
   }
 
   async function toggleOrder(orderId: string) {
-    if (expandedOrderId === orderId) { setExpandedOrderId(null); return; }
-    setExpandedOrderId(orderId);
+    setExpandedOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) { next.delete(orderId); return next; }
+      next.add(orderId);
+      return next;
+    });
     if (orderItemsCache[orderId]) return;
     const { data } = await supabase
       .from("order_items")
@@ -565,7 +569,7 @@ export default function DashboardPage() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {orders.map((order) => {
-                    const isExpanded = expandedOrderId === order.id;
+                    const isExpanded = expandedOrders.has(order.id);
                     const statusColor = ORDER_STATUS_COLOR[order.status] ?? MUTED;
                     const items = orderItemsCache[order.id];
                     return (
