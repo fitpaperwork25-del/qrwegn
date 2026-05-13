@@ -20,6 +20,9 @@ type Order     = { id: string; status: string; total: number; created_at: string
 type OrderItem = { id: string; name: string; quantity: number; unit_price: number };
 type Category  = { id: string; name: string; display_order: number };
 type MenuItem  = { id: string; category_id: string; name: string; price: number; description: string | null; is_available: boolean };
+type Expense   = { id: string; amount: number; category: string; description: string | null; expense_date: string };
+
+const EMPTY_EXPENSE = { category: "", amount: "", description: "", expense_date: new Date().toISOString().slice(0, 10) };
 
 const ORDER_STATUS_COLOR: Record<string, string> = {
   new:       "#E8C547",
@@ -30,7 +33,7 @@ const ORDER_STATUS_COLOR: Record<string, string> = {
 };
 const ORDER_STATUSES = ["new", "preparing", "ready", "done"] as const;
 
-type Tab = "tables" | "menu" | "orders";
+type Tab = "tables" | "menu" | "orders" | "financials";
 
 const EMPTY_ITEM = { name: "", price: "", description: "", category_id: "" };
 
@@ -102,6 +105,14 @@ export default function DashboardPage() {
   const [expandedOrders, setExpandedOrders]   = useState<Set<string>>(new Set());
   const [orderItemsCache, setOrderItemsCache] = useState<Record<string, OrderItem[]>>({});
 
+  // Financials
+  const [doneOrders, setDoneOrders]       = useState<Order[]>([]);
+  const [expenses, setExpenses]           = useState<Expense[]>([]);
+  const [addingExpense, setAddingExpense] = useState(false);
+  const [expenseForm, setExpenseForm]     = useState(EMPTY_EXPENSE);
+  const [expenseError, setExpenseError]   = useState("");
+  const [expenseSaving, setExpenseSaving] = useState(false);
+
   useEffect(() => {
     if (!session?.user.id) return;
     void load(session.user.id);
@@ -134,6 +145,17 @@ export default function DashboardPage() {
           .order("display_order");
         setMenuItems((itemRes.data as MenuItem[]) ?? []);
       }
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const [doneRes, expRes] = await Promise.all([
+        supabase.from("orders").select("id, status, total, created_at")
+          .eq("business_id", biz.id).eq("status", "done")
+          .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("business_expenses").select("id, amount, category, description, expense_date")
+          .eq("business_id", biz.id).order("expense_date", { ascending: false }),
+      ]);
+      setDoneOrders((doneRes.data as Order[]) ?? []);
+      setExpenses((expRes.data as Expense[]) ?? []);
     }
 
     setLoading(false);
@@ -231,6 +253,29 @@ export default function DashboardPage() {
     if (!error) setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
   }
 
+  async function addExpense(e: React.FormEvent) {
+    e.preventDefault();
+    if (!business || !expenseForm.category.trim() || !expenseForm.amount) return;
+    setExpenseError("");
+    setExpenseSaving(true);
+    const { data, error } = await supabase
+      .from("business_expenses")
+      .insert({
+        business_id:  business.id,
+        category:     expenseForm.category.trim(),
+        amount:       parseFloat(expenseForm.amount),
+        description:  expenseForm.description.trim() || null,
+        expense_date: expenseForm.expense_date,
+      })
+      .select("id, amount, category, description, expense_date")
+      .single();
+    if (error) { setExpenseError(error.message); setExpenseSaving(false); return; }
+    setExpenses((prev) => [data as Expense, ...prev]);
+    setExpenseForm(EMPTY_EXPENSE);
+    setAddingExpense(false);
+    setExpenseSaving(false);
+  }
+
   async function downloadQR(loc: Location) {
     if (!business) return;
     const url = `${window.location.origin}/scan/${business.id}/${loc.id}`;
@@ -314,7 +359,7 @@ export default function DashboardPage() {
         {/* Tabs */}
         <div>
           <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${BORDER}`, marginBottom: 24 }}>
-            {(["tables", "menu", "orders"] as Tab[]).map((t) => (
+            {(["tables", "menu", "orders", "financials"] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -652,6 +697,149 @@ export default function DashboardPage() {
               )}
             </div>
           )}
+          {/* Financials tab */}
+          {tab === "financials" && (() => {
+            const totalRevenue  = doneOrders.reduce((s, o) => s + Number(o.total), 0);
+            const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
+            const net           = totalRevenue - totalExpenses;
+            const avgOrder      = doneOrders.length > 0 ? totalRevenue / doneOrders.length : 0;
+
+            // Daily revenue last 7 days
+            const today = new Date();
+            const days7 = Array.from({ length: 7 }, (_, i) => {
+              const d = new Date(today);
+              d.setDate(d.getDate() - (6 - i));
+              return d.toISOString().slice(0, 10);
+            });
+            const revenueByDay: Record<string, number> = {};
+            days7.forEach((d) => { revenueByDay[d] = 0; });
+            doneOrders.forEach((o) => {
+              const day = o.created_at.slice(0, 10);
+              if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(o.total);
+            });
+            const maxDay = Math.max(...Object.values(revenueByDay), 1);
+
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+                {/* Summary cards */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
+                  {[
+                    { label: "Revenue (30d)",   value: `$${totalRevenue.toFixed(2)}`,  color: GREEN },
+                    { label: "Orders (done)",    value: doneOrders.length.toString(),   color: ACCENT },
+                    { label: "Avg order value",  value: `$${avgOrder.toFixed(2)}`,      color: ACCENT },
+                    { label: "Net (30d)",        value: `$${net.toFixed(2)}`,           color: net >= 0 ? GREEN : RED },
+                  ].map((s) => (
+                    <div key={s.label} style={{ ...card, padding: "18px 20px" }}>
+                      <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>{s.label}</div>
+                      <div style={{ fontSize: 26, fontWeight: 900, color: s.color }}>{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 7-day bar chart */}
+                <div style={{ ...card }}>
+                  <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>Daily Revenue — Last 7 Days</p>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 120 }}>
+                    {days7.map((day) => {
+                      const val  = revenueByDay[day];
+                      const pct  = maxDay > 0 ? (val / maxDay) * 100 : 0;
+                      const label = new Date(day + "T00:00:00").toLocaleDateString(undefined, { weekday: "short" });
+                      return (
+                        <div key={day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, height: "100%" }}>
+                          <div style={{ fontSize: 10, color: MUTED }}>{val > 0 ? `$${val.toFixed(0)}` : ""}</div>
+                          <div style={{ flex: 1, display: "flex", alignItems: "flex-end", width: "100%" }}>
+                            <div style={{ width: "100%", height: `${Math.max(pct, val > 0 ? 4 : 0)}%`, background: ACCENT + "aa", borderRadius: "4px 4px 0 0", transition: "height 0.3s", minHeight: val > 0 ? 4 : 0 }} />
+                          </div>
+                          <div style={{ fontSize: 10, color: MUTED }}>{label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Expenses */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>
+                      Expenses — ${totalExpenses.toFixed(2)} total
+                    </p>
+                    {!addingExpense && (
+                      <button
+                        onClick={() => setAddingExpense(true)}
+                        style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: TEXT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                      >
+                        + Add expense
+                      </button>
+                    )}
+                  </div>
+
+                  {addingExpense && (
+                    <form onSubmit={addExpense} style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>New expense</p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Category *</label>
+                          <input required placeholder="e.g. Supplies" value={expenseForm.category}
+                            onChange={(e) => setExpenseForm((f) => ({ ...f, category: e.target.value }))}
+                            style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Amount *</label>
+                          <input required type="number" min="0" step="0.01" placeholder="0.00" value={expenseForm.amount}
+                            onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
+                            style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Description</label>
+                          <input placeholder="Optional" value={expenseForm.description}
+                            onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))}
+                            style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Date *</label>
+                          <input required type="date" value={expenseForm.expense_date}
+                            onChange={(e) => setExpenseForm((f) => ({ ...f, expense_date: e.target.value }))}
+                            style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none", colorScheme: "dark" }} />
+                        </div>
+                      </div>
+                      {expenseError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{expenseError}</p>}
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <button type="submit" disabled={expenseSaving}
+                          style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: expenseSaving ? "not-allowed" : "pointer" }}>
+                          {expenseSaving ? "Saving…" : "Add expense"}
+                        </button>
+                        <button type="button" onClick={() => { setAddingExpense(false); setExpenseForm(EMPTY_EXPENSE); setExpenseError(""); }}
+                          style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {expenses.length === 0 && !addingExpense ? (
+                    <Empty message="No expenses yet." sub="Track costs to see your net profit." />
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {expenses.map((exp) => (
+                        <div key={exp.id} style={{ ...card, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                            <span style={{ fontWeight: 700, fontSize: 14 }}>{exp.category}</span>
+                            {exp.description && <span style={{ color: MUTED, fontSize: 12 }}>{exp.description}</span>}
+                            <span style={{ color: MUTED, fontSize: 11, fontFamily: "monospace" }}>{exp.expense_date}</span>
+                          </div>
+                          <span style={{ fontWeight: 800, fontSize: 15, color: RED }}>−${Number(exp.amount).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
         </div>
       </div>
     </div>
