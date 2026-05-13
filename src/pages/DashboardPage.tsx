@@ -21,11 +21,11 @@ type OrderItem = { id: string; name: string; quantity: number; unit_price: numbe
 type Category  = { id: string; name: string; display_order: number };
 type MenuItem  = { id: string; category_id: string; name: string; price: number; description: string | null; is_available: boolean };
 type Expense       = { id: string; amount: number; category: string; description: string | null; expense_date: string };
-type ManualRevenue = { id: string; amount: number; category: string; description: string | null; revenue_date: string };
+type ManualRevenue = { id: string; amount: number; category: string; description: string | null; date: string };
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const EMPTY_EXPENSE = { category: "", amount: "", description: "", expense_date: TODAY };
-const EMPTY_REVENUE = { category: "Dine-in", amount: "", description: "", revenue_date: TODAY };
+const EMPTY_REVENUE = { category: "Dine-in", amount: "", description: "", date: TODAY };
 const REVENUE_CATEGORIES = ["Dine-in", "Takeout", "Catering", "Other"] as const;
 
 const ORDER_STATUS_COLOR: Record<string, string> = {
@@ -163,8 +163,8 @@ export default function DashboardPage() {
           .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
         supabase.from("business_expenses").select("id, amount, category, description, expense_date")
           .eq("business_id", biz.id).order("expense_date", { ascending: false }),
-        supabase.from("manual_revenue").select("id, amount, category, description, revenue_date")
-          .eq("business_id", biz.id).order("revenue_date", { ascending: false }),
+        supabase.from("manual_revenue").select("id, amount, category, description, date")
+          .eq("business_id", biz.id).order("date", { ascending: false }),
       ]);
       setDoneOrders((doneRes.data as Order[]) ?? []);
       setExpenses((expRes.data as Expense[]) ?? []);
@@ -282,9 +282,9 @@ export default function DashboardPage() {
         amount:       parseFloat(revenueForm.amount),
         category:     revenueForm.category,
         description:  revenueForm.description.trim() || null,
-        revenue_date: revenueForm.revenue_date,
+        date: revenueForm.date,
       })
-      .select("id, amount, category, description, revenue_date")
+      .select("id, amount, category, description, date")
       .single();
     if (error) { setRevenueError(error.message); setRevenueSaving(false); return; }
     setManualRevenue((prev) => [data as ManualRevenue, ...prev]);
@@ -760,7 +760,7 @@ export default function DashboardPage() {
               if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(o.total);
             });
             manualRevenue.forEach((r) => {
-              const day = r.revenue_date;
+              const day = r.date;
               if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(r.amount);
             });
             const maxDay = Math.max(...Object.values(revenueByDay), 1);
@@ -857,8 +857,8 @@ export default function DashboardPage() {
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Date *</label>
-                          <input required type="date" value={revenueForm.revenue_date}
-                            onChange={(e) => setRevenueForm((f) => ({ ...f, revenue_date: e.target.value }))}
+                          <input required type="date" value={revenueForm.date}
+                            onChange={(e) => setRevenueForm((f) => ({ ...f, date: e.target.value }))}
                             style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none", colorScheme: "dark" }} />
                         </div>
                       </div>
@@ -883,7 +883,7 @@ export default function DashboardPage() {
                           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                             <span style={{ fontWeight: 700, fontSize: 14 }}>{r.category}</span>
                             {r.description && <span style={{ color: MUTED, fontSize: 12 }}>{r.description}</span>}
-                            <span style={{ color: MUTED, fontSize: 11, fontFamily: "monospace" }}>{r.revenue_date}</span>
+                            <span style={{ color: MUTED, fontSize: 11, fontFamily: "monospace" }}>{r.date}</span>
                           </div>
                           <span style={{ fontWeight: 800, fontSize: 15, color: GREEN }}>+${Number(r.amount).toFixed(2)}</span>
                         </div>
