@@ -10,11 +10,24 @@ function hasStaleTokens(): boolean {
   );
 }
 
+function isPublicScanPath(): boolean {
+  return window.location.pathname.startsWith("/scan");
+}
+
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
-  const [status, setStatus] = useState<AuthStatus>("loading");
+  // Scan pages are fully public — skip the loading state so nothing on a
+  // scan path ever renders a redirect before the session resolves.
+  const [status, setStatus] = useState<AuthStatus>(
+    isPublicScanPath() ? "unauthenticated" : "loading"
+  );
 
   useEffect(() => {
+    // Don't wire up the auth session machinery on public scan pages at all.
+    // The anonSupabase client in those pages never carries a token, so the
+    // shared supabase client's auth events are irrelevant there.
+    if (isPublicScanPath()) return;
+
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         setSession(data.session);
