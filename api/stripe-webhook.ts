@@ -5,7 +5,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { api: { bodyParser: false } };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-04-30.basil",
+  apiVersion: "2026-04-22.dahlia",
 });
 
 const supabase = createClient(
@@ -63,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
-        const subId = invoice.subscription as string;
+        const subId = invoice.parent?.subscription_details?.subscription as string;
         if (!subId) break;
 
         const sub = await stripe.subscriptions.retrieve(subId);
@@ -76,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
-        const subId = invoice.subscription as string;
+        const subId = invoice.parent?.subscription_details?.subscription as string;
         if (!subId) break;
         await supabase.from("businesses")
           .update({ subscription_status: "past_due" })

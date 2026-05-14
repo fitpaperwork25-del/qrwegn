@@ -9,6 +9,7 @@ export default function ScanPage() {
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
   const [cart, setCart] = useState({});
+  const [locationUuid, setLocationUuid] = useState(null);
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -29,6 +30,14 @@ export default function ScanPage() {
         .eq('id', bizId)
         .single();
       setBusiness(biz);
+
+      const { data: loc } = await supabase
+        .from('locations')
+        .select('id')
+        .eq('business_id', bizId)
+        .eq('slug', locationId)
+        .single();
+      setLocationUuid(loc?.id ?? null);
 
       const { data: cats } = await supabase
         .from('menu_categories')
@@ -78,6 +87,10 @@ export default function ScanPage() {
 
   async function placeOrder() {
     if (cartItems.length === 0) return;
+    if (!locationUuid) {
+      setError('Could not find this table. Please scan the QR code again.');
+      return;
+    }
     setPlacing(true);
     setError(null);
     try {
@@ -85,7 +98,7 @@ export default function ScanPage() {
 
       const { error: orderErr } = await supabase
         .from('orders')
-        .insert({ id: orderId, business_id: bizId, location_id: locationId, total: cartTotal, status: 'new' });
+        .insert({ id: orderId, business_id: bizId, location_id: locationUuid, total: cartTotal, status: 'new' });
 
       if (orderErr) throw orderErr;
 
@@ -102,7 +115,8 @@ export default function ScanPage() {
       setOrderId(orderId);
       setOrderPlaced(true);
       setCart({});
-    } catch (err) {
+    } catch (err: any) {
+      console.error('placeOrder error:', err);
       setError('Failed to place order. Please try again.');
     }
     setPlacing(false);
