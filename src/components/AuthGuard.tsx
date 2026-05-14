@@ -39,7 +39,9 @@ export default function AuthGuard({ children }: Props) {
   }
 
   if (status === "expired") return <SessionExpired />;
-  if (status === "unauthenticated") return <Navigate to="/login" replace />;
+  if (status === "unauthenticated") {
+    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
+  }
 
   return <>{children}</>;
 }

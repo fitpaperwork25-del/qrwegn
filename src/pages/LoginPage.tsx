@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/useAuth";
 import { ACCENT, BG, BORDER, TEXT, MUTED, RED } from "../constants/theme";
 
@@ -43,7 +43,9 @@ function QRMark() {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signIn } = useAuth();
+  const from = (location.state as { from?: string } | null)?.from ?? "/dashboard";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,7 +64,7 @@ export default function LoginPage() {
         : err.message);
       setLoading(false);
     } else {
-      navigate("/dashboard");
+      navigate(from, { replace: true });
     }
   };
 
