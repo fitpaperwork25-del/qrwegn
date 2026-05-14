@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           subscription_status:    "active",
           stripe_customer_id:     session.customer as string,
           stripe_subscription_id: session.subscription as string,
-          current_period_end:     new Date(sub.current_period_end * 1000).toISOString(),
+          current_period_end:     new Date(sub.items.data[0].current_period_end * 1000).toISOString(),
         }).eq("id", businessId);
         break;
       }
@@ -69,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const sub = await stripe.subscriptions.retrieve(subId);
         await supabase.from("businesses").update({
           subscription_status: "active",
-          current_period_end:  new Date(sub.current_period_end * 1000).toISOString(),
+          current_period_end:  new Date(sub.items.data[0].current_period_end * 1000).toISOString(),
         }).eq("stripe_subscription_id", subId);
         break;
       }

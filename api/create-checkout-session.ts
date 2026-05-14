@@ -7,10 +7,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const APP_URL = "https://qrserve-v3.vercel.app";
 
-const PRICE_IDS: Record<string, string> = {
-  starter:    process.env.STRIPE_PRICE_STARTER    || "price_1TUUx42",
-  pro:        process.env.STRIPE_PRICE_PRO        || "price_1TUUya",
-  enterprise: process.env.STRIPE_PRICE_ENTERPRISE || "price_1TUUzg",
+const PRICE_IDS: Record<string, string | undefined> = {
+  starter:    process.env.STRIPE_PRICE_STARTER,
+  pro:        process.env.STRIPE_PRICE_PRO,
+  enterprise: process.env.STRIPE_PRICE_ENTERPRISE,
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
