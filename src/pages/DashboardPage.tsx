@@ -199,6 +199,35 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, [business?.id]);
 
+  useEffect(() => {
+    if (!business?.id) return;
+    const fetchFinancials = async () => {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const [doneRes, expRes, revRes, cancelRes] = await Promise.all([
+        supabase.from("orders").select("id, status, total, created_at, cancel_reason")
+          .eq("business_id", business.id).neq("status", "cancelled")
+          .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("business_expenses").select("id, amount, category, description, expense_date")
+          .eq("business_id", business.id).order("expense_date", { ascending: false }),
+        supabase.from("manual_revenue").select("id, amount, category, description, date")
+          .eq("business_id", business.id).order("date", { ascending: false }),
+        supabase.from("orders").select("id, status, total, created_at, cancel_reason")
+          .eq("business_id", business.id).eq("status", "cancelled")
+          .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+      ]);
+      setDoneOrders((doneRes.data as Order[]) ?? []);
+      setExpenses((expRes.data as Expense[]) ?? []);
+      if (revRes.error?.code === "42P01") {
+        setNoRevenueTable(true);
+      } else {
+        setManualRevenue((revRes.data as ManualRevenue[]) ?? []);
+      }
+      setCancelledOrders((cancelRes.data as Order[]) ?? []);
+    };
+    const timer = setInterval(fetchFinancials, 15000);
+    return () => clearInterval(timer);
+  }, [business?.id]);
+
   async function load(userId: string) {
     setLoading(true);
 
