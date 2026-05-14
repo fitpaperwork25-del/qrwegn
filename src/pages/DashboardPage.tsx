@@ -119,6 +119,7 @@ export default function DashboardPage() {
   // Order cancellation
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason]           = useState("");
+  const [cancelError, setCancelError]             = useState("");
 
   // Financials
   const [doneOrders, setDoneOrders]           = useState<Order[]>([]);
@@ -327,17 +328,21 @@ export default function DashboardPage() {
   }
 
   async function cancelOrder(orderId: string, reason: string) {
+    setCancelError("");
     const { error } = await supabase
       .from("orders")
       .update({ status: "cancelled", cancel_reason: reason })
       .eq("id", orderId);
-    if (!error) {
-      setOrders((prev) => prev.map((o) =>
-        o.id === orderId ? { ...o, status: "cancelled", cancel_reason: reason } : o
-      ));
-      setCancellingOrderId(null);
-      setCancelReason("");
+    if (error) {
+      console.error("cancelOrder failed:", error);
+      setCancelError(error.message);
+      return;
     }
+    setOrders((prev) => prev.map((o) =>
+      o.id === orderId ? { ...o, status: "cancelled", cancel_reason: reason } : o
+    ));
+    setCancellingOrderId(null);
+    setCancelReason("");
   }
 
   async function startCheckout(plan: string) {
@@ -902,28 +907,33 @@ export default function DashboardPage() {
                                 {/* Cancel — not available once done */}
                                 {order.status !== "done" && (
                                   cancellingOrderId === order.id ? (
-                                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
-                                      <select
-                                        value={cancelReason}
-                                        onChange={(e) => setCancelReason(e.target.value)}
-                                        style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "7px 12px", color: cancelReason ? TEXT : MUTED, fontSize: 12, cursor: "pointer" }}
-                                      >
-                                        <option value="">Select reason…</option>
-                                        {CANCEL_REASONS.map((r) => <option key={r}>{r}</option>)}
-                                      </select>
-                                      <button
-                                        onClick={() => cancelOrder(order.id, cancelReason)}
-                                        disabled={!cancelReason}
-                                        style={{ background: cancelReason ? RED + "22" : "none", border: `1px solid ${cancelReason ? RED : BORDER}`, borderRadius: 8, padding: "7px 16px", color: cancelReason ? RED : MUTED, fontWeight: 700, fontSize: 12, cursor: cancelReason ? "pointer" : "not-allowed", letterSpacing: 0.5, textTransform: "uppercase" }}
-                                      >
-                                        Confirm Cancel
-                                      </button>
-                                      <button
-                                        onClick={() => { setCancellingOrderId(null); setCancelReason(""); }}
-                                        style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "7px 14px", color: MUTED, fontSize: 12, cursor: "pointer" }}
-                                      >
-                                        Keep
-                                      </button>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
+                                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                                        <select
+                                          value={cancelReason}
+                                          onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
+                                          style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "7px 12px", color: cancelReason ? TEXT : MUTED, fontSize: 12, cursor: "pointer" }}
+                                        >
+                                          <option value="">Select reason…</option>
+                                          {CANCEL_REASONS.map((r) => <option key={r}>{r}</option>)}
+                                        </select>
+                                        <button
+                                          onClick={() => cancelOrder(order.id, cancelReason)}
+                                          disabled={!cancelReason}
+                                          style={{ background: cancelReason ? RED + "22" : "none", border: `1px solid ${cancelReason ? RED : BORDER}`, borderRadius: 8, padding: "7px 16px", color: cancelReason ? RED : MUTED, fontWeight: 700, fontSize: 12, cursor: cancelReason ? "pointer" : "not-allowed", letterSpacing: 0.5, textTransform: "uppercase" }}
+                                        >
+                                          Confirm Cancel
+                                        </button>
+                                        <button
+                                          onClick={() => { setCancellingOrderId(null); setCancelReason(""); setCancelError(""); }}
+                                          style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "7px 14px", color: MUTED, fontSize: 12, cursor: "pointer" }}
+                                        >
+                                          Keep
+                                        </button>
+                                      </div>
+                                      {cancelError && (
+                                        <p style={{ margin: 0, fontSize: 11, color: RED }}>{cancelError}</p>
+                                      )}
                                     </div>
                                   ) : (
                                     <div style={{ paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>

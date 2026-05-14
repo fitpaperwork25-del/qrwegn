@@ -51,6 +51,7 @@ export default function StaffDashboardPage() {
   // Order cancellation
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason]           = useState("");
+  const [cancelError, setCancelError]             = useState("");
 
   useEffect(() => {
     if (!bizId) { navigate("/staff-login", { replace: true }); return; }
@@ -104,15 +105,19 @@ export default function StaffDashboardPage() {
   }, [bizId]);
 
   async function cancelOrder(orderId: string, reason: string) {
+    setCancelError("");
     const { error } = await supabase
       .from("orders")
       .update({ status: "cancelled", cancel_reason: reason })
       .eq("id", orderId);
-    if (!error) {
-      setOrders((prev) => prev.filter((o) => o.id !== orderId));
-      setCancellingOrderId(null);
-      setCancelReason("");
+    if (error) {
+      console.error("cancelOrder failed:", error);
+      setCancelError(error.message);
+      return;
     }
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    setCancellingOrderId(null);
+    setCancelReason("");
   }
 
   async function updateStatus(orderId: string, newStatus: string) {
@@ -279,28 +284,33 @@ export default function StaffDashboardPage() {
 
                 {/* Cancel section */}
                 {cancellingOrderId === order.id ? (
-                  <div style={{ borderTop: `1px solid rgba(255,255,255,0.06)`, padding: "10px 18px 16px", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                    <select
-                      value={cancelReason}
-                      onChange={(e) => setCancelReason(e.target.value)}
-                      style={{ flex: 1, minWidth: 140, background: "#1a1a1a", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 12px", color: cancelReason ? TEXT : MUTED, fontSize: 13, cursor: "pointer" }}
-                    >
-                      <option value="">Select reason…</option>
-                      {CANCEL_REASONS.map((r) => <option key={r}>{r}</option>)}
-                    </select>
-                    <button
-                      onClick={() => { if (cancelReason) cancelOrder(order.id, cancelReason); }}
-                      disabled={!cancelReason}
-                      style={{ padding: "10px 16px", borderRadius: 8, border: `1px solid ${cancelReason ? "#f44336" : BORDER}`, background: cancelReason ? "rgba(244,67,54,0.15)" : "none", color: cancelReason ? "#f44336" : MUTED, fontWeight: 800, fontSize: 13, cursor: cancelReason ? "pointer" : "not-allowed" }}
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      onClick={() => { setCancellingOrderId(null); setCancelReason(""); }}
-                      style={{ padding: "10px 14px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "none", color: MUTED, fontSize: 13, cursor: "pointer" }}
-                    >
-                      Keep
-                    </button>
+                  <div style={{ borderTop: `1px solid rgba(255,255,255,0.06)`, padding: "10px 18px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <select
+                        value={cancelReason}
+                        onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
+                        style={{ flex: 1, minWidth: 140, background: "#1a1a1a", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 12px", color: cancelReason ? TEXT : MUTED, fontSize: 13, cursor: "pointer" }}
+                      >
+                        <option value="">Select reason…</option>
+                        {CANCEL_REASONS.map((r) => <option key={r}>{r}</option>)}
+                      </select>
+                      <button
+                        onClick={() => { if (cancelReason) cancelOrder(order.id, cancelReason); }}
+                        disabled={!cancelReason}
+                        style={{ padding: "10px 16px", borderRadius: 8, border: `1px solid ${cancelReason ? "#f44336" : BORDER}`, background: cancelReason ? "rgba(244,67,54,0.15)" : "none", color: cancelReason ? "#f44336" : MUTED, fontWeight: 800, fontSize: 13, cursor: cancelReason ? "pointer" : "not-allowed" }}
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => { setCancellingOrderId(null); setCancelReason(""); setCancelError(""); }}
+                        style={{ padding: "10px 14px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "none", color: MUTED, fontSize: 13, cursor: "pointer" }}
+                      >
+                        Keep
+                      </button>
+                    </div>
+                    {cancelError && (
+                      <p style={{ margin: 0, fontSize: 11, color: "#f44336" }}>{cancelError}</p>
+                    )}
                   </div>
                 ) : (
                   <div style={{ borderTop: `1px solid rgba(255,255,255,0.06)`, padding: "10px 18px 14px" }}>
