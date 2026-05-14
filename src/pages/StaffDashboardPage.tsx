@@ -46,52 +46,50 @@ export default function StaffDashboardPage() {
 
   useEffect(() => {
     if (!bizId) { navigate("/staff-login", { replace: true }); return; }
-    void fetchOrders();
-    intervalRef.current = setInterval(() => { void fetchOrders(); }, REFRESH_MS);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [bizId]);
 
-  async function fetchOrders() {
-    if (!bizId) return;
+    async function poll() {
+      const { data: ordData } = await supabase
+        .from("orders")
+        .select("id, status, total, created_at, location_id, locations(name, label)")
+        .eq("business_id", bizId)
+        .in("status", ["new", "preparing"])
+        .order("created_at", { ascending: true });
 
-    const { data: ordData } = await supabase
-      .from("orders")
-      .select("id, status, total, created_at, location_id, locations(name, label)")
-      .eq("business_id", bizId)
-      .in("status", ["new", "preparing"])
-      .order("created_at", { ascending: true });
+      const rows: OrderRow[] = (ordData ?? []).map((o: any) => ({
+        id:          o.id,
+        status:      o.status,
+        total:       o.total,
+        created_at:  o.created_at,
+        location_id: o.location_id,
+        table_name:  o.locations?.label || o.locations?.name || "Unknown table",
+      }));
+      setOrders(rows);
 
-    const rows: OrderRow[] = (ordData ?? []).map((o: any) => ({
-      id:          o.id,
-      status:      o.status,
-      total:       o.total,
-      created_at:  o.created_at,
-      location_id: o.location_id,
-      table_name:  o.locations?.label || o.locations?.name || "Unknown table",
-    }));
-    setOrders(rows);
+      if (rows.length > 0) {
+        const { data: itemData } = await supabase
+          .from("order_items")
+          .select("order_id, quantity, unit_price, menu_items(name)")
+          .in("order_id", rows.map((r) => r.id));
+        setItems(
+          (itemData ?? []).map((i: any) => ({
+            order_id:   i.order_id,
+            name:       i.menu_items?.name ?? "Item",
+            quantity:   i.quantity,
+            unit_price: i.unit_price,
+          }))
+        );
+      } else {
+        setItems([]);
+      }
 
-    if (rows.length > 0) {
-      const { data: itemData } = await supabase
-        .from("order_items")
-        .select("order_id, quantity, unit_price, menu_items(name)")
-        .in("order_id", rows.map((r) => r.id));
-
-      setItems(
-        (itemData ?? []).map((i: any) => ({
-          order_id:   i.order_id,
-          name:       i.menu_items?.name ?? "Item",
-          quantity:   i.quantity,
-          unit_price: i.unit_price,
-        }))
-      );
-    } else {
-      setItems([]);
+      setLastRefresh(new Date());
+      setLoading(false);
     }
 
-    setLastRefresh(new Date());
-    setLoading(false);
-  }
+    void poll();
+    intervalRef.current = setInterval(() => { void poll(); }, REFRESH_MS);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [bizId]);
 
   async function updateStatus(orderId: string, newStatus: string) {
     const { error } = await supabase
@@ -142,7 +140,7 @@ export default function StaffDashboardPage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <div style={{ fontSize: 11, color: MUTED, fontFamily: "monospace" }}>
-            {orders.length} active · refreshes every 15s
+            {orders.length} active · last checked {lastRefresh.toLocaleTimeString()}
           </div>
           <button
             onClick={handleSignOut}
