@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { useNavigate } from "react-router-dom";
 
 const ACCENT = "#E8C547";
@@ -32,6 +33,15 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState("");
+
+  useEffect(() => {
+    QRCode.toDataURL("https://qrserve-v3.vercel.app", {
+      width: 200,
+      margin: 2,
+      color: { dark: "#E8C547", light: "#080808" },
+    }).then(setQrDataUrl);
+  }, []);
 
   function handleWaitlist(e: React.FormEvent) {
     e.preventDefault();
@@ -163,6 +173,25 @@ export default function LandingPage() {
             </button>
           </form>
         )}
+      </section>
+
+      {/* QR Code */}
+      <section style={{ background: BG, borderTop: `1px solid ${BORDER}`, padding: "60px 24px", textAlign: "center" }}>
+        <p style={{ fontSize: 11, letterSpacing: 4, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>
+          Scan to try
+        </p>
+        <p style={{ fontSize: 18, fontWeight: 800, color: TEXT, marginBottom: 28 }}>
+          Scan to try QRServe
+        </p>
+        <div style={{ display: "inline-block", padding: 16, border: `1px solid ${BORDER}`, borderRadius: 16, background: "#080808" }}>
+          {qrDataUrl
+            ? <img src={qrDataUrl} alt="Scan to try QRServe" width={200} height={200} style={{ display: "block", borderRadius: 8 }} />
+            : <div style={{ width: 200, height: 200, background: "#111", borderRadius: 8 }} />
+          }
+        </div>
+        <p style={{ fontSize: 13, color: MUTED, marginTop: 16, fontFamily: "monospace" }}>
+          qrserve-v3.vercel.app
+        </p>
       </section>
 
       {/* Footer */}
