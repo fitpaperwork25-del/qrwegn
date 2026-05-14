@@ -117,7 +117,7 @@ export default function ScanPage() {
       setCart({});
     } catch (err: any) {
       console.error('placeOrder error:', err);
-      setError('Failed to place order. Please try again.');
+      setError(err?.message || 'Failed to place order. Please try again.');
     }
     setPlacing(false);
   }
