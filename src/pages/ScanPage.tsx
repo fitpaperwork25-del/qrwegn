@@ -22,8 +22,10 @@ export default function ScanPage() {
   const [openTab, setOpenTab]         = useState(null);   // { id, total, location_id }
   const [tabLoading, setTabLoading]   = useState(false);
   const [showCloseTab, setShowCloseTab] = useState(false);
+  const [showTabItems, setShowTabItems] = useState(false);
   const [tabClosed, setTabClosed]     = useState(false);
   const [tabFinalTotal, setTabFinalTotal] = useState(0);
+  const [tabItems, setTabItems]       = useState([]);   // [{name, quantity, unit_price}]
 
   useEffect(() => {
     fetchMenu();
@@ -59,6 +61,7 @@ export default function ScanPage() {
             .single();
           if (tab && tab.status === 'open') {
             setOpenTab(tab);
+            await fetchTabItems(tab.id);
           } else {
             localStorage.removeItem(`tab_${uuid}`);
           }
@@ -108,6 +111,30 @@ export default function ScanPage() {
   }));
   const cartTotal = cartItems.reduce((sum, i) => sum + i.price * i.qty, 0);
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
+
+  // ── Fetch all items ordered under a tab ──────────────────────
+  async function fetchTabItems(tabId) {
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('tab_id', tabId)
+      .neq('status', 'cancelled');
+    if (!orders?.length) { setTabItems([]); return; }
+
+    const { data: ois } = await supabase
+      .from('order_items')
+      .select('quantity, unit_price, menu_items(name)')
+      .in('order_id', orders.map(o => o.id));
+
+    // Aggregate duplicate items across multiple rounds
+    const map = {};
+    (ois || []).forEach(({ quantity, unit_price, menu_items }) => {
+      const name = menu_items?.name ?? 'Item';
+      if (!map[name]) map[name] = { name, quantity: 0, unit_price };
+      map[name].quantity += quantity;
+    });
+    setTabItems(Object.values(map));
+  }
 
   // ── Open a new tab ────────────────────────────────────────────
   async function openNewTab() {
@@ -176,6 +203,7 @@ export default function ScanPage() {
       await supabase.from('tabs').update({ total: newTotal }).eq('id', openTab.id);
       setOpenTab(prev => ({ ...prev, total: newTotal }));
 
+      await fetchTabItems(openTab.id);
       setOrderId(newOrderId);
       setOrderPlaced(true);
       setCart({});
@@ -232,6 +260,46 @@ export default function ScanPage() {
     </div>
   );
 
+  // ── Tab item list ─────────────────────────────────────────────
+  if (showTabItems) return (
+    <div style={{ background: dark, minHeight: '100vh', color: text, fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ padding: '20px 16px 14px', borderBottom: `1px solid ${border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Your Tab</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>${Number(openTab?.total ?? 0).toFixed(2)}</div>
+        </div>
+        <button onClick={() => setShowTabItems(false)} style={{ background: 'none', border: `1px solid ${border}`, borderRadius: 8, padding: '8px 14px', color: muted, fontSize: 13, cursor: 'pointer' }}>
+          ← Back to Menu
+        </button>
+      </div>
+
+      <div style={{ padding: '16px 16px 120px' }}>
+        {tabItems.length === 0 ? (
+          <p style={{ color: muted, fontSize: 14, textAlign: 'center', marginTop: 40 }}>No items yet — add something from the menu.</p>
+        ) : (
+          tabItems.map((item, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: `1px solid ${border}` }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <span style={{ color: gold, fontWeight: 800, fontSize: 18, minWidth: 28 }}>{item.quantity}×</span>
+                <span style={{ fontWeight: 600, fontSize: 15 }}>{item.name}</span>
+              </div>
+              <span style={{ color: muted, fontSize: 14 }}>${(item.unit_price * item.quantity).toFixed(2)}</span>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px', background: dark, borderTop: `1px solid ${border}`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button onClick={() => setShowTabItems(false)} style={{ width: '100%', background: gold, color: '#000', border: 'none', borderRadius: 10, padding: '14px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>
+          Add More Items
+        </button>
+        <button onClick={() => { setShowTabItems(false); setShowCloseTab(true); }} style={{ width: '100%', background: 'transparent', border: `1px solid ${gold}`, color: gold, borderRadius: 10, padding: '13px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>
+          Close Tab & Pay
+        </button>
+      </div>
+    </div>
+  );
+
   // ── Order placed confirmation ─────────────────────────────────
   if (orderPlaced) return (
     <div style={S.centered}>
@@ -267,6 +335,16 @@ export default function ScanPage() {
         <div style={{ fontSize: 36, fontWeight: 800, color: gold, margin: '8px 0 20px' }}>
           ${Number(openTab?.total ?? 0).toFixed(2)}
         </div>
+        {tabItems.length > 0 && (
+          <div style={{ width: '100%', textAlign: 'left', margin: '0 0 20px', borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}`, padding: '12px 0' }}>
+            {tabItems.map((item, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '4px 0' }}>
+                <span style={{ color: text }}><span style={{ color: gold, fontWeight: 700, marginRight: 8 }}>{item.quantity}×</span>{item.name}</span>
+                <span style={{ color: muted }}>${(item.unit_price * item.quantity).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <p style={{ ...S.successSub, fontSize: 13 }}>
           All orders are already in progress with the kitchen.
           Closing the tab means you're ready to pay with your server.
@@ -305,9 +383,14 @@ export default function ScanPage() {
             <span style={{ fontSize: 12, color: muted }}>Tab open</span>
             <span style={{ fontWeight: 800, color: gold, fontSize: 16 }}>${Number(openTab.total).toFixed(2)}</span>
           </div>
-          <button style={S.closeTabBtn} onClick={() => setShowCloseTab(true)}>
-            Close Tab →
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={{ ...S.closeTabBtn, background: gold + '22' }} onClick={() => setShowTabItems(true)}>
+              View Tab {tabItems.length > 0 ? `(${tabItems.reduce((s, i) => s + i.quantity, 0)})` : ''}
+            </button>
+            <button style={S.closeTabBtn} onClick={() => setShowCloseTab(true)}>
+              Close Tab →
+            </button>
+          </div>
         </div>
       ) : (
         <div style={S.tabBannerClosed}>
