@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { getStaffSession, clearStaffSession } from "../lib/useStaffAuth";
@@ -38,14 +38,15 @@ export default function StaffDashboardPage() {
   const bizId      = session?.bizId ?? null;
   const bizName    = session?.bizName ?? "Staff Dashboard";
 
-  const [orders, setOrders]         = useState<OrderRow[]>([]);
-  const [items, setItems]           = useState<OrderItem[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [orders, setOrders]           = useState<OrderRow[]>([]);
+  const [items, setItems]             = useState<OrderItem[]>([]);
+  const [loading, setLoading]         = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!bizId) { navigate("/staff-login", { replace: true }); return; }
+
+    let alive = true;
 
     async function poll() {
       try {
@@ -55,6 +56,8 @@ export default function StaffDashboardPage() {
           .eq("business_id", bizId)
           .in("status", ["new", "preparing"])
           .order("created_at", { ascending: true });
+
+        if (!alive) return;
 
         const rows: OrderRow[] = (ordData ?? []).map((o: any) => ({
           id:          o.id,
@@ -71,26 +74,32 @@ export default function StaffDashboardPage() {
             .from("order_items")
             .select("order_id, quantity, unit_price, menu_items(name)")
             .in("order_id", rows.map((r) => r.id));
-          setItems(
-            (itemData ?? []).map((i: any) => ({
-              order_id:   i.order_id,
-              name:       i.menu_items?.name ?? "Item",
-              quantity:   i.quantity,
-              unit_price: i.unit_price,
-            }))
-          );
+          if (alive) {
+            setItems(
+              (itemData ?? []).map((i: any) => ({
+                order_id:   i.order_id,
+                name:       i.menu_items?.name ?? "Item",
+                quantity:   i.quantity,
+                unit_price: i.unit_price,
+              }))
+            );
+          }
         } else {
           setItems([]);
         }
+      } catch {
+        // network/query errors — keep showing stale data, still update timestamp
       } finally {
-        setLastRefresh(new Date());
-        setLoading(false);
+        if (alive) {
+          setLastRefresh(new Date());
+          setLoading(false);
+        }
       }
     }
 
     void poll();
-    intervalRef.current = setInterval(() => { void poll(); }, REFRESH_MS);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    const id = setInterval(() => { void poll(); }, REFRESH_MS);
+    return () => { alive = false; clearInterval(id); };
   }, [bizId]);
 
   async function updateStatus(orderId: string, newStatus: string) {
@@ -142,7 +151,7 @@ export default function StaffDashboardPage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <div style={{ fontSize: 11, color: MUTED, fontFamily: "monospace" }}>
-            {orders.length} active · last checked {lastRefresh.toLocaleTimeString()}
+            {orders.length} active · last checked {lastRefresh.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
           </div>
           <button
             onClick={handleSignOut}
@@ -162,7 +171,7 @@ export default function StaffDashboardPage() {
             <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 8 }}>All clear</div>
             <div style={{ color: MUTED, fontSize: 14 }}>No active orders right now.</div>
             <div style={{ color: MUTED, fontSize: 12, marginTop: 12, fontFamily: "monospace" }}>
-              Last checked: {lastRefresh.toLocaleTimeString()}
+              Last checked: {lastRefresh.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
             </div>
           </div>
         ) : (
