@@ -31,6 +31,10 @@ const STATUS_COLOR: Record<string, string> = {
 const STAFF_STATUSES = ["new", "preparing", "ready"] as const;
 const REFRESH_MS = 15_000;
 
+function nowStr() {
+  return new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
 // ── Component ──────────────────────────────────────────────────
 export default function StaffDashboardPage() {
   const navigate   = useNavigate();
@@ -38,68 +42,60 @@ export default function StaffDashboardPage() {
   const bizId      = session?.bizId ?? null;
   const bizName    = session?.bizName ?? "Staff Dashboard";
 
-  const [orders, setOrders]           = useState<OrderRow[]>([]);
-  const [items, setItems]             = useState<OrderItem[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [orders, setOrders]         = useState<OrderRow[]>([]);
+  const [items, setItems]           = useState<OrderItem[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [lastChecked, setLastChecked] = useState(nowStr());
 
   useEffect(() => {
     if (!bizId) { navigate("/staff-login", { replace: true }); return; }
 
-    let alive = true;
+    async function fetchOrders() {
+      const { data: ordData } = await supabase
+        .from("orders")
+        .select("id, status, total, created_at, location_id, locations(name, label)")
+        .eq("business_id", bizId)
+        .in("status", ["new", "preparing"])
+        .order("created_at", { ascending: true });
 
-    async function poll() {
-      try {
-        const { data: ordData } = await supabase
-          .from("orders")
-          .select("id, status, total, created_at, location_id, locations(name, label)")
-          .eq("business_id", bizId)
-          .in("status", ["new", "preparing"])
-          .order("created_at", { ascending: true });
+      const rows: OrderRow[] = (ordData ?? []).map((o: any) => ({
+        id:          o.id,
+        status:      o.status,
+        total:       o.total,
+        created_at:  o.created_at,
+        location_id: o.location_id,
+        table_name:  o.locations?.label || o.locations?.name || "Unknown table",
+      }));
+      setOrders(rows);
 
-        if (!alive) return;
-
-        const rows: OrderRow[] = (ordData ?? []).map((o: any) => ({
-          id:          o.id,
-          status:      o.status,
-          total:       o.total,
-          created_at:  o.created_at,
-          location_id: o.location_id,
-          table_name:  o.locations?.label || o.locations?.name || "Unknown table",
-        }));
-        setOrders(rows);
-
-        if (rows.length > 0) {
-          const { data: itemData } = await supabase
-            .from("order_items")
-            .select("order_id, quantity, unit_price, menu_items(name)")
-            .in("order_id", rows.map((r) => r.id));
-          if (alive) {
-            setItems(
-              (itemData ?? []).map((i: any) => ({
-                order_id:   i.order_id,
-                name:       i.menu_items?.name ?? "Item",
-                quantity:   i.quantity,
-                unit_price: i.unit_price,
-              }))
-            );
-          }
-        } else {
-          setItems([]);
-        }
-      } catch {
-        // network/query errors — keep showing stale data, still update timestamp
-      } finally {
-        if (alive) {
-          setLastRefresh(new Date());
-          setLoading(false);
-        }
+      if (rows.length > 0) {
+        const { data: itemData } = await supabase
+          .from("order_items")
+          .select("order_id, quantity, unit_price, menu_items(name)")
+          .in("order_id", rows.map((r) => r.id));
+        setItems(
+          (itemData ?? []).map((i: any) => ({
+            order_id:   i.order_id,
+            name:       i.menu_items?.name ?? "Item",
+            quantity:   i.quantity,
+            unit_price: i.unit_price,
+          }))
+        );
+      } else {
+        setItems([]);
       }
+
+      setLoading(false);
     }
 
-    void poll();
-    const id = setInterval(() => { void poll(); }, REFRESH_MS);
-    return () => { alive = false; clearInterval(id); };
+    void fetchOrders();
+
+    const id = setInterval(() => {
+      setLastChecked(nowStr());
+      void fetchOrders();
+    }, REFRESH_MS);
+
+    return () => clearInterval(id);
   }, [bizId]);
 
   async function updateStatus(orderId: string, newStatus: string) {
@@ -151,7 +147,7 @@ export default function StaffDashboardPage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <div style={{ fontSize: 11, color: MUTED, fontFamily: "monospace" }}>
-            {orders.length} active · last checked {lastRefresh.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            {orders.length} active · last checked {lastChecked}
           </div>
           <button
             onClick={handleSignOut}
@@ -171,7 +167,7 @@ export default function StaffDashboardPage() {
             <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 8 }}>All clear</div>
             <div style={{ color: MUTED, fontSize: 14 }}>No active orders right now.</div>
             <div style={{ color: MUTED, fontSize: 12, marginTop: 12, fontFamily: "monospace" }}>
-              Last checked: {lastRefresh.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              Last checked: {lastChecked}
             </div>
           </div>
         ) : (
