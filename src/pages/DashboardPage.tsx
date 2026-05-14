@@ -122,6 +122,8 @@ export default function DashboardPage() {
 
   // Financials
   const [doneOrders, setDoneOrders]           = useState<Order[]>([]);
+  const [cancelledOrders, setCancelledOrders] = useState<Order[]>([]);
+  const [cancelPeriod, setCancelPeriod]       = useState<"day" | "week" | "month">("month");
   const [expenses, setExpenses]               = useState<Expense[]>([]);
   const [manualRevenue, setManualRevenue]     = useState<ManualRevenue[]>([]);
   const [addingExpense, setAddingExpense]     = useState(false);
@@ -207,14 +209,17 @@ export default function DashboardPage() {
       }
 
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const [doneRes, expRes, revRes] = await Promise.all([
-        supabase.from("orders").select("id, status, total, created_at")
+      const [doneRes, expRes, revRes, cancelRes] = await Promise.all([
+        supabase.from("orders").select("id, status, total, created_at, cancel_reason")
           .eq("business_id", biz.id).eq("status", "done")
           .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
         supabase.from("business_expenses").select("id, amount, category, description, expense_date")
           .eq("business_id", biz.id).order("expense_date", { ascending: false }),
         supabase.from("manual_revenue").select("id, amount, category, description, date")
           .eq("business_id", biz.id).order("date", { ascending: false }),
+        supabase.from("orders").select("id, status, total, created_at, cancel_reason")
+          .eq("business_id", biz.id).eq("status", "cancelled")
+          .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
       ]);
       setDoneOrders((doneRes.data as Order[]) ?? []);
       setExpenses((expRes.data as Expense[]) ?? []);
@@ -223,6 +228,7 @@ export default function DashboardPage() {
       } else {
         setManualRevenue((revRes.data as ManualRevenue[]) ?? []);
       }
+      setCancelledOrders((cancelRes.data as Order[]) ?? []);
     }
 
     setLoading(false);
@@ -1272,6 +1278,96 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+
+                {/* ── Cancellations ────────────────────────────── */}
+                {(() => {
+                  const periodStart = (() => {
+                    if (cancelPeriod === "day") {
+                      const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString();
+                    }
+                    if (cancelPeriod === "week") return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+                    return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+                  })();
+                  const filtered = cancelledOrders.filter((o) => o.created_at >= periodStart);
+                  const totalLost = filtered.reduce((s, o) => s + Number(o.total), 0);
+                  const byReason: Record<string, { count: number; lost: number }> = {};
+                  filtered.forEach((o) => {
+                    const r = o.cancel_reason || "No reason given";
+                    if (!byReason[r]) byReason[r] = { count: 0, lost: 0 };
+                    byReason[r].count++;
+                    byReason[r].lost += Number(o.total);
+                  });
+                  const reasonRows = Object.entries(byReason).sort((a, b) => b[1].count - a[1].count);
+
+                  return (
+                    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 20 }}>
+                      {/* Header + period filter */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <p style={{ fontSize: 11, letterSpacing: 3, color: RED, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>
+                          Cancellations — Last 30 Days
+                        </p>
+                        <div style={{ display: "flex", background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 3, gap: 2 }}>
+                          {(["day", "week", "month"] as const).map((p) => (
+                            <button
+                              key={p}
+                              onClick={() => setCancelPeriod(p)}
+                              style={{
+                                background: cancelPeriod === p ? SURFACE : "none",
+                                border: "none", borderRadius: 6,
+                                padding: "5px 12px",
+                                color: cancelPeriod === p ? TEXT : MUTED,
+                                fontWeight: cancelPeriod === p ? 700 : 400,
+                                fontSize: 12, cursor: "pointer",
+                              }}
+                            >
+                              {p === "day" ? "Today" : p === "week" ? "7 days" : "30 days"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* KPI row */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div style={{ background: RED + "11", border: `1px solid ${RED}33`, borderRadius: 10, padding: "16px 18px" }}>
+                          <div style={{ fontSize: 11, color: RED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Cancelled orders</div>
+                          <div style={{ fontSize: 28, fontWeight: 900, color: RED }}>{filtered.length}</div>
+                        </div>
+                        <div style={{ background: RED + "11", border: `1px solid ${RED}33`, borderRadius: 10, padding: "16px 18px" }}>
+                          <div style={{ fontSize: 11, color: RED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Lost revenue</div>
+                          <div style={{ fontSize: 28, fontWeight: 900, color: RED }}>${totalLost.toFixed(2)}</div>
+                        </div>
+                      </div>
+
+                      {/* Reason breakdown */}
+                      {reasonRows.length === 0 ? (
+                        <div style={{ color: MUTED, fontSize: 13, textAlign: "center", padding: "12px 0" }}>
+                          No cancellations in this period.
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                          <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>By Reason</div>
+                          {reasonRows.map(([reason, { count, lost }]) => {
+                            const pct = filtered.length > 0 ? (count / filtered.length) * 100 : 0;
+                            return (
+                              <div key={reason}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                                  <span style={{ fontSize: 13, color: TEXT, fontWeight: 600 }}>{reason}</span>
+                                  <span style={{ fontSize: 12, color: MUTED, fontFamily: "monospace" }}>
+                                    {count}× · ${lost.toFixed(2)} ({pct.toFixed(0)}%)
+                                  </span>
+                                </div>
+                                <div style={{ height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden" }}>
+                                  <div style={{ height: "100%", width: `${pct}%`, background: RED + "88", borderRadius: 3, transition: "width 0.3s" }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
               </div>
             );
           })()}
