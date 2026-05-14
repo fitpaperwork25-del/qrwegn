@@ -142,16 +142,34 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!business?.id) return;
-    const fetchOrders = async () => {
+    const fetchOrders = async (isPolling = false) => {
       const { data } = await supabase
         .from("orders")
         .select("id, status, total, created_at")
         .eq("business_id", business.id)
         .order("created_at", { ascending: false })
         .limit(20);
-      if (data) setOrders(data as Order[]);
+      if (data) {
+        if (isPolling) {
+          setOrders((prev) => {
+            const newOrders = (data as Order[]).filter(
+              (o) => !prev.some((p) => p.id === o.id)
+            );
+            if (newOrders.length > 0) {
+              if (Notification.permission === "granted") {
+                new Notification(`${newOrders.length} new order(s) received!`);
+              }
+            }
+            return data as Order[];
+          });
+        } else {
+          setOrders(data as Order[]);
+        }
+      }
     };
-    const timer = setInterval(fetchOrders, 15000);
+    fetchOrders();
+    const timer = setInterval(() => fetchOrders(true), 15000);
+    if (Notification.permission === "default") Notification.requestPermission();
     return () => clearInterval(timer);
   }, [business?.id]);
 
