@@ -6,6 +6,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import ScanPage from "./pages/ScanPage";
+import SuccessPage from "./pages/SuccessPage";
 import StaffDashboardPage from "./pages/StaffDashboardPage";
 import StaffLoginPage from "./pages/StaffLoginPage";
 
@@ -27,7 +28,7 @@ export default function App() {
       <Route path="/onboarding" element={<Placeholder name="OnboardingPage" />} />
       <Route path="/onboarding-complete" element={<Placeholder name="OnboardingComplete" />} />
       <Route path="/pricing" element={<Placeholder name="PricingPage" />} />
-      <Route path="/success" element={<Placeholder name="SuccessPage" />} />
+      <Route path="/success" element={<SuccessPage />} />
       <Route path="/help" element={<Placeholder name="HelpPage" />} />
       <Route path="/terms" element={<Placeholder name="TermsPage" />} />
       <Route path="/privacy" element={<Placeholder name="PrivacyPage" />} />

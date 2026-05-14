@@ -62,6 +62,12 @@ const badge = (color: string): React.CSSProperties => ({
   textTransform: "uppercase",
 });
 
+const PLAN_ORDER = ["starter", "pro", "enterprise"];
+const PLAN_LABELS: Record<string, { label: string; price: string; features: string[] }> = {
+  pro:        { label: "Pro",        price: "$99/mo",  features: ["Up to 5 locations", "Booking system", "Staff management", "Priority support"] },
+  enterprise: { label: "Enterprise", price: "$199/mo", features: ["Unlimited locations", "White label", "Custom domain", "Dedicated support"] },
+};
+
 // ── Helpers ──────────────────────────────────────────────────
 function planColor(plan: string) {
   if (plan === "enterprise") return TEXT;
@@ -122,6 +128,8 @@ export default function DashboardPage() {
   const [revenueError, setRevenueError]         = useState("");
   const [revenueSaving, setRevenueSaving]       = useState(false);
   const [noRevenueTable, setNoRevenueTable]     = useState(false);
+  const [upgrading, setUpgrading] = useState<string | null>(null);
+
   const [editingRevenueId, setEditingRevenueId] = useState<string | null>(null);
   const [editRevenueForm, setEditRevenueForm]   = useState(EMPTY_REVENUE);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
@@ -272,6 +280,24 @@ export default function DashboardPage() {
   async function updateOrderStatus(orderId: string, newStatus: string) {
     const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
     if (!error) setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
+  }
+
+  async function startCheckout(plan: string) {
+    if (!business || !session?.user.email) return;
+    setUpgrading(plan);
+    try {
+      const res = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, businessId: business.id, email: session.user.email }),
+      });
+      const { url, error } = await res.json();
+      if (error) { alert(error); setUpgrading(null); return; }
+      window.location.href = url;
+    } catch {
+      alert("Failed to start checkout. Try again.");
+      setUpgrading(null);
+    }
   }
 
   async function updateRevenue(e: React.FormEvent) {
@@ -441,6 +467,37 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Upgrade banner — shown for trialing or starter plans */}
+        {(business.subscription_status === "trialing" || business.plan === "starter") && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+            {Object.entries(PLAN_LABELS)
+              .filter(([p]) => PLAN_ORDER.indexOf(p) > PLAN_ORDER.indexOf(business.plan))
+              .map(([planKey, info]) => (
+                <div key={planKey} style={{ ...card, border: planKey === "pro" ? `2px solid ${ACCENT}44` : `1px solid ${BORDER}`, position: "relative" }}>
+                  {planKey === "pro" && (
+                    <div style={{ position: "absolute", top: -12, left: 20, background: ACCENT, color: BG, fontSize: 10, fontWeight: 800, letterSpacing: 2, padding: "3px 10px", borderRadius: 4 }}>RECOMMENDED</div>
+                  )}
+                  <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>{info.label}</div>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: ACCENT, marginBottom: 12 }}>{info.price}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                    {info.features.map((f) => (
+                      <div key={f} style={{ fontSize: 13, color: MUTED, display: "flex", gap: 8 }}>
+                        <span style={{ color: GREEN }}>✓</span>{f}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => startCheckout(planKey)}
+                    disabled={upgrading === planKey}
+                    style={{ width: "100%", background: planKey === "pro" ? ACCENT : "none", color: planKey === "pro" ? BG : ACCENT, border: `1.5px solid ${ACCENT}`, borderRadius: 8, padding: "12px", fontWeight: 800, fontSize: 14, cursor: upgrading === planKey ? "not-allowed" : "pointer" }}
+                  >
+                    {upgrading === planKey ? "Redirecting…" : `Upgrade to ${info.label} →`}
+                  </button>
+                </div>
+              ))}
           </div>
         )}
 
