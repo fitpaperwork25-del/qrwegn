@@ -31,12 +31,12 @@ export default function ScanPage() {
         .single();
       setBusiness(biz);
 
-      const { data: loc } = await supabase
-        .from('locations')
-        .select('id')
-        .eq('business_id', bizId)
-        .eq('slug', locationId)
-        .single();
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const locQuery = supabase.from('locations').select('id').eq('business_id', bizId);
+      const { data: loc } = await (UUID_RE.test(locationId)
+        ? locQuery.eq('id', locationId)
+        : locQuery.eq('slug', locationId)
+      ).single();
       setLocationUuid(loc?.id ?? null);
 
       const { data: cats } = await supabase
