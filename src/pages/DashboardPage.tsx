@@ -22,7 +22,7 @@ type OrderItem = { id: string; name: string; quantity: number; unit_price: numbe
 type Category  = { id: string; name: string; display_order: number };
 type MenuItem  = { id: string; category_id: string; name: string; price: number; description: string | null; is_available: boolean };
 type Expense       = { id: string; amount: number; category: string; description: string | null; expense_date: string };
-type ManualRevenue = { id: string; amount: number; category: string; description: string | null; date: string };
+type ManualRevenue = { id: string; amount: number; category: string; description: string | null; revenue_date: string };
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const EMPTY_EXPENSE = { category: "", amount: "", description: "", expense_date: TODAY };
@@ -216,7 +216,7 @@ export default function DashboardPage() {
           .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
         supabase.from("business_expenses").select("id, amount, category, description, expense_date")
           .eq("business_id", business.id).order("expense_date", { ascending: false }),
-        supabase.from("manual_revenue").select("id, amount, category, description, date")
+        supabase.from("manual_revenue").select("id, amount, category, description, revenue_date")
           .eq("business_id", business.id).order("date", { ascending: false }),
         supabase.from("orders").select("id, status, total, created_at, cancel_reason")
           .eq("business_id", business.id).eq("status", "cancelled")
@@ -279,7 +279,7 @@ export default function DashboardPage() {
           .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
         supabase.from("business_expenses").select("id, amount, category, description, expense_date")
           .eq("business_id", biz.id).order("expense_date", { ascending: false }),
-        supabase.from("manual_revenue").select("id, amount, category, description, date")
+        supabase.from("manual_revenue").select("id, amount, category, description, revenue_date")
           .eq("business_id", biz.id).order("date", { ascending: false }),
         supabase.from("orders").select("id, status, total, created_at, cancel_reason")
           .eq("business_id", biz.id).eq("status", "cancelled")
@@ -441,11 +441,11 @@ export default function DashboardPage() {
       amount:      parseFloat(editRevenueForm.amount),
       category:    editRevenueForm.category,
       description: editRevenueForm.description.trim() || null,
-      date:        editRevenueForm.date,
+      revenue_date: editRevenueForm.date,
     }).eq("id", editingRevenueId);
     if (error) return;
     setManualRevenue((prev) => prev.map((r) => r.id === editingRevenueId
-      ? { ...r, amount: parseFloat(editRevenueForm.amount), category: editRevenueForm.category, description: editRevenueForm.description || null, date: editRevenueForm.date }
+      ? { ...r, amount: parseFloat(editRevenueForm.amount), category: editRevenueForm.category, description: editRevenueForm.description || null, revenue_date: editRevenueForm.date }
       : r));
     setEditingRevenueId(null);
   }
@@ -490,9 +490,9 @@ export default function DashboardPage() {
         amount:       parseFloat(revenueForm.amount),
         category:     revenueForm.category,
         description:  revenueForm.description.trim() || null,
-        date: revenueForm.date,
+        revenue_date: revenueForm.date,
       })
-      .select("id, amount, category, description, date")
+      .select("id, amount, category, description, revenue_date")
       .single();
     if (error) { setRevenueError(error.message); setRevenueSaving(false); return; }
     setManualRevenue((prev) => [data as ManualRevenue, ...prev]);
@@ -1088,7 +1088,7 @@ export default function DashboardPage() {
               if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(o.total);
             });
             manualRevenue.forEach((r) => {
-              const day = r.date;
+              const day = r.revenue_date;
               if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(r.amount);
             });
             const maxDay = Math.max(...Object.values(revenueByDay), 1);
@@ -1232,11 +1232,11 @@ export default function DashboardPage() {
                           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                             <span style={{ fontWeight: 700, fontSize: 14 }}>{r.category}</span>
                             {r.description && <span style={{ color: MUTED, fontSize: 12 }}>{r.description}</span>}
-                            <span style={{ color: MUTED, fontSize: 11, fontFamily: "monospace" }}>{r.date}</span>
+                            <span style={{ color: MUTED, fontSize: 11, fontFamily: "monospace" }}>{r.revenue_date}</span>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             <span style={{ fontWeight: 800, fontSize: 15, color: GREEN }}>+${Number(r.amount).toFixed(2)}</span>
-                            <button onClick={() => { setEditingRevenueId(r.id); setEditRevenueForm({ category: r.category, amount: String(r.amount), description: r.description ?? "", date: r.date }); }}
+                            <button onClick={() => { setEditingRevenueId(r.id); setEditRevenueForm({ category: r.category, amount: String(r.amount), description: r.description ?? "", date: r.revenue_date }); }}
                               style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, cursor: "pointer" }}>Edit</button>
                             <button onClick={() => deleteRevenue(r.id)}
                               style={{ background: "none", border: `1px solid ${RED}44`, borderRadius: 6, padding: "5px 10px", color: RED, fontSize: 11, cursor: "pointer" }}>Delete</button>
