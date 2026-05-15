@@ -10,32 +10,26 @@ function hasStaleTokens(): boolean {
   );
 }
 
-function isPublicScanPath(): boolean {
-  return window.location.pathname.startsWith("/scan");
-}
-
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
-  // Scan pages are fully public — skip the loading state so nothing on a
-  // scan path ever renders a redirect before the session resolves.
-  const [status, setStatus] = useState<AuthStatus>(
-    isPublicScanPath() ? "unauthenticated" : "loading"
-  );
+  const [status, setStatus] = useState<AuthStatus>("loading");
 
   useEffect(() => {
-    // Don't wire up the auth session machinery on public scan pages at all.
-    // The anonSupabase client in those pages never carries a token, so the
-    // shared supabase client's auth events are irrelevant there.
-    if (isPublicScanPath()) return;
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        setSession(data.session);
-        setStatus("authenticated");
-      } else {
+    // Get the current session from Supabase's storage/cache.
+    // .catch() prevents a network failure (e.g. token refresh on flaky mobile
+    // connection) from leaving status stuck as "loading" forever.
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        if (data.session) {
+          setSession(data.session);
+          setStatus("authenticated");
+        } else {
+          setStatus(hasStaleTokens() ? "expired" : "unauthenticated");
+        }
+      })
+      .catch(() => {
         setStatus(hasStaleTokens() ? "expired" : "unauthenticated");
-      }
-    });
+      });
 
     const {
       data: { subscription },
