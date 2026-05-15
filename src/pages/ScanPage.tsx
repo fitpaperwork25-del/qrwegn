@@ -33,20 +33,26 @@ export default function ScanPage() {
 
   async function fetchMenu() {
     setLoading(true);
+    setError(null);
     try {
-      const { data: biz } = await supabase
+      const { data: biz, error: bizErr } = await supabase
         .from('businesses')
         .select('name')
         .eq('id', bizId)
         .single();
+      if (bizErr) { setError(`Could not load restaurant (${bizErr.code}). Please try again.`); setLoading(false); return; }
+      if (!biz)   { setError('Restaurant not found. Please scan the QR code again.'); setLoading(false); return; }
       setBusiness(biz);
 
       const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const locQuery = supabase.from('locations').select('id').eq('business_id', bizId);
-      const { data: loc } = await (UUID_RE.test(locationId)
+      const { data: loc, error: locErr } = await (UUID_RE.test(locationId)
         ? locQuery.eq('id', locationId)
         : locQuery.eq('slug', locationId)
       ).single();
+      if (locErr && locErr.code !== 'PGRST116') {
+        console.error('Location lookup error:', locErr);
+      }
       const uuid = loc?.id ?? null;
       setLocationUuid(uuid);
 
@@ -68,26 +74,29 @@ export default function ScanPage() {
         }
       }
 
-      const { data: cats } = await supabase
+      const { data: cats, error: catErr } = await supabase
         .from('menu_categories')
         .select('*')
         .eq('business_id', bizId)
         .eq('is_visible', true)
         .order('display_order');
+      if (catErr) { console.error('Categories error:', catErr); }
       setCategories(cats || []);
       if (cats && cats.length > 0) setActiveCategory(cats[0].id);
 
       if (cats && cats.length > 0) {
-        const { data: menuItems } = await supabase
+        const { data: menuItems, error: itemErr } = await supabase
           .from('menu_items')
           .select('*')
           .in('category_id', cats.map(c => c.id))
           .eq('is_available', true)
           .order('display_order');
+        if (itemErr) { console.error('Menu items error:', itemErr); }
         setItems(menuItems || []);
       }
-    } catch {
-      setError('Failed to load menu.');
+    } catch (err) {
+      console.error('fetchMenu threw:', err);
+      setError('Failed to load menu. Please try again.');
     }
     setLoading(false);
   }
