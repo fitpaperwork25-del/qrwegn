@@ -31,6 +31,7 @@ type AdminBiz = {
   qr_printed: boolean; staff_trained: boolean;
 };
 type AdminNote = { id: string; business_id: string; note: string; created_at: string };
+type TableLoc  = { id: string; name: string; label: string | null };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function deployStatus(b: AdminBiz): { label: string; color: string } {
@@ -86,6 +87,13 @@ export default function AdminPage() {
   const [error,           setError]           = useState("");
   const [loadingDashboard, setLoadingDashboard] = useState<string | null>(null);
   const [showHelp,         setShowHelp]         = useState(false);
+
+  // Per-business table QR panel
+  const [tablesByBiz, setTablesByBiz] = useState<Record<string, TableLoc[]>>({});
+  const [tableQrs,    setTableQrs]    = useState<Record<string, string>>({});  // `${bizId}:${locId}`
+  const [expandedQr,  setExpandedQr]  = useState<Set<string>>(new Set());
+  const [loadingQr,   setLoadingQr]   = useState<string | null>(null);
+  const [zipping,     setZipping]     = useState<string | null>(null);
 
   // Per-business UI state
   const [pinInputs,     setPinInputs]     = useState<Record<string, string>>({});
@@ -199,6 +207,75 @@ export default function AdminPage() {
     const data = await res.json();
     setLoadingDashboard(null);
     if (data.link) window.open(data.link, "_blank");
+  }
+
+  async function toggleQrPanel(biz: AdminBiz) {
+    // Toggle if already loaded
+    if (tablesByBiz[biz.id]) {
+      setExpandedQr((prev) => {
+        const next = new Set(prev);
+        next.has(biz.id) ? next.delete(biz.id) : next.add(biz.id);
+        return next;
+      });
+      return;
+    }
+    setLoadingQr(biz.id);
+
+    const { data } = await supabase
+      .from("locations")
+      .select("id, name, label")
+      .eq("business_id", biz.id)
+      .eq("is_active", true)
+      .order("name");
+
+    const locs = (data ?? []) as TableLoc[];
+    setTablesByBiz((prev) => ({ ...prev, [biz.id]: locs }));
+
+    // Generate a QR per table pointing to /scan/{slug}?table={locId}
+    const entries = await Promise.all(
+      locs.map(async (loc) => {
+        const url = `${APP_URL}/scan/${biz.slug}?table=${loc.id}`;
+        const dataUrl = await QRCode.toDataURL(url, {
+          width: 200, margin: 1,
+          color: { dark: "#E8C547", light: "#111111" },
+        });
+        return [`${biz.id}:${loc.id}`, dataUrl] as [string, string];
+      })
+    );
+    setTableQrs((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+    setExpandedQr((prev) => new Set([...prev, biz.id]));
+    setLoadingQr(null);
+  }
+
+  function downloadSingleQr(dataUrl: string, label: string, slug: string) {
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = `qr-${slug}-${label.toLowerCase().replace(/\s+/g, "-")}.png`;
+    a.click();
+  }
+
+  async function downloadAllQrs(biz: AdminBiz) {
+    const locs = tablesByBiz[biz.id] ?? [];
+    if (!locs.length) return;
+    setZipping(biz.id);
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+    for (const loc of locs) {
+      const dataUrl = tableQrs[`${biz.id}:${loc.id}`];
+      if (!dataUrl) continue;
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const name = (loc.label || loc.name).replace(/\s+/g, "-").toLowerCase();
+      zip.file(`qr-${biz.slug}-${name}.png`, blob);
+    }
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `qr-codes-${biz.slug}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setZipping(null);
   }
 
   async function createClient() {
@@ -495,6 +572,61 @@ export default function AdminPage() {
                 </div>
 
               </div>
+
+              {/* ── Table QR panel ─────────────────────────────────────── */}
+              <div style={{ borderTop: `1px solid ${BORDER}`, padding: "14px 22px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <button
+                    onClick={() => toggleQrPanel(biz)}
+                    disabled={loadingQr === biz.id}
+                    style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    {loadingQr === biz.id ? "Loading…" : expandedQr.has(biz.id) ? "▲ Hide QR Codes" : `▼ Show QR Codes (${biz.location_count} tables)`}
+                  </button>
+                  {expandedQr.has(biz.id) && (tablesByBiz[biz.id]?.length ?? 0) > 0 && (
+                    <button
+                      onClick={() => downloadAllQrs(biz)}
+                      disabled={zipping === biz.id}
+                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 800, cursor: zipping === biz.id ? "not-allowed" : "pointer" }}
+                    >
+                      {zipping === biz.id ? "Zipping…" : `⬇ Download All (${tablesByBiz[biz.id]?.length})`}
+                    </button>
+                  )}
+                </div>
+
+                {expandedQr.has(biz.id) && tablesByBiz[biz.id] && (
+                  <div style={{ marginTop: 16 }}>
+                    {tablesByBiz[biz.id].length === 0 ? (
+                      <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>No active tables found. Add tables in the owner dashboard first.</p>
+                    ) : (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 16 }}>
+                        {tablesByBiz[biz.id].map((loc) => {
+                          const qrKey  = `${biz.id}:${loc.id}`;
+                          const qrData = tableQrs[qrKey];
+                          const label  = loc.label || loc.name;
+                          return (
+                            <div key={loc.id} style={{ background: INNER, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "14px", textAlign: "center" }}>
+                              {qrData
+                                ? <img src={qrData} alt={label} width={120} height={120} style={{ display: "block", margin: "0 auto 10px", borderRadius: 6 }} />
+                                : <div style={{ width: 120, height: 120, background: BORDER, borderRadius: 6, margin: "0 auto 10px" }} />
+                              }
+                              <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 10 }}>{label}</div>
+                              <button
+                                onClick={() => qrData && downloadSingleQr(qrData, label, biz.slug)}
+                                disabled={!qrData}
+                                style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 12px", color: MUTED, fontSize: 11, fontWeight: 700, cursor: qrData ? "pointer" : "not-allowed", width: "100%" }}
+                              >
+                                ⬇ Download
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
             </div>
           );
         })}

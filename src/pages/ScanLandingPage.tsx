@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 type Biz = { id: string; name: string };
@@ -15,11 +15,13 @@ const muted  = "#888";
 export default function ScanLandingPage() {
   const { bizSlug } = useParams<{ bizSlug: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tableParam = searchParams.get("table"); // pre-selected table ID from admin QR
 
-  const [biz, setBiz]           = useState<Biz | null>(null);
+  const [biz, setBiz]             = useState<Biz | null>(null);
   const [locations, setLocations] = useState<Loc[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState("");
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState("");
 
   useEffect(() => {
     async function load() {
@@ -46,6 +48,16 @@ export default function ScanLandingPage() {
 
       const locs = (locData ?? []) as Loc[];
 
+      // If a specific table was encoded in the QR code, jump straight there
+      if (tableParam) {
+        const target = locs.find((l) => l.id === tableParam);
+        if (target) {
+          navigate(`/scan/${bizData.id}/${target.id}`, { replace: true });
+          return;
+        }
+      }
+
+      // Single table — auto-redirect
       if (locs.length === 1) {
         navigate(`/scan/${bizData.id}/${locs[0].id}`, { replace: true });
         return;
@@ -55,7 +67,7 @@ export default function ScanLandingPage() {
       setLoading(false);
     }
     void load();
-  }, [bizSlug, navigate]);
+  }, [bizSlug, navigate, tableParam]);
 
   if (loading) {
     return (
