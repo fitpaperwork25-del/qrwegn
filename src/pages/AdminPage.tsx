@@ -94,6 +94,7 @@ export default function AdminPage() {
   const [expandedQr,  setExpandedQr]  = useState<Set<string>>(new Set());
   const [loadingQr,   setLoadingQr]   = useState<string | null>(null);
   const [zipping,     setZipping]     = useState<string | null>(null);
+  const [printingQr,  setPrintingQr]  = useState<string | null>(null);
 
   // Per-business UI state
   const [pinInputs,     setPinInputs]     = useState<Record<string, string>>({});
@@ -276,6 +277,126 @@ export default function AdminPage() {
     a.click();
     URL.revokeObjectURL(url);
     setZipping(null);
+  }
+
+  async function printAllQrs(biz: AdminBiz) {
+    setPrintingQr(biz.id);
+
+    // Load tables if not already cached
+    let locs = tablesByBiz[biz.id];
+    if (!locs) {
+      const { data } = await supabase
+        .from("locations")
+        .select("id, name, label")
+        .eq("business_id", biz.id)
+        .eq("is_active", true)
+        .order("name");
+      locs = (data ?? []) as TableLoc[];
+      setTablesByBiz((prev) => ({ ...prev, [biz.id]: locs }));
+    }
+
+    if (!locs.length) { setPrintingQr(null); return; }
+
+    // Generate high-res black-on-white QR codes for print
+    const entries = await Promise.all(
+      locs.map(async (loc) => {
+        const url     = `${APP_URL}/scan/${biz.slug}?table=${loc.id}`;
+        const dataUrl = await QRCode.toDataURL(url, {
+          width: 600, margin: 2,
+          color: { dark: "#000000", light: "#ffffff" },
+        });
+        return { loc, dataUrl, url };
+      })
+    );
+
+    const rows = entries.map(({ loc, dataUrl, url }) => `
+      <div class="cell">
+        <img src="${dataUrl}" alt="${loc.label ?? loc.name}"/>
+        <div class="name">${loc.label ?? loc.name}</div>
+        <div class="scan-url">${url}</div>
+      </div>`).join("");
+
+    const printHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>${biz.name} — Table QR Codes</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm 14mm; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #fff; color: #000;
+    }
+    header {
+      text-align: center;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+      border-bottom: 1.5px solid #000;
+    }
+    header h1 { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+    header p  { font-size: 11px; color: #555; margin-top: 5px; letter-spacing: 0.5px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    .cell {
+      text-align: center;
+      padding: 12px 10px;
+      border: 1px solid #d0d0d0;
+      border-radius: 6px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .cell img {
+      /* 2 inches minimum at 96dpi screen = 192px; print browsers scale via @page */
+      width: 100%;
+      max-width: 192px;
+      height: auto;
+      display: block;
+      margin: 0 auto 8px;
+      image-rendering: crisp-edges;
+    }
+    .cell .name {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      margin-bottom: 4px;
+    }
+    .cell .scan-url {
+      font-size: 8px;
+      color: #999;
+      word-break: break-all;
+      line-height: 1.4;
+    }
+    footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 9px;
+      color: #bbb;
+      border-top: 1px solid #e8e8e8;
+      padding-top: 10px;
+    }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>${biz.name}</h1>
+    <p>SCAN TO VIEW MENU &amp; ORDER &mdash; NO APP REQUIRED</p>
+  </header>
+  <div class="grid">${rows}</div>
+  <footer>Powered by QRServe &middot; qrserve-v3.vercel.app</footer>
+  <script>window.addEventListener("load", function(){ window.print(); });</script>
+</body>
+</html>`;
+
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHtml); w.document.close(); }
+    setPrintingQr(null);
   }
 
   async function createClient() {
@@ -576,21 +697,39 @@ export default function AdminPage() {
               {/* ── Table QR panel ─────────────────────────────────────── */}
               <div style={{ borderTop: `1px solid ${BORDER}`, padding: "14px 22px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <button
-                    onClick={() => toggleQrPanel(biz)}
-                    disabled={loadingQr === biz.id}
-                    style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                  >
-                    {loadingQr === biz.id ? "Loading…" : expandedQr.has(biz.id) ? "▲ Hide QR Codes" : `▼ Show QR Codes (${biz.location_count} tables)`}
-                  </button>
-                  {expandedQr.has(biz.id) && (tablesByBiz[biz.id]?.length ?? 0) > 0 && (
+                  <div style={{ display: "flex", gap: 8 }}>
                     <button
-                      onClick={() => downloadAllQrs(biz)}
-                      disabled={zipping === biz.id}
-                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 800, cursor: zipping === biz.id ? "not-allowed" : "pointer" }}
+                      onClick={() => toggleQrPanel(biz)}
+                      disabled={loadingQr === biz.id}
+                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                     >
-                      {zipping === biz.id ? "Zipping…" : `⬇ Download All (${tablesByBiz[biz.id]?.length})`}
+                      {loadingQr === biz.id ? "Loading…" : expandedQr.has(biz.id) ? "▲ Hide QR Codes" : `▼ Show QR Codes (${biz.location_count} tables)`}
                     </button>
+                    <button
+                      onClick={() => printAllQrs(biz)}
+                      disabled={printingQr === biz.id}
+                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: TEXT, fontSize: 12, fontWeight: 700, cursor: printingQr === biz.id ? "not-allowed" : "pointer" }}
+                    >
+                      {printingQr === biz.id ? "Preparing…" : "🖨 Print All QRs"}
+                    </button>
+                  </div>
+                  {expandedQr.has(biz.id) && (tablesByBiz[biz.id]?.length ?? 0) > 0 && (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => printAllQrs(biz)}
+                        disabled={printingQr === biz.id}
+                        style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: TEXT, fontSize: 12, fontWeight: 700, cursor: printingQr === biz.id ? "not-allowed" : "pointer" }}
+                      >
+                        {printingQr === biz.id ? "Preparing…" : "🖨 Print All QRs"}
+                      </button>
+                      <button
+                        onClick={() => downloadAllQrs(biz)}
+                        disabled={zipping === biz.id}
+                        style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 800, cursor: zipping === biz.id ? "not-allowed" : "pointer" }}
+                      >
+                        {zipping === biz.id ? "Zipping…" : `⬇ Download All (${tablesByBiz[biz.id]?.length})`}
+                      </button>
+                    </div>
                   )}
                 </div>
 
