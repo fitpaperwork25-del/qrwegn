@@ -88,6 +88,18 @@ export default function RegisterPage() {
       setLoading(false);
       return;
     }
+
+    // Fire welcome email — best-effort, don't block navigation
+    fetch("/api/send-welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email:        form.email.trim(),
+        businessName: form.businessName.trim(),
+        slug,
+      }),
+    }).catch(() => { /* silent — email failure never blocks the user */ });
+
     window.location.href = "/dashboard";
   }
 
