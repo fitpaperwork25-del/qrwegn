@@ -180,7 +180,7 @@ export default function DashboardPage() {
             const newOrders = (ordRes.data as Order[]).filter(
               (o) => !prev.some((p) => p.id === o.id)
             );
-            if (newOrders.length > 0 && Notification.permission === "granted") {
+            if (newOrders.length > 0 && typeof Notification !== "undefined" && Notification.permission === "granted") {
               new Notification(`${newOrders.length} new order(s) received!`);
             }
             return ordRes.data as Order[];
@@ -202,7 +202,7 @@ export default function DashboardPage() {
     };
     fetchOrders();
     const timer = setInterval(() => fetchOrders(true), 15000);
-    if (Notification.permission === "default") Notification.requestPermission();
+    if (typeof Notification !== "undefined" && Notification.permission === "default") Notification.requestPermission();
     return () => clearInterval(timer);
   }, [business?.id]);
 
