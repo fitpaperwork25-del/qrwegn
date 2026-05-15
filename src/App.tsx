@@ -6,6 +6,7 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
+import AdminPage from "./pages/AdminPage";
 import ScanPage from "./pages/ScanPage";
 import ScanLandingPage from "./pages/ScanLandingPage";
 import SuccessPage from "./pages/SuccessPage";
@@ -54,7 +55,7 @@ export default function App() {
         path="/admin"
         element={
           <AuthGuard>
-            <Placeholder name="AdminPage" />
+            <AdminPage />
           </AuthGuard>
         }
       />
