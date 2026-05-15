@@ -43,30 +43,27 @@ interface DemoDropdownProps {
 function DemoDropdown({ onClose }: DemoDropdownProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState<DemoLoading>(null);
-  const [error, setError] = useState("");
 
-  async function goCustomer() {
+  function goCustomer() {
     onClose();
     navigate("/scan/demo-restaurant");
   }
 
   async function goStaff() {
     setLoading("staff");
-    setError("");
-    const { error: err } = await staffLogin("demo-restaurant", "1234");
-    if (err) { setError(err); setLoading(null); return; }
+    const { error } = await staffLogin("demo-restaurant", "1234");
+    if (error) { setLoading(null); return; }
     onClose();
     navigate("/staff");
   }
 
   async function goOwner() {
     setLoading("owner");
-    setError("");
-    const { error: err } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email: "demo@qrserve.app",
       password: "Demo2026",
     });
-    if (err) { setError(err.message); setLoading(null); return; }
+    if (error) { setLoading(null); return; }
     onClose();
     navigate("/dashboard");
   }
@@ -150,11 +147,6 @@ function DemoDropdown({ onClose }: DemoDropdownProps) {
           <span style={{ color: item.color, fontSize: 16, flexShrink: 0 }}>→</span>
         </button>
       ))}
-      {error && (
-        <p style={{ color: "#f44336", fontSize: 12, margin: "6px 14px 2px", padding: 0 }}>
-          {error}
-        </p>
-      )}
     </div>
   );
 }
