@@ -114,6 +114,12 @@ export default function DashboardPage() {
   const [itemError, setItemError]     = useState("");
   const [itemSaving, setItemSaving]   = useState(false);
 
+  // Edit item inline
+  const [editingItemId,  setEditingItemId]  = useState<string | null>(null);
+  const [editItemForm,   setEditItemForm]   = useState({ name: "", price: "", description: "" });
+  const [itemEditError,  setItemEditError]  = useState("");
+  const [itemEditSaving, setItemEditSaving] = useState(false);
+
   // Orders expand + items cache
   const [expandedOrders, setExpandedOrders]   = useState<Set<string>>(new Set());
   const [orderItemsCache, setOrderItemsCache] = useState<Record<string, OrderItem[]>>({});
@@ -362,6 +368,44 @@ export default function DashboardPage() {
     setItemForm(EMPTY_ITEM);
     setAddingItem(false);
     setItemSaving(false);
+  }
+
+  async function updateMenuItem(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingItemId) return;
+    setItemEditError("");
+    setItemEditSaving(true);
+    const { error } = await supabase.from("menu_items").update({
+      name:        editItemForm.name.trim(),
+      price:       parseFloat(editItemForm.price) || 0,
+      description: editItemForm.description.trim() || null,
+    }).eq("id", editingItemId);
+    if (error) { setItemEditError(error.message); setItemEditSaving(false); return; }
+    setMenuItems((prev) => prev.map((i) => i.id === editingItemId
+      ? { ...i, name: editItemForm.name.trim(), price: parseFloat(editItemForm.price) || 0, description: editItemForm.description.trim() || null }
+      : i
+    ));
+    setEditingItemId(null);
+    setItemEditSaving(false);
+  }
+
+  async function deleteMenuItem(itemId: string) {
+    if (!window.confirm("Delete this item?")) return;
+    const { error } = await supabase.from("menu_items").delete().eq("id", itemId);
+    if (!error) setMenuItems((prev) => prev.filter((i) => i.id !== itemId));
+  }
+
+  async function deleteCategory(catId: string, itemCount: number) {
+    const catName = categories.find((c) => c.id === catId)?.name ?? "this category";
+    const msg = itemCount > 0
+      ? `Delete "${catName}" and its ${itemCount} item${itemCount !== 1 ? "s" : ""}? This cannot be undone.`
+      : `Delete "${catName}"?`;
+    if (!window.confirm(msg)) return;
+    const { error } = await supabase.from("menu_categories").delete().eq("id", catId);
+    if (!error) {
+      setCategories((prev) => prev.filter((c) => c.id !== catId));
+      setMenuItems((prev) => prev.filter((i) => i.category_id !== catId));
+    }
   }
 
   async function toggleOrder(orderId: string) {
@@ -857,28 +901,86 @@ export default function DashboardPage() {
                     const items = menuItems.filter((i) => i.category_id === cat.id);
                     return (
                       <div key={cat.id}>
+                        {/* Category header + delete */}
                         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
                           <h3 style={{ fontWeight: 800, fontSize: 15, color: TEXT, margin: 0 }}>{cat.name}</h3>
                           <span style={{ color: MUTED, fontSize: 12 }}>{items.length} item{items.length !== 1 ? "s" : ""}</span>
+                          <button
+                            onClick={() => deleteCategory(cat.id, items.length)}
+                            style={{ marginLeft: "auto", background: "none", border: `1px solid ${RED}44`, borderRadius: 6, padding: "3px 10px", color: RED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                          >
+                            Delete
+                          </button>
                         </div>
+
                         {items.length === 0 ? (
                           <p style={{ color: MUTED, fontSize: 13, paddingLeft: 4 }}>No items yet.</p>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {items.map((item) => (
-                              <div key={item.id} style={{ ...card, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                    <span style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</span>
-                                    {!item.is_available && <span style={{ ...badge(MUTED), fontSize: 10 }}>unavailable</span>}
+                            {items.map((item) =>
+                              editingItemId === item.id ? (
+                                /* ── Inline edit form ── */
+                                <form key={item.id} onSubmit={updateMenuItem} style={{ ...card, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 10 }}>
+                                    <input
+                                      required autoFocus
+                                      placeholder="Item name"
+                                      value={editItemForm.name}
+                                      onChange={(e) => setEditItemForm((f) => ({ ...f, name: e.target.value }))}
+                                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }}
+                                    />
+                                    <input
+                                      required type="number" min="0" step="0.01"
+                                      placeholder="Price"
+                                      value={editItemForm.price}
+                                      onChange={(e) => setEditItemForm((f) => ({ ...f, price: e.target.value }))}
+                                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }}
+                                    />
                                   </div>
-                                  {item.description && <span style={{ color: MUTED, fontSize: 12 }}>{item.description}</span>}
+                                  <input
+                                    placeholder="Description (optional)"
+                                    value={editItemForm.description}
+                                    onChange={(e) => setEditItemForm((f) => ({ ...f, description: e.target.value }))}
+                                    style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }}
+                                  />
+                                  {itemEditError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{itemEditError}</p>}
+                                  <div style={{ display: "flex", gap: 8 }}>
+                                    <button type="submit" disabled={itemEditSaving}
+                                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 13, cursor: itemEditSaving ? "not-allowed" : "pointer" }}>
+                                      {itemEditSaving ? "Saving…" : "Save"}
+                                    </button>
+                                    <button type="button" onClick={() => { setEditingItemId(null); setItemEditError(""); }}
+                                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </form>
+                              ) : (
+                                /* ── Read-only row with Edit / Delete ── */
+                                <div key={item.id} style={{ ...card, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                      <span style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</span>
+                                      {!item.is_available && <span style={{ ...badge(MUTED), fontSize: 10 }}>unavailable</span>}
+                                    </div>
+                                    {item.description && <span style={{ color: MUTED, fontSize: 12 }}>{item.description}</span>}
+                                  </div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                                    <span style={{ fontWeight: 800, fontSize: 15, color: ACCENT }}>${Number(item.price).toFixed(2)}</span>
+                                    <button
+                                      onClick={() => { setEditingItemId(item.id); setEditItemForm({ name: item.name, price: String(item.price), description: item.description ?? "" }); setItemEditError(""); }}
+                                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => deleteMenuItem(item.id)}
+                                      style={{ background: "none", border: `1px solid ${RED}44`, borderRadius: 6, padding: "5px 10px", color: RED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                                      Delete
+                                    </button>
+                                  </div>
                                 </div>
-                                <span style={{ fontWeight: 800, fontSize: 15, color: ACCENT, whiteSpace: "nowrap" }}>
-                                  ${Number(item.price).toFixed(2)}
-                                </span>
-                              </div>
-                            ))}
+                              )
+                            )}
                           </div>
                         )}
                       </div>
