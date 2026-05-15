@@ -85,6 +85,7 @@ export default function AdminPage() {
   const [loading,         setLoading]         = useState(true);
   const [error,           setError]           = useState("");
   const [loadingDashboard, setLoadingDashboard] = useState<string | null>(null);
+  const [showHelp,         setShowHelp]         = useState(false);
 
   // Per-business UI state
   const [pinInputs,     setPinInputs]     = useState<Record<string, string>>({});
@@ -280,6 +281,12 @@ export default function AdminPage() {
                 <div style={{ fontSize: 10, color: MUTED, letterSpacing: 1, textTransform: "uppercase" }}>{s.label}</div>
               </div>
             ))}
+            <button
+              onClick={() => setShowHelp(true)}
+              style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 16px", color: MUTED, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              ? Help
+            </button>
             <button
               onClick={() => setShowNewClient(true)}
               style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: "pointer" }}
@@ -552,6 +559,99 @@ export default function AdminPage() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Help modal ──────────────────────────────────────────────────────── */}
+      {showHelp && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 50, padding: "40px 20px", overflowY: "auto" }}
+          onClick={(e) => e.target === e.currentTarget && setShowHelp(false)}
+        >
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "32px 36px", maxWidth: 680, width: "100%", position: "relative" }}>
+            <button onClick={() => setShowHelp(false)}
+              style={{ position: "absolute", top: 18, right: 18, background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "4px 10px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
+              ✕
+            </button>
+
+            <p style={{ fontSize: 10, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 6px" }}>Operations Guide</p>
+            <h2 style={{ margin: "0 0 28px", fontWeight: 900, fontSize: 22 }}>QRServe Admin Panel</h2>
+
+            {([
+              {
+                title: "Platform Overview",
+                body: [
+                  "QRServe is a QR-ordering platform for hospitality businesses. Each business gets a QR code per table — customers scan it, browse the menu, and place orders without an app.",
+                  `Production URL: ${APP_URL}`,
+                  "Stack: React + Vite frontend on Vercel, Supabase (Postgres + Auth + RLS), Stripe for billing.",
+                ],
+              },
+              {
+                title: "Key URLs",
+                body: [
+                  `${APP_URL}/                    — Landing page`,
+                  `${APP_URL}/scan/{slug}         — Customer menu (e.g. /scan/snelling-cafe)`,
+                  `${APP_URL}/staff-login         — Staff kitchen view login`,
+                  `${APP_URL}/dashboard           — Owner business dashboard`,
+                  `${APP_URL}/admin               — This page (super-admin only)`,
+                  `${APP_URL}/scan/demo-restaurant — Demo customer view`,
+                ],
+              },
+              {
+                title: "Onboarding a New Client",
+                body: [
+                  "1. Click '+ New Client' → enter business name (slug auto-fills), owner email, a temp password, and a staff PIN.",
+                  "2. The account is created and the business is provisioned instantly.",
+                  "3. Send the owner their login link: " + APP_URL + "/login",
+                  "4. Walk them through adding tables (Tables tab) and menu items (Menu tab) in their dashboard.",
+                  "5. Download or share the QR code from the Deploy Kit below their card — they print one per table.",
+                  "6. Tick 'QR printed' and 'Staff trained' in the Deployment Checklist when done.",
+                  "7. Log the milestone in Communication Log: 'Went live 🚀'.",
+                ],
+              },
+              {
+                title: "Using the Admin Panel",
+                body: [
+                  "Deployment Status badge — auto-calculated: Not Started (no tables/menu) → In Progress (tables + menu, no orders yet) → Live (first order received).",
+                  "Deploy Kit — three rows per business: (1) scan page link + QR download, (2) pre-filled staff login link with slug & PIN, (3) owner dashboard magic link.",
+                  "Deployment Checklist — first 3 items are automatic; 'QR printed' and 'Staff trained' are manual toggles you click when confirmed.",
+                  "Communication Log — use quick-note buttons or type a free-form entry. All notes are timestamped and stored per business.",
+                  "Staff PIN Reset — type a new PIN and click Update. Takes effect immediately for kitchen staff.",
+                  "Owner Dashboard ↗ — generates a one-time magic link that signs you in as that owner. Opens in a new tab. Use incognito to avoid signing out of your admin session.",
+                ],
+              },
+              {
+                title: "Troubleshooting Common Issues",
+                body: [
+                  "Scan page shows 'Restaurant not found' — check the business slug matches exactly what's in the URL. Verify the business exists in this panel.",
+                  "Staff can't log in — confirm the slug and PIN match what's shown in Deploy Kit. Use the pre-filled staff login link to bypass typos.",
+                  "Owner dashboard blank after login — the auth state needs a moment to resolve on mobile. Have them wait 2–3 seconds or hard-refresh.",
+                  "Orders not appearing in kitchen — confirm the staff is viewing the right business slug. Kitchen view only shows 'new' and 'preparing' statuses.",
+                  "Revenue shows $0 — Financials tab counts all non-cancelled orders. If all orders are cancelled or still 'new', revenue will be zero.",
+                  "Can't create a new client — slug must be unique across all businesses. Try a more specific slug (e.g. snelling-cafe-mpls).",
+                  "Magic link expired — magic links expire after 1 hour. Click 'Dashboard ↗' again to generate a fresh one.",
+                ],
+              },
+            ] as { title: string; body: string[] }[]).map((section) => (
+              <div key={section.title} style={{ marginBottom: 24 }}>
+                <h3 style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 800, color: ACCENT, textTransform: "uppercase", letterSpacing: 1 }}>
+                  {section.title}
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {section.body.map((line, i) => (
+                    <p key={i} style={{ margin: 0, fontSize: 13, color: line.startsWith(APP_URL) || line.match(/^https?:\/\//) ? MUTED : TEXT, lineHeight: 1.6, fontFamily: line.startsWith(APP_URL) ? "monospace" : "sans-serif" }}>
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            <button onClick={() => setShowHelp(false)}
+              style={{ marginTop: 8, background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "11px 28px", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+              Got it
+            </button>
           </div>
         </div>
       )}
