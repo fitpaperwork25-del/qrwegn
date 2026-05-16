@@ -43,7 +43,6 @@ type Tab = "tables" | "menu" | "orders" | "financials";
 
 const EMPTY_ITEM = { name: "", price: "", description: "", category_id: "" };
 
-// ── Styles ───────────────────────────────────────────────────
 const card: React.CSSProperties = {
   background: SURFACE,
   border: `1px solid ${BORDER}`,
@@ -71,7 +70,6 @@ const PLAN_LABELS: Record<string, { label: string; price: string; features: stri
   enterprise: { label: "Enterprise", price: "$199/mo", features: ["Unlimited locations", "White label", "Custom domain", "Dedicated support"] },
 };
 
-// ── Helpers ──────────────────────────────────────────────────
 function planColor(plan: string) {
   if (plan === "enterprise") return TEXT;
   if (plan === "pro") return ACCENT;
@@ -84,7 +82,6 @@ function statusColor(status: string) {
   return RED;
 }
 
-// ── Component ─────────────────────────────────────────────────
 export default function DashboardPage() {
   const { session, signOut } = useAuth();
 
@@ -97,41 +94,34 @@ export default function DashboardPage() {
   const [loading, setLoading]       = useState(true);
   const [isMobile, setIsMobile]     = useState(() => window.innerWidth < 640);
 
-  // Add table form
   const [addingTable, setAddingTable]   = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [tableError, setTableError]     = useState("");
   const [tableSaving, setTableSaving]   = useState(false);
 
-  // Add category form
   const [addingCat, setAddingCat]   = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [catError, setCatError]     = useState("");
   const [catSaving, setCatSaving]   = useState(false);
 
-  // Add item form
   const [addingItem, setAddingItem]   = useState(false);
   const [itemForm, setItemForm]       = useState(EMPTY_ITEM);
   const [itemError, setItemError]     = useState("");
   const [itemSaving, setItemSaving]   = useState(false);
 
-  // Edit item inline
   const [editingItemId,  setEditingItemId]  = useState<string | null>(null);
   const [editItemForm,   setEditItemForm]   = useState({ name: "", price: "", description: "" });
   const [itemEditError,  setItemEditError]  = useState("");
   const [itemEditSaving, setItemEditSaving] = useState(false);
 
-  // Orders expand + items cache
   const [expandedOrders, setExpandedOrders]   = useState<Set<string>>(new Set());
   const [orderItemsCache, setOrderItemsCache] = useState<Record<string, OrderItem[]>>({});
   const [openTabs, setOpenTabs]               = useState<OpenTab[]>([]);
 
-  // Order cancellation
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason]           = useState("");
   const [cancelError, setCancelError]             = useState("");
 
-  // Financials
   const [doneOrders, setDoneOrders]           = useState<Order[]>([]);
   const [cancelledOrders, setCancelledOrders] = useState<Order[]>([]);
   const [cancelPeriod, setCancelPeriod]       = useState<"day" | "week" | "month">("month");
@@ -168,25 +158,13 @@ export default function DashboardPage() {
     if (!business?.id) return;
     const fetchOrders = async (isPolling = false) => {
       const [ordRes, tabsRes] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("id, status, total, created_at, cancel_reason")
-          .eq("business_id", business.id)
-          .order("created_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("tabs")
-          .select("id, total, opened_at, locations(name, label)")
-          .eq("business_id", business.id)
-          .eq("status", "open")
-          .order("opened_at", { ascending: true }),
+        supabase.from("orders").select("id, status, total, created_at, cancel_reason").eq("business_id", business.id).order("created_at", { ascending: false }).limit(20),
+        supabase.from("tabs").select("id, total, opened_at, locations(name, label)").eq("business_id", business.id).eq("status", "open").order("opened_at", { ascending: true }),
       ]);
       if (ordRes.data) {
         if (isPolling) {
           setOrders((prev) => {
-            const newOrders = (ordRes.data as Order[]).filter(
-              (o) => !prev.some((p) => p.id === o.id)
-            );
+            const newOrders = (ordRes.data as Order[]).filter((o) => !prev.some((p) => p.id === o.id));
             if (newOrders.length > 0 && typeof Notification !== "undefined" && Notification.permission === "granted") {
               new Notification(`${newOrders.length} new order(s) received!`);
             }
@@ -197,14 +175,9 @@ export default function DashboardPage() {
         }
       }
       if (tabsRes.data) {
-        setOpenTabs(
-          (tabsRes.data as any[]).map((t) => ({
-            id:         t.id,
-            table_name: t.locations?.label || t.locations?.name || "Unknown table",
-            total:      t.total,
-            opened_at:  t.opened_at,
-          }))
-        );
+        setOpenTabs((tabsRes.data as any[]).map((t) => ({
+          id: t.id, table_name: t.locations?.label || t.locations?.name || "Unknown table", total: t.total, opened_at: t.opened_at,
+        })));
       }
     };
     fetchOrders();
@@ -218,24 +191,14 @@ export default function DashboardPage() {
     const fetchFinancials = async () => {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const [doneRes, expRes, revRes, cancelRes] = await Promise.all([
-        supabase.from("orders").select("id, status, total, created_at, cancel_reason")
-          .eq("business_id", business.id).neq("status", "cancelled")
-          .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
-        supabase.from("business_expenses").select("id, amount, category, description, expense_date")
-          .eq("business_id", business.id).order("expense_date", { ascending: false }),
-        supabase.from("manual_revenue").select("id, amount, category, description, revenue_date")
-          .eq("business_id", business.id).order("date", { ascending: false }),
-        supabase.from("orders").select("id, status, total, created_at, cancel_reason")
-          .eq("business_id", business.id).eq("status", "cancelled")
-          .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("orders").select("id, status, total, created_at, cancel_reason").eq("business_id", business.id).neq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("business_expenses").select("id, amount, category, description, expense_date").eq("business_id", business.id).order("expense_date", { ascending: false }),
+        supabase.from("manual_revenue").select("id, amount, category, description, revenue_date").eq("business_id", business.id).order("date", { ascending: false }),
+        supabase.from("orders").select("id, status, total, created_at, cancel_reason").eq("business_id", business.id).eq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
       ]);
       setDoneOrders((doneRes.data as Order[]) ?? []);
       setExpenses((expRes.data as Expense[]) ?? []);
-      if (revRes.error?.code === "42P01") {
-        setNoRevenueTable(true);
-      } else {
-        setManualRevenue((revRes.data as ManualRevenue[]) ?? []);
-      }
+      if (revRes.error?.code === "42P01") { setNoRevenueTable(true); } else { setManualRevenue((revRes.data as ManualRevenue[]) ?? []); }
       setCancelledOrders((cancelRes.data as Order[]) ?? []);
     };
     const timer = setInterval(fetchFinancials, 15000);
@@ -244,11 +207,9 @@ export default function DashboardPage() {
 
   async function load(userId: string) {
     setLoading(true);
-
     const bizRes = await supabase.from("businesses").select("*").eq("owner_id", userId).single();
     const biz = bizRes.data as Business | null;
     setBusiness(biz);
-
     if (biz) {
       const [locRes, ordRes, catRes, tabsRes] = await Promise.all([
         supabase.from("locations").select("id, name, label, is_active").eq("business_id", biz.id).order("name"),
@@ -256,138 +217,71 @@ export default function DashboardPage() {
         supabase.from("menu_categories").select("id, name, display_order").eq("business_id", biz.id).order("display_order"),
         supabase.from("tabs").select("id, total, opened_at, locations(name, label)").eq("business_id", biz.id).eq("status", "open").order("opened_at", { ascending: true }),
       ]);
-
       const cats = (catRes.data as Category[]) ?? [];
       setLocations((locRes.data as Location[]) ?? []);
       setOrders((ordRes.data as Order[]) ?? []);
       setCategories(cats);
-      setOpenTabs(
-        ((tabsRes.data ?? []) as any[]).map((t) => ({
-          id:         t.id,
-          table_name: t.locations?.label || t.locations?.name || "Unknown table",
-          total:      t.total,
-          opened_at:  t.opened_at,
-        }))
-      );
-
+      setOpenTabs(((tabsRes.data ?? []) as any[]).map((t) => ({
+        id: t.id, table_name: t.locations?.label || t.locations?.name || "Unknown table", total: t.total, opened_at: t.opened_at,
+      })));
       if (cats.length > 0) {
-        const itemRes = await supabase
-          .from("menu_items")
-          .select("id, category_id, name, price, description, is_available")
-          .in("category_id", cats.map((c) => c.id))
-          .order("display_order");
+        const itemRes = await supabase.from("menu_items").select("id, category_id, name, price, description, is_available").in("category_id", cats.map((c) => c.id)).order("display_order");
         setMenuItems((itemRes.data as MenuItem[]) ?? []);
       }
-
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const [doneRes, expRes, revRes, cancelRes] = await Promise.all([
-        supabase.from("orders").select("id, status, total, created_at, cancel_reason")
-          .eq("business_id", biz.id).neq("status", "cancelled")
-          .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
-        supabase.from("business_expenses").select("id, amount, category, description, expense_date")
-          .eq("business_id", biz.id).order("expense_date", { ascending: false }),
-        supabase.from("manual_revenue").select("id, amount, category, description, revenue_date")
-          .eq("business_id", biz.id).order("date", { ascending: false }),
-        supabase.from("orders").select("id, status, total, created_at, cancel_reason")
-          .eq("business_id", biz.id).eq("status", "cancelled")
-          .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("orders").select("id, status, total, created_at, cancel_reason").eq("business_id", biz.id).neq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("business_expenses").select("id, amount, category, description, expense_date").eq("business_id", biz.id).order("expense_date", { ascending: false }),
+        supabase.from("manual_revenue").select("id, amount, category, description, revenue_date").eq("business_id", biz.id).order("date", { ascending: false }),
+        supabase.from("orders").select("id, status, total, created_at, cancel_reason").eq("business_id", biz.id).eq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
       ]);
       setDoneOrders((doneRes.data as Order[]) ?? []);
       setExpenses((expRes.data as Expense[]) ?? []);
-      if (revRes.error?.code === "42P01") {
-        setNoRevenueTable(true);
-      } else {
-        setManualRevenue((revRes.data as ManualRevenue[]) ?? []);
-      }
+      if (revRes.error?.code === "42P01") { setNoRevenueTable(true); } else { setManualRevenue((revRes.data as ManualRevenue[]) ?? []); }
       setCancelledOrders((cancelRes.data as Order[]) ?? []);
     }
-
     setLoading(false);
   }
 
   async function addTable(e: React.FormEvent) {
     e.preventDefault();
     if (!business || !newTableName.trim()) return;
-    setTableError("");
-    setTableSaving(true);
-
+    setTableError(""); setTableSaving(true);
     const slug = newTableName.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-    const { data, error } = await supabase
-      .from("locations")
-      .insert({ business_id: business.id, name: newTableName.trim(), slug, is_active: true })
-      .select("id, name, label, is_active")
-      .single();
-
-    if (error) {
-      setTableError(error.message);
-      setTableSaving(false);
-      return;
-    }
-
+    const { data, error } = await supabase.from("locations").insert({ business_id: business.id, name: newTableName.trim(), slug, is_active: true }).select("id, name, label, is_active").single();
+    if (error) { setTableError(error.message); setTableSaving(false); return; }
     setLocations((prev) => [...prev, data as Location]);
-    setNewTableName("");
-    setAddingTable(false);
-    setTableSaving(false);
+    setNewTableName(""); setAddingTable(false); setTableSaving(false);
   }
 
   async function addCategory(e: React.FormEvent) {
     e.preventDefault();
     if (!business || !newCatName.trim()) return;
-    setCatError("");
-    setCatSaving(true);
-    const { data, error } = await supabase
-      .from("menu_categories")
-      .insert({ business_id: business.id, name: newCatName.trim(), display_order: categories.length, is_visible: true })
-      .select("id, name, display_order")
-      .single();
+    setCatError(""); setCatSaving(true);
+    const { data, error } = await supabase.from("menu_categories").insert({ business_id: business.id, name: newCatName.trim(), display_order: categories.length, is_visible: true }).select("id, name, display_order").single();
     if (error) { setCatError(error.message); setCatSaving(false); return; }
     setCategories((prev) => [...prev, data as Category]);
-    setNewCatName("");
-    setAddingCat(false);
-    setCatSaving(false);
+    setNewCatName(""); setAddingCat(false); setCatSaving(false);
   }
 
   async function addMenuItem(e: React.FormEvent) {
     e.preventDefault();
     if (!itemForm.name.trim() || !itemForm.category_id) return;
-    setItemError("");
-    setItemSaving(true);
-    const { data, error } = await supabase
-      .from("menu_items")
-      .insert({
-        category_id:   itemForm.category_id,
-        name:          itemForm.name.trim(),
-        price:         parseFloat(itemForm.price) || 0,
-        description:   itemForm.description.trim() || null,
-        is_available:  true,
-        display_order: menuItems.filter((i) => i.category_id === itemForm.category_id).length,
-      })
-      .select("id, category_id, name, price, description, is_available")
-      .single();
+    setItemError(""); setItemSaving(true);
+    const { data, error } = await supabase.from("menu_items").insert({ category_id: itemForm.category_id, name: itemForm.name.trim(), price: parseFloat(itemForm.price) || 0, description: itemForm.description.trim() || null, is_available: true, display_order: menuItems.filter((i) => i.category_id === itemForm.category_id).length }).select("id, category_id, name, price, description, is_available").single();
     if (error) { setItemError(error.message); setItemSaving(false); return; }
     setMenuItems((prev) => [...prev, data as MenuItem]);
-    setItemForm(EMPTY_ITEM);
-    setAddingItem(false);
-    setItemSaving(false);
+    setItemForm(EMPTY_ITEM); setAddingItem(false); setItemSaving(false);
   }
 
   async function updateMenuItem(e: React.FormEvent) {
     e.preventDefault();
     if (!editingItemId) return;
-    setItemEditError("");
-    setItemEditSaving(true);
-    const { error } = await supabase.from("menu_items").update({
-      name:        editItemForm.name.trim(),
-      price:       parseFloat(editItemForm.price) || 0,
-      description: editItemForm.description.trim() || null,
-    }).eq("id", editingItemId);
+    setItemEditError(""); setItemEditSaving(true);
+    const { error } = await supabase.from("menu_items").update({ name: editItemForm.name.trim(), price: parseFloat(editItemForm.price) || 0, description: editItemForm.description.trim() || null }).eq("id", editingItemId);
     if (error) { setItemEditError(error.message); setItemEditSaving(false); return; }
-    setMenuItems((prev) => prev.map((i) => i.id === editingItemId
-      ? { ...i, name: editItemForm.name.trim(), price: parseFloat(editItemForm.price) || 0, description: editItemForm.description.trim() || null }
-      : i
-    ));
-    setEditingItemId(null);
-    setItemEditSaving(false);
+    setMenuItems((prev) => prev.map((i) => i.id === editingItemId ? { ...i, name: editItemForm.name.trim(), price: parseFloat(editItemForm.price) || 0, description: editItemForm.description.trim() || null } : i));
+    setEditingItemId(null); setItemEditSaving(false);
   }
 
   async function deleteMenuItem(itemId: string) {
@@ -398,43 +292,22 @@ export default function DashboardPage() {
 
   async function deleteCategory(catId: string, itemCount: number) {
     const catName = categories.find((c) => c.id === catId)?.name ?? "this category";
-    const msg = itemCount > 0
-      ? `Delete "${catName}" and its ${itemCount} item${itemCount !== 1 ? "s" : ""}? This cannot be undone.`
-      : `Delete "${catName}"?`;
+    const msg = itemCount > 0 ? `Delete "${catName}" and its ${itemCount} item${itemCount !== 1 ? "s" : ""}? This cannot be undone.` : `Delete "${catName}"?`;
     if (!window.confirm(msg)) return;
     const { error } = await supabase.from("menu_categories").delete().eq("id", catId);
-    if (!error) {
-      setCategories((prev) => prev.filter((c) => c.id !== catId));
-      setMenuItems((prev) => prev.filter((i) => i.category_id !== catId));
-    }
+    if (!error) { setCategories((prev) => prev.filter((c) => c.id !== catId)); setMenuItems((prev) => prev.filter((i) => i.category_id !== catId)); }
   }
 
   async function toggleOrder(orderId: string) {
-    setExpandedOrders((prev) => {
-      const next = new Set(prev);
-      if (next.has(orderId)) { next.delete(orderId); return next; }
-      next.add(orderId);
-      return next;
-    });
+    setExpandedOrders((prev) => { const next = new Set(prev); if (next.has(orderId)) { next.delete(orderId); return next; } next.add(orderId); return next; });
     if (orderItemsCache[orderId]) return;
-    const { data } = await supabase
-      .from("order_items")
-      .select("id, quantity, unit_price, menu_items(name)")
-      .eq("order_id", orderId);
-    const items: OrderItem[] = (data ?? []).map((row: any) => ({
-      id:         row.id,
-      name:       row.menu_items?.name ?? "Unknown item",
-      quantity:   row.quantity,
-      unit_price: row.unit_price,
-    }));
+    const { data } = await supabase.from("order_items").select("id, quantity, unit_price, menu_items(name)").eq("order_id", orderId);
+    const items: OrderItem[] = (data ?? []).map((row: any) => ({ id: row.id, name: row.menu_items?.name ?? "Unknown item", quantity: row.quantity, unit_price: row.unit_price }));
     setOrderItemsCache((prev) => ({ ...prev, [orderId]: items }));
   }
 
   async function closeTab(tabId: string) {
-    const { error } = await supabase
-      .from("tabs")
-      .update({ status: "closed", closed_at: new Date().toISOString() })
-      .eq("id", tabId);
+    const { error } = await supabase.from("tabs").update({ status: "closed", closed_at: new Date().toISOString() }).eq("id", tabId);
     if (!error) setOpenTabs((prev) => prev.filter((t) => t.id !== tabId));
   }
 
@@ -445,53 +318,29 @@ export default function DashboardPage() {
 
   async function cancelOrder(orderId: string, reason: string) {
     setCancelError("");
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: "cancelled", cancel_reason: reason })
-      .eq("id", orderId);
-    if (error) {
-      console.error("cancelOrder failed:", error);
-      setCancelError(error.message);
-      return;
-    }
-    setOrders((prev) => prev.map((o) =>
-      o.id === orderId ? { ...o, status: "cancelled", cancel_reason: reason } : o
-    ));
-    setCancellingOrderId(null);
-    setCancelReason("");
+    const { error } = await supabase.from("orders").update({ status: "cancelled", cancel_reason: reason }).eq("id", orderId);
+    if (error) { console.error("cancelOrder failed:", error); setCancelError(error.message); return; }
+    setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: "cancelled", cancel_reason: reason } : o));
+    setCancellingOrderId(null); setCancelReason("");
   }
 
   async function startCheckout(plan: string) {
     if (!business || !session?.user.email) return;
     setUpgrading(plan);
     try {
-      const res = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, businessId: business.id, email: session.user.email }),
-      });
+      const res = await fetch("/api/create-checkout-session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan, businessId: business.id, email: session.user.email }) });
       const { url, error } = await res.json();
       if (error) { alert(error); setUpgrading(null); return; }
       window.location.href = url;
-    } catch {
-      alert("Failed to start checkout. Try again.");
-      setUpgrading(null);
-    }
+    } catch { alert("Failed to start checkout. Try again."); setUpgrading(null); }
   }
 
   async function updateRevenue(e: React.FormEvent) {
     e.preventDefault();
     if (!editingRevenueId) return;
-    const { error } = await supabase.from("manual_revenue").update({
-      amount:      parseFloat(editRevenueForm.amount),
-      category:    editRevenueForm.category,
-      description: editRevenueForm.description.trim() || null,
-      revenue_date: editRevenueForm.date,
-    }).eq("id", editingRevenueId);
+    const { error } = await supabase.from("manual_revenue").update({ amount: parseFloat(editRevenueForm.amount), category: editRevenueForm.category, description: editRevenueForm.description.trim() || null, revenue_date: editRevenueForm.date }).eq("id", editingRevenueId);
     if (error) return;
-    setManualRevenue((prev) => prev.map((r) => r.id === editingRevenueId
-      ? { ...r, amount: parseFloat(editRevenueForm.amount), category: editRevenueForm.category, description: editRevenueForm.description || null, revenue_date: editRevenueForm.date }
-      : r));
+    setManualRevenue((prev) => prev.map((r) => r.id === editingRevenueId ? { ...r, amount: parseFloat(editRevenueForm.amount), category: editRevenueForm.category, description: editRevenueForm.description || null, revenue_date: editRevenueForm.date } : r));
     setEditingRevenueId(null);
   }
 
@@ -504,16 +353,9 @@ export default function DashboardPage() {
   async function updateExpense(e: React.FormEvent) {
     e.preventDefault();
     if (!editingExpenseId) return;
-    const { error } = await supabase.from("business_expenses").update({
-      amount:       parseFloat(editExpenseForm.amount),
-      category:     editExpenseForm.category.trim(),
-      description:  editExpenseForm.description.trim() || null,
-      expense_date: editExpenseForm.expense_date,
-    }).eq("id", editingExpenseId);
+    const { error } = await supabase.from("business_expenses").update({ amount: parseFloat(editExpenseForm.amount), category: editExpenseForm.category.trim(), description: editExpenseForm.description.trim() || null, expense_date: editExpenseForm.expense_date }).eq("id", editingExpenseId);
     if (error) return;
-    setExpenses((prev) => prev.map((exp) => exp.id === editingExpenseId
-      ? { ...exp, amount: parseFloat(editExpenseForm.amount), category: editExpenseForm.category, description: editExpenseForm.description || null, expense_date: editExpenseForm.expense_date }
-      : exp));
+    setExpenses((prev) => prev.map((exp) => exp.id === editingExpenseId ? { ...exp, amount: parseFloat(editExpenseForm.amount), category: editExpenseForm.category, description: editExpenseForm.description || null, expense_date: editExpenseForm.expense_date } : exp));
     setEditingExpenseId(null);
   }
 
@@ -526,47 +368,21 @@ export default function DashboardPage() {
   async function addManualRevenue(e: React.FormEvent) {
     e.preventDefault();
     if (!business || !revenueForm.amount) return;
-    setRevenueError("");
-    setRevenueSaving(true);
-    const { data, error } = await supabase
-      .from("manual_revenue")
-      .insert({
-        business_id:  business.id,
-        amount:       parseFloat(revenueForm.amount),
-        category:     revenueForm.category,
-        description:  revenueForm.description.trim() || null,
-        revenue_date: revenueForm.date,
-      })
-      .select("id, amount, category, description, revenue_date")
-      .single();
+    setRevenueError(""); setRevenueSaving(true);
+    const { data, error } = await supabase.from("manual_revenue").insert({ business_id: business.id, amount: parseFloat(revenueForm.amount), category: revenueForm.category, description: revenueForm.description.trim() || null, revenue_date: revenueForm.date }).select("id, amount, category, description, revenue_date").single();
     if (error) { setRevenueError(error.message); setRevenueSaving(false); return; }
     setManualRevenue((prev) => [data as ManualRevenue, ...prev]);
-    setRevenueForm(EMPTY_REVENUE);
-    setAddingRevenue(false);
-    setRevenueSaving(false);
+    setRevenueForm(EMPTY_REVENUE); setAddingRevenue(false); setRevenueSaving(false);
   }
 
   async function addExpense(e: React.FormEvent) {
     e.preventDefault();
     if (!business || !expenseForm.category.trim() || !expenseForm.amount) return;
-    setExpenseError("");
-    setExpenseSaving(true);
-    const { data, error } = await supabase
-      .from("business_expenses")
-      .insert({
-        business_id:  business.id,
-        category:     expenseForm.category.trim(),
-        amount:       parseFloat(expenseForm.amount),
-        description:  expenseForm.description.trim() || null,
-        expense_date: expenseForm.expense_date,
-      })
-      .select("id, amount, category, description, expense_date")
-      .single();
+    setExpenseError(""); setExpenseSaving(true);
+    const { data, error } = await supabase.from("business_expenses").insert({ business_id: business.id, category: expenseForm.category.trim(), amount: parseFloat(expenseForm.amount), description: expenseForm.description.trim() || null, expense_date: expenseForm.expense_date }).select("id, amount, category, description, expense_date").single();
     if (error) { setExpenseError(error.message); setExpenseSaving(false); return; }
     setExpenses((prev) => [data as Expense, ...prev]);
-    setExpenseForm(EMPTY_EXPENSE);
-    setAddingExpense(false);
-    setExpenseSaving(false);
+    setExpenseForm(EMPTY_EXPENSE); setAddingExpense(false); setExpenseSaving(false);
   }
 
   async function downloadQR(loc: Location) {
@@ -580,20 +396,14 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return (
-      <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontFamily: "sans-serif" }}>
-        Loading…
-      </div>
-    );
+    return <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontFamily: "sans-serif" }}>Loading…</div>;
   }
 
   if (!business) {
     return (
       <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontFamily: "sans-serif", flexDirection: "column", gap: 16 }}>
         <p>No business found for this account.</p>
-        <button onClick={() => window.location.href = "/register"} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "12px 24px", fontWeight: 800, cursor: "pointer" }}>
-          Set up your business →
-        </button>
+        <button onClick={() => window.location.href = "/register"} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "12px 24px", fontWeight: 800, cursor: "pointer" }}>Set up your business →</button>
       </div>
     );
   }
@@ -607,7 +417,6 @@ export default function DashboardPage() {
   const checklistDone = checklist.filter((c) => c.done).length;
   const allDone = checklistDone === checklist.length;
 
-  // Determine which plans to show in upgrade banner
   const currentPlanIndex = PLAN_ORDER.indexOf(business.subscription_status === "trialing" ? "trialing" : business.plan);
   const upgradePlans = Object.entries(PLAN_LABELS).filter(([p]) => PLAN_ORDER.indexOf(p) > currentPlanIndex);
 
@@ -623,12 +432,20 @@ export default function DashboardPage() {
             <span style={{ ...badge(statusColor(business.subscription_status)) }}>{business.subscription_status}</span>
           </div>
         </div>
-        <button
-          onClick={signOut}
-          style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13, flexShrink: 0 }}
-        >
-          Sign out
-        </button>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <button
+            onClick={() => window.open("/staff-login", "_blank")}
+            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}
+          >
+            Staff login
+          </button>
+          <button
+            onClick={signOut}
+            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}
+          >
+            Sign out
+          </button>
+        </div>
       </nav>
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: isMobile ? "20px 16px" : "36px 24px", display: "flex", flexDirection: "column", gap: 28 }}>
@@ -636,18 +453,14 @@ export default function DashboardPage() {
         {/* Setup checklist */}
         {!allDone && (
           <div style={card}>
-            <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 16 }}>
-              Setup — {checklistDone}/{checklist.length} done
-            </p>
+            <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 16 }}>Setup — {checklistDone}/{checklist.length} done</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {checklist.map((item) => (
                 <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ width: 20, height: 20, borderRadius: "50%", background: item.done ? GREEN : BORDER, border: `2px solid ${item.done ? GREEN : BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: BG, fontWeight: 800, flexShrink: 0 }}>
                     {item.done ? "✓" : ""}
                   </span>
-                  <span style={{ color: item.done ? MUTED : TEXT, fontSize: 14, textDecoration: item.done ? "line-through" : "none" }}>
-                    {item.label}
-                  </span>
+                  <span style={{ color: item.done ? MUTED : TEXT, fontSize: 14, textDecoration: item.done ? "line-through" : "none" }}>{item.label}</span>
                 </div>
               ))}
             </div>
@@ -687,35 +500,12 @@ export default function DashboardPage() {
         <div>
           <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${BORDER}`, marginBottom: 24, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
             {(["tables", "menu", "orders", "financials"] as Tab[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  borderBottom: tab === t ? `2px solid ${ACCENT}` : "2px solid transparent",
-                  color: tab === t ? ACCENT : MUTED,
-                  padding: isMobile ? "10px 14px" : "12px 24px",
-                  fontWeight: 700,
-                  fontSize: isMobile ? 13 : 14,
-                  cursor: "pointer",
-                  textTransform: "capitalize",
-                  letterSpacing: 0.5,
-                  transition: "color 0.15s",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                }}
-              >
+              <button key={t} onClick={() => setTab(t)}
+                style={{ background: "none", border: "none", borderBottom: tab === t ? `2px solid ${ACCENT}` : "2px solid transparent", color: tab === t ? ACCENT : MUTED, padding: isMobile ? "10px 14px" : "12px 24px", fontWeight: 700, fontSize: isMobile ? 13 : 14, cursor: "pointer", textTransform: "capitalize", letterSpacing: 0.5, transition: "color 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}>
                 {t}
-                {t === "tables" && locations.length > 0 && (
-                  <span style={{ marginLeft: 8, background: BORDER, borderRadius: 12, padding: "2px 8px", fontSize: 11, color: MUTED }}>{locations.length}</span>
-                )}
-                {t === "menu" && menuItems.length > 0 && (
-                  <span style={{ marginLeft: 8, background: BORDER, borderRadius: 12, padding: "2px 8px", fontSize: 11, color: MUTED }}>{menuItems.length}</span>
-                )}
-                {t === "orders" && orders.length > 0 && (
-                  <span style={{ marginLeft: 8, background: BORDER, borderRadius: 12, padding: "2px 8px", fontSize: 11, color: MUTED }}>{orders.length}</span>
-                )}
+                {t === "tables" && locations.length > 0 && <span style={{ marginLeft: 8, background: BORDER, borderRadius: 12, padding: "2px 8px", fontSize: 11, color: MUTED }}>{locations.length}</span>}
+                {t === "menu" && menuItems.length > 0 && <span style={{ marginLeft: 8, background: BORDER, borderRadius: 12, padding: "2px 8px", fontSize: 11, color: MUTED }}>{menuItems.length}</span>}
+                {t === "orders" && orders.length > 0 && <span style={{ marginLeft: 8, background: BORDER, borderRadius: 12, padding: "2px 8px", fontSize: 11, color: MUTED }}>{orders.length}</span>}
               </button>
             ))}
           </div>
@@ -726,34 +516,17 @@ export default function DashboardPage() {
               {addingTable ? (
                 <form onSubmit={addTable} style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>New table</p>
-                  <input
-                    autoFocus required
-                    placeholder="e.g. Table 4"
-                    value={newTableName}
-                    onChange={(e) => setNewTableName(e.target.value)}
-                    style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }}
-                  />
+                  <input autoFocus required placeholder="e.g. Table 4" value={newTableName} onChange={(e) => setNewTableName(e.target.value)}
+                    style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                   {tableError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{tableError}</p>}
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button type="submit" disabled={tableSaving}
-                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: tableSaving ? "not-allowed" : "pointer" }}>
-                      {tableSaving ? "Saving…" : "Add table"}
-                    </button>
-                    <button type="button" onClick={() => { setAddingTable(false); setNewTableName(""); setTableError(""); }}
-                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
-                      Cancel
-                    </button>
+                    <button type="submit" disabled={tableSaving} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: tableSaving ? "not-allowed" : "pointer" }}>{tableSaving ? "Saving…" : "Add table"}</button>
+                    <button type="button" onClick={() => { setAddingTable(false); setNewTableName(""); setTableError(""); }} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>Cancel</button>
                   </div>
                 </form>
               ) : (
-                <div>
-                  <button onClick={() => setAddingTable(true)}
-                    style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "11px 22px", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
-                    + Add table
-                  </button>
-                </div>
+                <div><button onClick={() => setAddingTable(true)} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "11px 22px", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>+ Add table</button></div>
               )}
-
               {locations.length === 0 ? (
                 <Empty message="No tables yet." sub="Add your first table to generate a QR code." />
               ) : (
@@ -762,13 +535,8 @@ export default function DashboardPage() {
                     <div key={loc.id} style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
                       <div style={{ fontWeight: 800, fontSize: 15 }}>{loc.name}</div>
                       {loc.label && <div style={{ color: MUTED, fontSize: 13 }}>{loc.label}</div>}
-                      <span style={{ ...badge(loc.is_active ? GREEN : MUTED), alignSelf: "flex-start" }}>
-                        {loc.is_active ? "active" : "inactive"}
-                      </span>
-                      <button onClick={() => downloadQR(loc)}
-                        style={{ marginTop: 4, background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 14px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
-                        ↓ Download QR
-                      </button>
+                      <span style={{ ...badge(loc.is_active ? GREEN : MUTED), alignSelf: "flex-start" }}>{loc.is_active ? "active" : "inactive"}</span>
+                      <button onClick={() => downloadQR(loc)} style={{ marginTop: 4, background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 14px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>↓ Download QR</button>
                     </div>
                   ))}
                 </div>
@@ -780,34 +548,19 @@ export default function DashboardPage() {
           {tab === "menu" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button onClick={() => { setAddingCat(true); setAddingItem(false); }}
-                  style={{ background: "none", border: `1px solid ${ACCENT}`, borderRadius: 8, padding: "10px 20px", color: ACCENT, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  + Add category
-                </button>
-                {categories.length > 0 && (
-                  <button onClick={() => { setAddingItem(true); setAddingCat(false); setItemForm({ ...EMPTY_ITEM, category_id: categories[0].id }); }}
-                    style={{ background: ACCENT, border: "none", borderRadius: 8, padding: "10px 20px", color: BG, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
-                    + Add item
-                  </button>
-                )}
+                <button onClick={() => { setAddingCat(true); setAddingItem(false); }} style={{ background: "none", border: `1px solid ${ACCENT}`, borderRadius: 8, padding: "10px 20px", color: ACCENT, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>+ Add category</button>
+                {categories.length > 0 && <button onClick={() => { setAddingItem(true); setAddingCat(false); setItemForm({ ...EMPTY_ITEM, category_id: categories[0].id }); }} style={{ background: ACCENT, border: "none", borderRadius: 8, padding: "10px 20px", color: BG, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>+ Add item</button>}
               </div>
 
               {addingCat && (
                 <form onSubmit={addCategory} style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>New category</p>
-                  <input autoFocus required placeholder="e.g. Starters" value={newCatName}
-                    onChange={(e) => setNewCatName(e.target.value)}
+                  <input autoFocus required placeholder="e.g. Starters" value={newCatName} onChange={(e) => setNewCatName(e.target.value)}
                     style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                   {catError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{catError}</p>}
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button type="submit" disabled={catSaving}
-                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: catSaving ? "not-allowed" : "pointer" }}>
-                      {catSaving ? "Saving…" : "Add category"}
-                    </button>
-                    <button type="button" onClick={() => { setAddingCat(false); setNewCatName(""); setCatError(""); }}
-                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
-                      Cancel
-                    </button>
+                    <button type="submit" disabled={catSaving} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: catSaving ? "not-allowed" : "pointer" }}>{catSaving ? "Saving…" : "Add category"}</button>
+                    <button type="button" onClick={() => { setAddingCat(false); setNewCatName(""); setCatError(""); }} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>Cancel</button>
                   </div>
                 </form>
               )}
@@ -818,27 +571,23 @@ export default function DashboardPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Name *</label>
-                      <input required autoFocus placeholder="e.g. Caesar Salad" value={itemForm.name}
-                        onChange={(e) => setItemForm((f) => ({ ...f, name: e.target.value }))}
+                      <input required autoFocus placeholder="e.g. Caesar Salad" value={itemForm.name} onChange={(e) => setItemForm((f) => ({ ...f, name: e.target.value }))}
                         style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Price *</label>
-                      <input required type="number" min="0" step="0.01" placeholder="0.00" value={itemForm.price}
-                        onChange={(e) => setItemForm((f) => ({ ...f, price: e.target.value }))}
+                      <input required type="number" min="0" step="0.01" placeholder="0.00" value={itemForm.price} onChange={(e) => setItemForm((f) => ({ ...f, price: e.target.value }))}
                         style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Description</label>
-                    <input placeholder="Optional description" value={itemForm.description}
-                      onChange={(e) => setItemForm((f) => ({ ...f, description: e.target.value }))}
+                    <input placeholder="Optional description" value={itemForm.description} onChange={(e) => setItemForm((f) => ({ ...f, description: e.target.value }))}
                       style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Category *</label>
-                    <select required value={itemForm.category_id}
-                      onChange={(e) => setItemForm((f) => ({ ...f, category_id: e.target.value }))}
+                    <select required value={itemForm.category_id} onChange={(e) => setItemForm((f) => ({ ...f, category_id: e.target.value }))}
                       style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none", cursor: "pointer" }}>
                       <option value="">Select category</option>
                       {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -846,14 +595,8 @@ export default function DashboardPage() {
                   </div>
                   {itemError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{itemError}</p>}
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button type="submit" disabled={itemSaving}
-                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: itemSaving ? "not-allowed" : "pointer" }}>
-                      {itemSaving ? "Saving…" : "Add item"}
-                    </button>
-                    <button type="button" onClick={() => { setAddingItem(false); setItemForm(EMPTY_ITEM); setItemError(""); }}
-                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
-                      Cancel
-                    </button>
+                    <button type="submit" disabled={itemSaving} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: itemSaving ? "not-allowed" : "pointer" }}>{itemSaving ? "Saving…" : "Add item"}</button>
+                    <button type="button" onClick={() => { setAddingItem(false); setItemForm(EMPTY_ITEM); setItemError(""); }} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>Cancel</button>
                   </div>
                 </form>
               )}
@@ -882,26 +625,17 @@ export default function DashboardPage() {
                               editingItemId === item.id ? (
                                 <form key={item.id} onSubmit={updateMenuItem} style={{ ...card, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
                                   <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 10 }}>
-                                    <input required autoFocus placeholder="Item name" value={editItemForm.name}
-                                      onChange={(e) => setEditItemForm((f) => ({ ...f, name: e.target.value }))}
+                                    <input required autoFocus placeholder="Item name" value={editItemForm.name} onChange={(e) => setEditItemForm((f) => ({ ...f, name: e.target.value }))}
                                       style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }} />
-                                    <input required type="number" min="0" step="0.01" placeholder="Price" value={editItemForm.price}
-                                      onChange={(e) => setEditItemForm((f) => ({ ...f, price: e.target.value }))}
+                                    <input required type="number" min="0" step="0.01" placeholder="Price" value={editItemForm.price} onChange={(e) => setEditItemForm((f) => ({ ...f, price: e.target.value }))}
                                       style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }} />
                                   </div>
-                                  <input placeholder="Description (optional)" value={editItemForm.description}
-                                    onChange={(e) => setEditItemForm((f) => ({ ...f, description: e.target.value }))}
+                                  <input placeholder="Description (optional)" value={editItemForm.description} onChange={(e) => setEditItemForm((f) => ({ ...f, description: e.target.value }))}
                                     style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }} />
                                   {itemEditError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{itemEditError}</p>}
                                   <div style={{ display: "flex", gap: 8 }}>
-                                    <button type="submit" disabled={itemEditSaving}
-                                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 13, cursor: itemEditSaving ? "not-allowed" : "pointer" }}>
-                                      {itemEditSaving ? "Saving…" : "Save"}
-                                    </button>
-                                    <button type="button" onClick={() => { setEditingItemId(null); setItemEditError(""); }}
-                                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
-                                      Cancel
-                                    </button>
+                                    <button type="submit" disabled={itemEditSaving} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 13, cursor: itemEditSaving ? "not-allowed" : "pointer" }}>{itemEditSaving ? "Saving…" : "Save"}</button>
+                                    <button type="button" onClick={() => { setEditingItemId(null); setItemEditError(""); }} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: MUTED, fontSize: 13, cursor: "pointer" }}>Cancel</button>
                                   </div>
                                 </form>
                               ) : (
@@ -915,15 +649,10 @@ export default function DashboardPage() {
                                   </div>
                                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                                     <span style={{ fontWeight: 800, fontSize: 15, color: ACCENT }}>${Number(item.price).toFixed(2)}</span>
-                                    <button
-                                      onClick={() => { setEditingItemId(item.id); setEditItemForm({ name: item.name, price: String(item.price), description: item.description ?? "" }); setItemEditError(""); }}
-                                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                                      Edit
-                                    </button>
+                                    <button onClick={() => { setEditingItemId(item.id); setEditItemForm({ name: item.name, price: String(item.price), description: item.description ?? "" }); setItemEditError(""); }}
+                                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Edit</button>
                                     <button onClick={() => deleteMenuItem(item.id)}
-                                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                                      Delete
-                                    </button>
+                                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Delete</button>
                                   </div>
                                 </div>
                               )
@@ -943,31 +672,23 @@ export default function DashboardPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               {openTabs.length > 0 && (
                 <div>
-                  <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 12px" }}>
-                    Open Tabs — {openTabs.length}
-                  </p>
+                  <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 12px" }}>Open Tabs — {openTabs.length}</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {openTabs.map((tab) => (
                       <div key={tab.id} style={{ ...card, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderColor: ACCENT + "44", flexWrap: "wrap", gap: 10 }}>
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 15 }}>{tab.table_name}</div>
-                          <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}>
-                            Opened {new Date(tab.opened_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                          </div>
+                          <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}>Opened {new Date(tab.opened_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                           <span style={{ fontWeight: 900, fontSize: 18, color: ACCENT }}>${Number(tab.total).toFixed(2)}</span>
-                          <button onClick={() => closeTab(tab.id)}
-                            style={{ background: "none", border: `1px solid ${ACCENT}66`, borderRadius: 8, padding: "6px 14px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                            Close Tab
-                          </button>
+                          <button onClick={() => closeTab(tab.id)} style={{ background: "none", border: `1px solid ${ACCENT}66`, borderRadius: 8, padding: "6px 14px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Close Tab</button>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
               <div>
                 {orders.length === 0 ? (
                   <Empty message="No orders yet." sub="Orders will appear here in real time once customers start scanning." />
@@ -979,13 +700,10 @@ export default function DashboardPage() {
                       const items = orderItemsCache[order.id];
                       return (
                         <div key={order.id} style={{ ...card, padding: "0" }}>
-                          <div onClick={() => toggleOrder(order.id)}
-                            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", cursor: "pointer", gap: 12 }}>
+                          <div onClick={() => toggleOrder(order.id)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", cursor: "pointer", gap: 12 }}>
                             <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
                               <span style={badge(statusColor)}>{order.status}</span>
-                              <span style={{ color: MUTED, fontSize: 12, fontFamily: "monospace" }}>
-                                {new Date(order.created_at).toLocaleString()}
-                              </span>
+                              <span style={{ color: MUTED, fontSize: 12, fontFamily: "monospace" }}>{new Date(order.created_at).toLocaleString()}</span>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                               <span style={{ fontWeight: 800, fontSize: 15 }}>${Number(order.total).toFixed(2)}</span>
@@ -995,39 +713,24 @@ export default function DashboardPage() {
                           {isExpanded && (
                             <div style={{ borderTop: `1px solid ${BORDER}`, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                {!items ? (
-                                  <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>Loading items…</p>
-                                ) : items.length === 0 ? (
-                                  <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>No items found.</p>
-                                ) : (
-                                  items.map((oi) => (
+                                {!items ? <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>Loading items…</p>
+                                  : items.length === 0 ? <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>No items found.</p>
+                                  : items.map((oi) => (
                                     <div key={oi.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                                      <span style={{ color: TEXT }}>
-                                        <span style={{ color: MUTED, fontFamily: "monospace", marginRight: 10 }}>{oi.quantity}×</span>
-                                        {oi.name}
-                                      </span>
+                                      <span style={{ color: TEXT }}><span style={{ color: MUTED, fontFamily: "monospace", marginRight: 10 }}>{oi.quantity}×</span>{oi.name}</span>
                                       <span style={{ color: MUTED }}>${(oi.unit_price * oi.quantity).toFixed(2)}</span>
                                     </div>
-                                  ))
-                                )}
+                                  ))}
                               </div>
-                              {order.status === "cancelled" && (
-                                <div style={{ fontSize: 12, color: RED, fontStyle: "italic" }}>
-                                  Cancelled{order.cancel_reason ? `: ${order.cancel_reason}` : ""}
-                                </div>
-                              )}
+                              {order.status === "cancelled" && <div style={{ fontSize: 12, color: RED, fontStyle: "italic" }}>Cancelled{order.cancel_reason ? `: ${order.cancel_reason}` : ""}</div>}
                               {order.status !== "cancelled" && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                                     {ORDER_STATUSES.map((s) => {
                                       const active = order.status === s;
                                       const color = ORDER_STATUS_COLOR[s];
-                                      return (
-                                        <button key={s} onClick={() => updateOrderStatus(order.id, s)}
-                                          style={{ background: active ? color + "33" : "none", border: `1px solid ${active ? color : BORDER}`, borderRadius: 8, padding: "7px 16px", color: active ? color : MUTED, fontWeight: active ? 800 : 600, fontSize: 12, cursor: "pointer", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                          {s}
-                                        </button>
-                                      );
+                                      return <button key={s} onClick={() => updateOrderStatus(order.id, s)}
+                                        style={{ background: active ? color + "33" : "none", border: `1px solid ${active ? color : BORDER}`, borderRadius: 8, padding: "7px 16px", color: active ? color : MUTED, fontWeight: active ? 800 : 600, fontSize: 12, cursor: "pointer", textTransform: "uppercase", letterSpacing: 0.5 }}>{s}</button>;
                                     })}
                                   </div>
                                   {order.status !== "done" && (
@@ -1040,22 +743,16 @@ export default function DashboardPage() {
                                             {CANCEL_REASONS.map((r) => <option key={r}>{r}</option>)}
                                           </select>
                                           <button onClick={() => cancelOrder(order.id, cancelReason)} disabled={!cancelReason}
-                                            style={{ background: cancelReason ? RED + "22" : "none", border: `1px solid ${cancelReason ? RED : BORDER}`, borderRadius: 8, padding: "7px 16px", color: cancelReason ? RED : MUTED, fontWeight: 700, fontSize: 12, cursor: cancelReason ? "pointer" : "not-allowed", letterSpacing: 0.5, textTransform: "uppercase" }}>
-                                            Confirm Cancel
-                                          </button>
+                                            style={{ background: cancelReason ? RED + "22" : "none", border: `1px solid ${cancelReason ? RED : BORDER}`, borderRadius: 8, padding: "7px 16px", color: cancelReason ? RED : MUTED, fontWeight: 700, fontSize: 12, cursor: cancelReason ? "pointer" : "not-allowed", letterSpacing: 0.5, textTransform: "uppercase" }}>Confirm Cancel</button>
                                           <button onClick={() => { setCancellingOrderId(null); setCancelReason(""); setCancelError(""); }}
-                                            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "7px 14px", color: MUTED, fontSize: 12, cursor: "pointer" }}>
-                                            Keep
-                                          </button>
+                                            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "7px 14px", color: MUTED, fontSize: 12, cursor: "pointer" }}>Keep</button>
                                         </div>
                                         {cancelError && <p style={{ margin: 0, fontSize: 11, color: RED }}>{cancelError}</p>}
                                       </div>
                                     ) : (
                                       <div style={{ paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
                                         <button onClick={() => { setCancellingOrderId(order.id); setCancelReason(""); }}
-                                          style={{ background: "none", border: `1px solid ${RED}55`, borderRadius: 8, padding: "7px 16px", color: RED, fontWeight: 700, fontSize: 12, cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }}>
-                                          Cancel Order
-                                        </button>
+                                          style={{ background: "none", border: `1px solid ${RED}55`, borderRadius: 8, padding: "7px 16px", color: RED, fontWeight: 700, fontSize: 12, cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }}>Cancel Order</button>
                                       </div>
                                     )
                                   )}
@@ -1082,21 +779,11 @@ export default function DashboardPage() {
             const avgOrder      = doneOrders.length > 0 ? orderRevenue / doneOrders.length : 0;
 
             const today = new Date();
-            const days7 = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date(today);
-              d.setDate(d.getDate() - (6 - i));
-              return d.toISOString().slice(0, 10);
-            });
+            const days7 = Array.from({ length: 7 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() - (6 - i)); return d.toISOString().slice(0, 10); });
             const revenueByDay: Record<string, number> = {};
             days7.forEach((d) => { revenueByDay[d] = 0; });
-            doneOrders.forEach((o) => {
-              const day = o.created_at.slice(0, 10);
-              if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(o.total);
-            });
-            manualRevenue.forEach((r) => {
-              const day = r.revenue_date;
-              if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(r.amount);
-            });
+            doneOrders.forEach((o) => { const day = o.created_at.slice(0, 10); if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(o.total); });
+            manualRevenue.forEach((r) => { const day = r.revenue_date; if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(r.amount); });
             const maxDay = Math.max(...Object.values(revenueByDay), 1);
 
             return (
@@ -1119,8 +806,8 @@ export default function DashboardPage() {
                   <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>Daily Revenue — Last 7 Days</p>
                   <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 120 }}>
                     {days7.map((day) => {
-                      const val  = revenueByDay[day];
-                      const pct  = maxDay > 0 ? (val / maxDay) * 100 : 0;
+                      const val = revenueByDay[day];
+                      const pct = maxDay > 0 ? (val / maxDay) * 100 : 0;
                       const label = new Date(day + "T00:00:00").toLocaleDateString(undefined, { weekday: "short" });
                       return (
                         <div key={day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, height: "100%" }}>
@@ -1137,26 +824,15 @@ export default function DashboardPage() {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <p style={{ fontSize: 11, letterSpacing: 3, color: GREEN, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>
-                      Manual Revenue — ${manualTotal.toFixed(2)} total
-                    </p>
-                    {!addingRevenue && !noRevenueTable && (
-                      <button onClick={() => setAddingRevenue(true)}
-                        style={{ background: "none", border: `1px solid ${GREEN}`, borderRadius: 8, padding: "8px 16px", color: GREEN, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                        + Add revenue
-                      </button>
-                    )}
+                    <p style={{ fontSize: 11, letterSpacing: 3, color: GREEN, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Manual Revenue — ${manualTotal.toFixed(2)} total</p>
+                    {!addingRevenue && !noRevenueTable && <button onClick={() => setAddingRevenue(true)} style={{ background: "none", border: `1px solid ${GREEN}`, borderRadius: 8, padding: "8px 16px", color: GREEN, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ Add revenue</button>}
                   </div>
-
                   {noRevenueTable && (
                     <div style={{ ...card, padding: "16px 20px", borderColor: ACCENT + "44" }}>
                       <p style={{ color: ACCENT, fontSize: 13, fontWeight: 700, margin: "0 0 6px" }}>Migration required</p>
-                      <p style={{ color: MUTED, fontSize: 12, margin: 0 }}>
-                        Run <code style={{ background: BG, padding: "2px 6px", borderRadius: 4 }}>supabase/add_manual_revenue.sql</code> in your Supabase SQL editor to enable manual revenue tracking.
-                      </p>
+                      <p style={{ color: MUTED, fontSize: 12, margin: 0 }}>Run <code style={{ background: BG, padding: "2px 6px", borderRadius: 4 }}>supabase/add_manual_revenue.sql</code> in your Supabase SQL editor to enable manual revenue tracking.</p>
                     </div>
                   )}
-
                   {addingRevenue && (
                     <form onSubmit={addManualRevenue} style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
                       <p style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>New revenue entry</p>
@@ -1170,8 +846,7 @@ export default function DashboardPage() {
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Amount *</label>
-                          <input required type="number" min="0" step="0.01" placeholder="0.00" value={revenueForm.amount}
-                            onChange={(e) => setRevenueForm((f) => ({ ...f, amount: e.target.value }))}
+                          <input required type="number" min="0" step="0.01" placeholder="0.00" value={revenueForm.amount} onChange={(e) => setRevenueForm((f) => ({ ...f, amount: e.target.value }))}
                             style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                         </div>
                       </div>
@@ -1189,18 +864,11 @@ export default function DashboardPage() {
                       </div>
                       {revenueError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{revenueError}</p>}
                       <div style={{ display: "flex", gap: 10 }}>
-                        <button type="submit" disabled={revenueSaving}
-                          style={{ background: GREEN, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: revenueSaving ? "not-allowed" : "pointer" }}>
-                          {revenueSaving ? "Saving…" : "Add revenue"}
-                        </button>
-                        <button type="button" onClick={() => { setAddingRevenue(false); setRevenueForm(EMPTY_REVENUE); setRevenueError(""); }}
-                          style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
-                          Cancel
-                        </button>
+                        <button type="submit" disabled={revenueSaving} style={{ background: GREEN, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: revenueSaving ? "not-allowed" : "pointer" }}>{revenueSaving ? "Saving…" : "Add revenue"}</button>
+                        <button type="button" onClick={() => { setAddingRevenue(false); setRevenueForm(EMPTY_REVENUE); setRevenueError(""); }} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>Cancel</button>
                       </div>
                     </form>
                   )}
-
                   {!noRevenueTable && manualRevenue.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {manualRevenue.map((r) => editingRevenueId === r.id ? (
@@ -1245,9 +913,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div style={{ ...card }}>
-                  <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>
-                    Income Statement — Last 30 Days
-                  </p>
+                  <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>Income Statement — Last 30 Days</p>
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: MUTED, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Revenue</div>
                     <StmtRow label="Orders (completed)" value={orderRevenue} color={GREEN} />
@@ -1262,9 +928,7 @@ export default function DashboardPage() {
                       expenses.forEach((e) => { byCategory[e.category] = (byCategory[e.category] ?? 0) + Number(e.amount); });
                       return Object.entries(byCategory).length === 0
                         ? <div style={{ color: MUTED, fontSize: 13, paddingLeft: 8, marginBottom: 8 }}>No expenses recorded.</div>
-                        : Object.entries(byCategory).map(([cat, amt]) => (
-                          <StmtRow key={cat} label={cat} value={amt} color={RED} negate />
-                        ));
+                        : Object.entries(byCategory).map(([cat, amt]) => <StmtRow key={cat} label={cat} value={amt} color={RED} negate />);
                     })()}
                     <StmtDivider />
                     <StmtRow label="Total Expenses" value={totalExpenses} color={RED} bold negate />
@@ -1276,62 +940,43 @@ export default function DashboardPage() {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>
-                      Expenses — ${totalExpenses.toFixed(2)} total
-                    </p>
-                    {!addingExpense && (
-                      <button onClick={() => setAddingExpense(true)}
-                        style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: TEXT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                        + Add expense
-                      </button>
-                    )}
+                    <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Expenses — ${totalExpenses.toFixed(2)} total</p>
+                    {!addingExpense && <button onClick={() => setAddingExpense(true)} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: TEXT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ Add expense</button>}
                   </div>
-
                   {addingExpense && (
                     <form onSubmit={addExpense} style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
                       <p style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>New expense</p>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Category *</label>
-                          <input required placeholder="e.g. Supplies" value={expenseForm.category}
-                            onChange={(e) => setExpenseForm((f) => ({ ...f, category: e.target.value }))}
+                          <input required placeholder="e.g. Supplies" value={expenseForm.category} onChange={(e) => setExpenseForm((f) => ({ ...f, category: e.target.value }))}
                             style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Amount *</label>
-                          <input required type="number" min="0" step="0.01" placeholder="0.00" value={expenseForm.amount}
-                            onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
+                          <input required type="number" min="0" step="0.01" placeholder="0.00" value={expenseForm.amount} onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
                             style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                         </div>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Description</label>
-                          <input placeholder="Optional" value={expenseForm.description}
-                            onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))}
-                            style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
+                          <input placeholder="Optional" value={expenseForm.description} onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))}
+                            style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, outline: "none" }} />
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Date *</label>
-                          <input required type="date" value={expenseForm.expense_date}
-                            onChange={(e) => setExpenseForm((f) => ({ ...f, expense_date: e.target.value }))}
+                          <input required type="date" value={expenseForm.expense_date} onChange={(e) => setExpenseForm((f) => ({ ...f, expense_date: e.target.value }))}
                             style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none", colorScheme: "dark" }} />
                         </div>
                       </div>
                       {expenseError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{expenseError}</p>}
                       <div style={{ display: "flex", gap: 10 }}>
-                        <button type="submit" disabled={expenseSaving}
-                          style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: expenseSaving ? "not-allowed" : "pointer" }}>
-                          {expenseSaving ? "Saving…" : "Add expense"}
-                        </button>
-                        <button type="button" onClick={() => { setAddingExpense(false); setExpenseForm(EMPTY_EXPENSE); setExpenseError(""); }}
-                          style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
-                          Cancel
-                        </button>
+                        <button type="submit" disabled={expenseSaving} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: expenseSaving ? "not-allowed" : "pointer" }}>{expenseSaving ? "Saving…" : "Add expense"}</button>
+                        <button type="button" onClick={() => { setAddingExpense(false); setExpenseForm(EMPTY_EXPENSE); setExpenseError(""); }} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>Cancel</button>
                       </div>
                     </form>
                   )}
-
                   {expenses.length === 0 && !addingExpense ? (
                     <Empty message="No expenses yet." sub="Track costs to see your net profit." />
                   ) : (
@@ -1384,20 +1029,12 @@ export default function DashboardPage() {
                   const filtered = cancelledOrders.filter((o) => o.created_at >= periodStart);
                   const totalLost = filtered.reduce((s, o) => s + Number(o.total), 0);
                   const byReason: Record<string, { count: number; lost: number }> = {};
-                  filtered.forEach((o) => {
-                    const r = o.cancel_reason || "No reason given";
-                    if (!byReason[r]) byReason[r] = { count: 0, lost: 0 };
-                    byReason[r].count++;
-                    byReason[r].lost += Number(o.total);
-                  });
+                  filtered.forEach((o) => { const r = o.cancel_reason || "No reason given"; if (!byReason[r]) byReason[r] = { count: 0, lost: 0 }; byReason[r].count++; byReason[r].lost += Number(o.total); });
                   const reasonRows = Object.entries(byReason).sort((a, b) => b[1].count - a[1].count);
-
                   return (
                     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 20 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <p style={{ fontSize: 11, letterSpacing: 3, color: RED, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>
-                          Cancellations — Last 30 Days
-                        </p>
+                        <p style={{ fontSize: 11, letterSpacing: 3, color: RED, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Cancellations — Last 30 Days</p>
                         <div style={{ display: "flex", background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 3, gap: 2 }}>
                           {(["day", "week", "month"] as const).map((p) => (
                             <button key={p} onClick={() => setCancelPeriod(p)}
