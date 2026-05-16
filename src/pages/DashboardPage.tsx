@@ -64,9 +64,10 @@ const badge = (color: string): React.CSSProperties => ({
   textTransform: "uppercase",
 });
 
-const PLAN_ORDER = ["starter", "pro", "enterprise"];
-const PLAN_LABELS: Record<string, { label: string; price: string; features: string[] }> = {
-  pro:        { label: "Pro",        price: "$99/mo",  features: ["Up to 5 locations", "Booking system", "Staff management", "Priority support"] },
+const PLAN_ORDER = ["trialing", "starter", "pro", "enterprise"];
+const PLAN_LABELS: Record<string, { label: string; price: string; features: string[]; recommended?: boolean }> = {
+  starter:    { label: "Starter",    price: "$49/mo",  features: ["1 location", "QR ordering", "Menu management", "Order dashboard"] },
+  pro:        { label: "Pro",        price: "$99/mo",  features: ["Up to 5 locations", "Booking system", "Staff management", "Priority support"], recommended: true },
   enterprise: { label: "Enterprise", price: "$199/mo", features: ["Unlimited locations", "White label", "Custom domain", "Dedicated support"] },
 };
 
@@ -294,7 +295,7 @@ export default function DashboardPage() {
       setDoneOrders((doneRes.data as Order[]) ?? []);
       setExpenses((expRes.data as Expense[]) ?? []);
       if (revRes.error?.code === "42P01") {
-        setNoRevenueTable(true); // table doesn't exist yet — show migration prompt
+        setNoRevenueTable(true);
       } else {
         setManualRevenue((revRes.data as ManualRevenue[]) ?? []);
       }
@@ -597,15 +598,18 @@ export default function DashboardPage() {
     );
   }
 
-  // Setup checklist
   const checklist = [
-    { label: "Create account",        done: true },
+    { label: "Create account",          done: true },
     { label: "Add a table or location", done: locations.length > 0 },
-    { label: "Add menu items",         done: menuItems.length > 0 },
-    { label: "Receive first order",    done: orders.length > 0 },
+    { label: "Add menu items",          done: menuItems.length > 0 },
+    { label: "Receive first order",     done: orders.length > 0 },
   ];
   const checklistDone = checklist.filter((c) => c.done).length;
   const allDone = checklistDone === checklist.length;
+
+  // Determine which plans to show in upgrade banner
+  const currentPlanIndex = PLAN_ORDER.indexOf(business.subscription_status === "trialing" ? "trialing" : business.plan);
+  const upgradePlans = Object.entries(PLAN_LABELS).filter(([p]) => PLAN_ORDER.indexOf(p) > currentPlanIndex);
 
   return (
     <div style={{ background: BG, minHeight: "100vh", color: TEXT, fontFamily: "sans-serif" }}>
@@ -650,34 +654,32 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Upgrade banner — shown for trialing or starter plans */}
-        {(business.subscription_status === "trialing" || business.plan === "starter") && (
+        {/* Upgrade banner */}
+        {upgradePlans.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-            {Object.entries(PLAN_LABELS)
-              .filter(([p]) => PLAN_ORDER.indexOf(p) > PLAN_ORDER.indexOf(business.plan))
-              .map(([planKey, info]) => (
-                <div key={planKey} style={{ ...card, border: planKey === "pro" ? `2px solid ${ACCENT}44` : `1px solid ${BORDER}`, position: "relative" }}>
-                  {planKey === "pro" && (
-                    <div style={{ position: "absolute", top: -12, left: 20, background: ACCENT, color: BG, fontSize: 10, fontWeight: 800, letterSpacing: 2, padding: "3px 10px", borderRadius: 4 }}>RECOMMENDED</div>
-                  )}
-                  <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>{info.label}</div>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: ACCENT, marginBottom: 12 }}>{info.price}</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
-                    {info.features.map((f) => (
-                      <div key={f} style={{ fontSize: 13, color: MUTED, display: "flex", gap: 8 }}>
-                        <span style={{ color: GREEN }}>✓</span>{f}
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => startCheckout(planKey)}
-                    disabled={upgrading === planKey}
-                    style={{ width: "100%", background: planKey === "pro" ? ACCENT : "none", color: planKey === "pro" ? BG : ACCENT, border: `1.5px solid ${ACCENT}`, borderRadius: 8, padding: "12px", fontWeight: 800, fontSize: 14, cursor: upgrading === planKey ? "not-allowed" : "pointer" }}
-                  >
-                    {upgrading === planKey ? "Redirecting…" : `Upgrade to ${info.label} →`}
-                  </button>
+            {upgradePlans.map(([planKey, info]) => (
+              <div key={planKey} style={{ ...card, border: info.recommended ? `2px solid ${ACCENT}44` : `1px solid ${BORDER}`, position: "relative" }}>
+                {info.recommended && (
+                  <div style={{ position: "absolute", top: -12, left: 20, background: ACCENT, color: BG, fontSize: 10, fontWeight: 800, letterSpacing: 2, padding: "3px 10px", borderRadius: 4 }}>RECOMMENDED</div>
+                )}
+                <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>{info.label}</div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: ACCENT, marginBottom: 12 }}>{info.price}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                  {info.features.map((f) => (
+                    <div key={f} style={{ fontSize: 13, color: MUTED, display: "flex", gap: 8 }}>
+                      <span style={{ color: GREEN }}>✓</span>{f}
+                    </div>
+                  ))}
                 </div>
-              ))}
+                <button
+                  onClick={() => startCheckout(planKey)}
+                  disabled={upgrading === planKey}
+                  style={{ width: "100%", background: info.recommended ? ACCENT : "none", color: info.recommended ? BG : ACCENT, border: `1.5px solid ${ACCENT}`, borderRadius: 8, padding: "12px", fontWeight: 800, fontSize: 14, cursor: upgrading === planKey ? "not-allowed" : "pointer" }}
+                >
+                  {upgrading === planKey ? "Redirecting…" : `Upgrade to ${info.label} →`}
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
@@ -721,14 +723,11 @@ export default function DashboardPage() {
           {/* Tables tab */}
           {tab === "tables" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-              {/* Add table button / inline form */}
               {addingTable ? (
                 <form onSubmit={addTable} style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>New table</p>
                   <input
-                    autoFocus
-                    required
+                    autoFocus required
                     placeholder="e.g. Table 4"
                     value={newTableName}
                     onChange={(e) => setNewTableName(e.target.value)}
@@ -736,34 +735,25 @@ export default function DashboardPage() {
                   />
                   {tableError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{tableError}</p>}
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button
-                      type="submit"
-                      disabled={tableSaving}
-                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: tableSaving ? "not-allowed" : "pointer" }}
-                    >
+                    <button type="submit" disabled={tableSaving}
+                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: tableSaving ? "not-allowed" : "pointer" }}>
                       {tableSaving ? "Saving…" : "Add table"}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => { setAddingTable(false); setNewTableName(""); setTableError(""); }}
-                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}
-                    >
+                    <button type="button" onClick={() => { setAddingTable(false); setNewTableName(""); setTableError(""); }}
+                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
                       Cancel
                     </button>
                   </div>
                 </form>
               ) : (
                 <div>
-                  <button
-                    onClick={() => setAddingTable(true)}
-                    style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "11px 22px", fontWeight: 800, fontSize: 14, cursor: "pointer" }}
-                  >
+                  <button onClick={() => setAddingTable(true)}
+                    style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "11px 22px", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
                     + Add table
                   </button>
                 </div>
               )}
 
-              {/* Table list */}
               {locations.length === 0 ? (
                 <Empty message="No tables yet." sub="Add your first table to generate a QR code." />
               ) : (
@@ -775,10 +765,8 @@ export default function DashboardPage() {
                       <span style={{ ...badge(loc.is_active ? GREEN : MUTED), alignSelf: "flex-start" }}>
                         {loc.is_active ? "active" : "inactive"}
                       </span>
-                      <button
-                        onClick={() => downloadQR(loc)}
-                        style={{ marginTop: 4, background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 14px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "left" }}
-                      >
+                      <button onClick={() => downloadQR(loc)}
+                        style={{ marginTop: 4, background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 14px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
                         ↓ Download QR
                       </button>
                     </div>
@@ -791,108 +779,85 @@ export default function DashboardPage() {
           {/* Menu tab */}
           {tab === "menu" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-              {/* Toolbar */}
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  onClick={() => { setAddingCat(true); setAddingItem(false); }}
-                  style={{ background: "none", border: `1px solid ${ACCENT}`, borderRadius: 8, padding: "10px 20px", color: ACCENT, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-                >
+                <button onClick={() => { setAddingCat(true); setAddingItem(false); }}
+                  style={{ background: "none", border: `1px solid ${ACCENT}`, borderRadius: 8, padding: "10px 20px", color: ACCENT, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                   + Add category
                 </button>
                 {categories.length > 0 && (
-                  <button
-                    onClick={() => { setAddingItem(true); setAddingCat(false); setItemForm({ ...EMPTY_ITEM, category_id: categories[0].id }); }}
-                    style={{ background: ACCENT, border: "none", borderRadius: 8, padding: "10px 20px", color: BG, fontWeight: 800, fontSize: 13, cursor: "pointer" }}
-                  >
+                  <button onClick={() => { setAddingItem(true); setAddingCat(false); setItemForm({ ...EMPTY_ITEM, category_id: categories[0].id }); }}
+                    style={{ background: ACCENT, border: "none", borderRadius: 8, padding: "10px 20px", color: BG, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
                     + Add item
                   </button>
                 )}
               </div>
 
-              {/* Add category form */}
               {addingCat && (
                 <form onSubmit={addCategory} style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>New category</p>
-                  <input
-                    autoFocus required
-                    placeholder="e.g. Starters"
-                    value={newCatName}
+                  <input autoFocus required placeholder="e.g. Starters" value={newCatName}
                     onChange={(e) => setNewCatName(e.target.value)}
-                    style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }}
-                  />
+                    style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                   {catError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{catError}</p>}
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button type="submit" disabled={catSaving} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: catSaving ? "not-allowed" : "pointer" }}>
+                    <button type="submit" disabled={catSaving}
+                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: catSaving ? "not-allowed" : "pointer" }}>
                       {catSaving ? "Saving…" : "Add category"}
                     </button>
-                    <button type="button" onClick={() => { setAddingCat(false); setNewCatName(""); setCatError(""); }} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
+                    <button type="button" onClick={() => { setAddingCat(false); setNewCatName(""); setCatError(""); }}
+                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
                       Cancel
                     </button>
                   </div>
                 </form>
               )}
 
-              {/* Add item form */}
               {addingItem && (
                 <form onSubmit={addMenuItem} style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>New menu item</p>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Name *</label>
-                      <input
-                        required autoFocus
-                        placeholder="e.g. Caesar Salad"
-                        value={itemForm.name}
+                      <input required autoFocus placeholder="e.g. Caesar Salad" value={itemForm.name}
                         onChange={(e) => setItemForm((f) => ({ ...f, name: e.target.value }))}
-                        style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }}
-                      />
+                        style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Price *</label>
-                      <input
-                        required type="number" min="0" step="0.01"
-                        placeholder="0.00"
-                        value={itemForm.price}
+                      <input required type="number" min="0" step="0.01" placeholder="0.00" value={itemForm.price}
                         onChange={(e) => setItemForm((f) => ({ ...f, price: e.target.value }))}
-                        style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }}
-                      />
+                        style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Description</label>
-                    <input
-                      placeholder="Optional description"
-                      value={itemForm.description}
+                    <input placeholder="Optional description" value={itemForm.description}
                       onChange={(e) => setItemForm((f) => ({ ...f, description: e.target.value }))}
-                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }}
-                    />
+                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Category *</label>
-                    <select
-                      required
-                      value={itemForm.category_id}
+                    <select required value={itemForm.category_id}
                       onChange={(e) => setItemForm((f) => ({ ...f, category_id: e.target.value }))}
-                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none", cursor: "pointer" }}
-                    >
+                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none", cursor: "pointer" }}>
                       <option value="">Select category</option>
                       {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
                   {itemError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{itemError}</p>}
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button type="submit" disabled={itemSaving} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: itemSaving ? "not-allowed" : "pointer" }}>
+                    <button type="submit" disabled={itemSaving}
+                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: itemSaving ? "not-allowed" : "pointer" }}>
                       {itemSaving ? "Saving…" : "Add item"}
                     </button>
-                    <button type="button" onClick={() => { setAddingItem(false); setItemForm(EMPTY_ITEM); setItemError(""); }} style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
+                    <button type="button" onClick={() => { setAddingItem(false); setItemForm(EMPTY_ITEM); setItemError(""); }}
+                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 20px", color: MUTED, fontSize: 13, cursor: "pointer" }}>
                       Cancel
                     </button>
                   </div>
                 </form>
               )}
 
-              {/* Menu list grouped by category */}
               {categories.length === 0 ? (
                 <Empty message="No categories yet." sub="Create a category first, then add items to it." />
               ) : (
@@ -901,48 +866,32 @@ export default function DashboardPage() {
                     const items = menuItems.filter((i) => i.category_id === cat.id);
                     return (
                       <div key={cat.id}>
-                        {/* Category header + delete */}
                         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
                           <h3 style={{ fontWeight: 800, fontSize: 15, color: TEXT, margin: 0 }}>{cat.name}</h3>
                           <span style={{ color: MUTED, fontSize: 12 }}>{items.length} item{items.length !== 1 ? "s" : ""}</span>
-                          <button
-                            onClick={() => deleteCategory(cat.id, items.length)}
-                            style={{ marginLeft: "auto", background: "none", border: `1px solid ${RED}44`, borderRadius: 6, padding: "3px 10px", color: RED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-                          >
+                          <button onClick={() => deleteCategory(cat.id, items.length)}
+                            style={{ marginLeft: "auto", background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "3px 10px", color: MUTED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                             Delete
                           </button>
                         </div>
-
                         {items.length === 0 ? (
                           <p style={{ color: MUTED, fontSize: 13, paddingLeft: 4 }}>No items yet.</p>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             {items.map((item) =>
                               editingItemId === item.id ? (
-                                /* ── Inline edit form ── */
                                 <form key={item.id} onSubmit={updateMenuItem} style={{ ...card, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
                                   <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 10 }}>
-                                    <input
-                                      required autoFocus
-                                      placeholder="Item name"
-                                      value={editItemForm.name}
+                                    <input required autoFocus placeholder="Item name" value={editItemForm.name}
                                       onChange={(e) => setEditItemForm((f) => ({ ...f, name: e.target.value }))}
-                                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }}
-                                    />
-                                    <input
-                                      required type="number" min="0" step="0.01"
-                                      placeholder="Price"
-                                      value={editItemForm.price}
+                                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }} />
+                                    <input required type="number" min="0" step="0.01" placeholder="Price" value={editItemForm.price}
                                       onChange={(e) => setEditItemForm((f) => ({ ...f, price: e.target.value }))}
-                                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }}
-                                    />
+                                      style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }} />
                                   </div>
-                                  <input
-                                    placeholder="Description (optional)"
-                                    value={editItemForm.description}
+                                  <input placeholder="Description (optional)" value={editItemForm.description}
                                     onChange={(e) => setEditItemForm((f) => ({ ...f, description: e.target.value }))}
-                                    style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }}
-                                  />
+                                    style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", color: TEXT, fontSize: 14, outline: "none" }} />
                                   {itemEditError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{itemEditError}</p>}
                                   <div style={{ display: "flex", gap: 8 }}>
                                     <button type="submit" disabled={itemEditSaving}
@@ -956,7 +905,6 @@ export default function DashboardPage() {
                                   </div>
                                 </form>
                               ) : (
-                                /* ── Read-only row with Edit / Delete ── */
                                 <div key={item.id} style={{ ...card, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                                   <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 0 }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -972,9 +920,8 @@ export default function DashboardPage() {
                                       style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                                       Edit
                                     </button>
-                                    <button
-                                      onClick={() => deleteMenuItem(item.id)}
-                                      style={{ background: "none", border: `1px solid ${RED}44`, borderRadius: 6, padding: "5px 10px", color: RED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                                    <button onClick={() => deleteMenuItem(item.id)}
+                                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                                       Delete
                                     </button>
                                   </div>
@@ -994,8 +941,6 @@ export default function DashboardPage() {
           {/* Orders tab */}
           {tab === "orders" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-              {/* Open Tabs section */}
               {openTabs.length > 0 && (
                 <div>
                   <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 12px" }}>
@@ -1012,10 +957,8 @@ export default function DashboardPage() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                           <span style={{ fontWeight: 900, fontSize: 18, color: ACCENT }}>${Number(tab.total).toFixed(2)}</span>
-                          <button
-                            onClick={() => closeTab(tab.id)}
-                            style={{ background: "none", border: `1px solid ${ACCENT}66`, borderRadius: 8, padding: "6px 14px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                          >
+                          <button onClick={() => closeTab(tab.id)}
+                            style={{ background: "none", border: `1px solid ${ACCENT}66`, borderRadius: 8, padding: "6px 14px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                             Close Tab
                           </button>
                         </div>
@@ -1026,147 +969,109 @@ export default function DashboardPage() {
               )}
 
               <div>
-              {orders.length === 0 ? (
-                <Empty message="No orders yet." sub="Orders will appear here in real time once customers start scanning." />
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {orders.map((order) => {
-                    const isExpanded = expandedOrders.has(order.id);
-                    const statusColor = ORDER_STATUS_COLOR[order.status] ?? MUTED;
-                    const items = orderItemsCache[order.id];
-                    return (
-                      <div key={order.id} style={{ ...card, padding: "0" }}>
-                        {/* Order header row — click to expand */}
-                        <div
-                          onClick={() => toggleOrder(order.id)}
-                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", cursor: "pointer", gap: 12 }}
-                        >
-                          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                            <span style={badge(statusColor)}>{order.status}</span>
-                            <span style={{ color: MUTED, fontSize: 12, fontFamily: "monospace" }}>
-                              {new Date(order.created_at).toLocaleString()}
-                            </span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                            <span style={{ fontWeight: 800, fontSize: 15 }}>${Number(order.total).toFixed(2)}</span>
-                            <span style={{ color: MUTED, fontSize: 12 }}>{isExpanded ? "▲" : "▼"}</span>
-                          </div>
-                        </div>
-
-                        {/* Expanded: items + status buttons + cancel */}
-                        {isExpanded && (
-                          <div style={{ borderTop: `1px solid ${BORDER}`, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-
-                            {/* Items list */}
-                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                              {!items ? (
-                                <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>Loading items…</p>
-                              ) : items.length === 0 ? (
-                                <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>No items found.</p>
-                              ) : (
-                                items.map((oi) => (
-                                  <div key={oi.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                                    <span style={{ color: TEXT }}>
-                                      <span style={{ color: MUTED, fontFamily: "monospace", marginRight: 10 }}>{oi.quantity}×</span>
-                                      {oi.name}
-                                    </span>
-                                    <span style={{ color: MUTED }}>${(oi.unit_price * oi.quantity).toFixed(2)}</span>
-                                  </div>
-                                ))
-                              )}
+                {orders.length === 0 ? (
+                  <Empty message="No orders yet." sub="Orders will appear here in real time once customers start scanning." />
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {orders.map((order) => {
+                      const isExpanded = expandedOrders.has(order.id);
+                      const statusColor = ORDER_STATUS_COLOR[order.status] ?? MUTED;
+                      const items = orderItemsCache[order.id];
+                      return (
+                        <div key={order.id} style={{ ...card, padding: "0" }}>
+                          <div onClick={() => toggleOrder(order.id)}
+                            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", cursor: "pointer", gap: 12 }}>
+                            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                              <span style={badge(statusColor)}>{order.status}</span>
+                              <span style={{ color: MUTED, fontSize: 12, fontFamily: "monospace" }}>
+                                {new Date(order.created_at).toLocaleString()}
+                              </span>
                             </div>
-
-                            {/* Cancellation reason — cancelled orders only */}
-                            {order.status === "cancelled" && (
-                              <div style={{ fontSize: 12, color: RED, fontStyle: "italic" }}>
-                                Cancelled{order.cancel_reason ? `: ${order.cancel_reason}` : ""}
-                              </div>
-                            )}
-
-                            {/* Status buttons + cancel action — active orders only */}
-                            {order.status !== "cancelled" && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                  {ORDER_STATUSES.map((s) => {
-                                    const active = order.status === s;
-                                    const color = ORDER_STATUS_COLOR[s];
-                                    return (
-                                      <button
-                                        key={s}
-                                        onClick={() => updateOrderStatus(order.id, s)}
-                                        style={{
-                                          background: active ? color + "33" : "none",
-                                          border: `1px solid ${active ? color : BORDER}`,
-                                          borderRadius: 8,
-                                          padding: "7px 16px",
-                                          color: active ? color : MUTED,
-                                          fontWeight: active ? 800 : 600,
-                                          fontSize: 12,
-                                          cursor: "pointer",
-                                          textTransform: "uppercase",
-                                          letterSpacing: 0.5,
-                                        }}
-                                      >
-                                        {s}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-
-                                {/* Cancel — not available once done */}
-                                {order.status !== "done" && (
-                                  cancellingOrderId === order.id ? (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
-                                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                                        <select
-                                          value={cancelReason}
-                                          onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
-                                          style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "7px 12px", color: cancelReason ? TEXT : MUTED, fontSize: 12, cursor: "pointer" }}
-                                        >
-                                          <option value="">Select reason…</option>
-                                          {CANCEL_REASONS.map((r) => <option key={r}>{r}</option>)}
-                                        </select>
-                                        <button
-                                          onClick={() => cancelOrder(order.id, cancelReason)}
-                                          disabled={!cancelReason}
-                                          style={{ background: cancelReason ? RED + "22" : "none", border: `1px solid ${cancelReason ? RED : BORDER}`, borderRadius: 8, padding: "7px 16px", color: cancelReason ? RED : MUTED, fontWeight: 700, fontSize: 12, cursor: cancelReason ? "pointer" : "not-allowed", letterSpacing: 0.5, textTransform: "uppercase" }}
-                                        >
-                                          Confirm Cancel
-                                        </button>
-                                        <button
-                                          onClick={() => { setCancellingOrderId(null); setCancelReason(""); setCancelError(""); }}
-                                          style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "7px 14px", color: MUTED, fontSize: 12, cursor: "pointer" }}
-                                        >
-                                          Keep
-                                        </button>
-                                      </div>
-                                      {cancelError && (
-                                        <p style={{ margin: 0, fontSize: 11, color: RED }}>{cancelError}</p>
-                                      )}
+                            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                              <span style={{ fontWeight: 800, fontSize: 15 }}>${Number(order.total).toFixed(2)}</span>
+                              <span style={{ color: MUTED, fontSize: 12 }}>{isExpanded ? "▲" : "▼"}</span>
+                            </div>
+                          </div>
+                          {isExpanded && (
+                            <div style={{ borderTop: `1px solid ${BORDER}`, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                {!items ? (
+                                  <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>Loading items…</p>
+                                ) : items.length === 0 ? (
+                                  <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>No items found.</p>
+                                ) : (
+                                  items.map((oi) => (
+                                    <div key={oi.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                                      <span style={{ color: TEXT }}>
+                                        <span style={{ color: MUTED, fontFamily: "monospace", marginRight: 10 }}>{oi.quantity}×</span>
+                                        {oi.name}
+                                      </span>
+                                      <span style={{ color: MUTED }}>${(oi.unit_price * oi.quantity).toFixed(2)}</span>
                                     </div>
-                                  ) : (
-                                    <div style={{ paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
-                                      <button
-                                        onClick={() => { setCancellingOrderId(order.id); setCancelReason(""); }}
-                                        style={{ background: "none", border: `1px solid ${RED}55`, borderRadius: 8, padding: "7px 16px", color: RED, fontWeight: 700, fontSize: 12, cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }}
-                                      >
-                                        Cancel Order
-                                      </button>
-                                    </div>
-                                  )
+                                  ))
                                 )}
                               </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                              {order.status === "cancelled" && (
+                                <div style={{ fontSize: 12, color: RED, fontStyle: "italic" }}>
+                                  Cancelled{order.cancel_reason ? `: ${order.cancel_reason}` : ""}
+                                </div>
+                              )}
+                              {order.status !== "cancelled" && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                    {ORDER_STATUSES.map((s) => {
+                                      const active = order.status === s;
+                                      const color = ORDER_STATUS_COLOR[s];
+                                      return (
+                                        <button key={s} onClick={() => updateOrderStatus(order.id, s)}
+                                          style={{ background: active ? color + "33" : "none", border: `1px solid ${active ? color : BORDER}`, borderRadius: 8, padding: "7px 16px", color: active ? color : MUTED, fontWeight: active ? 800 : 600, fontSize: 12, cursor: "pointer", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                          {s}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  {order.status !== "done" && (
+                                    cancellingOrderId === order.id ? (
+                                      <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
+                                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                                          <select value={cancelReason} onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
+                                            style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "7px 12px", color: cancelReason ? TEXT : MUTED, fontSize: 12, cursor: "pointer" }}>
+                                            <option value="">Select reason…</option>
+                                            {CANCEL_REASONS.map((r) => <option key={r}>{r}</option>)}
+                                          </select>
+                                          <button onClick={() => cancelOrder(order.id, cancelReason)} disabled={!cancelReason}
+                                            style={{ background: cancelReason ? RED + "22" : "none", border: `1px solid ${cancelReason ? RED : BORDER}`, borderRadius: 8, padding: "7px 16px", color: cancelReason ? RED : MUTED, fontWeight: 700, fontSize: 12, cursor: cancelReason ? "pointer" : "not-allowed", letterSpacing: 0.5, textTransform: "uppercase" }}>
+                                            Confirm Cancel
+                                          </button>
+                                          <button onClick={() => { setCancellingOrderId(null); setCancelReason(""); setCancelError(""); }}
+                                            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "7px 14px", color: MUTED, fontSize: 12, cursor: "pointer" }}>
+                                            Keep
+                                          </button>
+                                        </div>
+                                        {cancelError && <p style={{ margin: 0, fontSize: 11, color: RED }}>{cancelError}</p>}
+                                      </div>
+                                    ) : (
+                                      <div style={{ paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
+                                        <button onClick={() => { setCancellingOrderId(order.id); setCancelReason(""); }}
+                                          style={{ background: "none", border: `1px solid ${RED}55`, borderRadius: 8, padding: "7px 16px", color: RED, fontWeight: 700, fontSize: 12, cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }}>
+                                          Cancel Order
+                                        </button>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
+
           {/* Financials tab */}
           {tab === "financials" && (() => {
             const orderRevenue  = doneOrders.reduce((s, o) => s + Number(o.total), 0);
@@ -1176,7 +1081,6 @@ export default function DashboardPage() {
             const net           = totalRevenue - totalExpenses;
             const avgOrder      = doneOrders.length > 0 ? orderRevenue / doneOrders.length : 0;
 
-            // Daily revenue last 7 days (orders + manual)
             const today = new Date();
             const days7 = Array.from({ length: 7 }, (_, i) => {
               const d = new Date(today);
@@ -1197,14 +1101,12 @@ export default function DashboardPage() {
 
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-                {/* Summary cards */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
                   {[
-                    { label: "Revenue (30d)",   value: `$${totalRevenue.toFixed(2)}`,  color: GREEN },
-                    { label: "Orders (billed)",   value: doneOrders.length.toString(),   color: ACCENT },
-                    { label: "Avg order value",  value: `$${avgOrder.toFixed(2)}`,      color: ACCENT },
-                    { label: "Net (30d)",        value: `$${net.toFixed(2)}`,           color: net >= 0 ? GREEN : RED },
+                    { label: "Revenue (30d)",  value: `$${totalRevenue.toFixed(2)}`, color: GREEN },
+                    { label: "Orders (billed)", value: doneOrders.length.toString(),  color: ACCENT },
+                    { label: "Avg order value", value: `$${avgOrder.toFixed(2)}`,     color: ACCENT },
+                    { label: "Net (30d)",       value: `$${net.toFixed(2)}`,          color: net >= 0 ? GREEN : RED },
                   ].map((s) => (
                     <div key={s.label} style={{ ...card, padding: "18px 20px" }}>
                       <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>{s.label}</div>
@@ -1213,7 +1115,6 @@ export default function DashboardPage() {
                   ))}
                 </div>
 
-                {/* 7-day bar chart */}
                 <div style={{ ...card }}>
                   <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>Daily Revenue — Last 7 Days</p>
                   <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 120 }}>
@@ -1234,17 +1135,14 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Manual Revenue */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <p style={{ fontSize: 11, letterSpacing: 3, color: GREEN, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>
                       Manual Revenue — ${manualTotal.toFixed(2)} total
                     </p>
                     {!addingRevenue && !noRevenueTable && (
-                      <button
-                        onClick={() => setAddingRevenue(true)}
-                        style={{ background: "none", border: `1px solid ${GREEN}`, borderRadius: 8, padding: "8px 16px", color: GREEN, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                      >
+                      <button onClick={() => setAddingRevenue(true)}
+                        style={{ background: "none", border: `1px solid ${GREEN}`, borderRadius: 8, padding: "8px 16px", color: GREEN, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                         + Add revenue
                       </button>
                     )}
@@ -1265,8 +1163,7 @@ export default function DashboardPage() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Category *</label>
-                          <select required value={revenueForm.category}
-                            onChange={(e) => setRevenueForm((f) => ({ ...f, category: e.target.value }))}
+                          <select required value={revenueForm.category} onChange={(e) => setRevenueForm((f) => ({ ...f, category: e.target.value }))}
                             style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none", cursor: "pointer" }}>
                             {REVENUE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                           </select>
@@ -1281,14 +1178,12 @@ export default function DashboardPage() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Description</label>
-                          <input placeholder="Optional" value={revenueForm.description}
-                            onChange={(e) => setRevenueForm((f) => ({ ...f, description: e.target.value }))}
+                          <input placeholder="Optional" value={revenueForm.description} onChange={(e) => setRevenueForm((f) => ({ ...f, description: e.target.value }))}
                             style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }} />
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Date *</label>
-                          <input required type="date" value={revenueForm.date}
-                            onChange={(e) => setRevenueForm((f) => ({ ...f, date: e.target.value }))}
+                          <input required type="date" value={revenueForm.date} onChange={(e) => setRevenueForm((f) => ({ ...f, date: e.target.value }))}
                             style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none", colorScheme: "dark" }} />
                         </div>
                       </div>
@@ -1341,7 +1236,7 @@ export default function DashboardPage() {
                             <button onClick={() => { setEditingRevenueId(r.id); setEditRevenueForm({ category: r.category, amount: String(r.amount), description: r.description ?? "", date: r.revenue_date }); }}
                               style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, cursor: "pointer" }}>Edit</button>
                             <button onClick={() => deleteRevenue(r.id)}
-                              style={{ background: "none", border: `1px solid ${RED}44`, borderRadius: 6, padding: "5px 10px", color: RED, fontSize: 11, cursor: "pointer" }}>Delete</button>
+                              style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, cursor: "pointer" }}>Delete</button>
                           </div>
                         </div>
                       ))}
@@ -1349,13 +1244,10 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* ── Income Statement ─────────────────────────── */}
                 <div style={{ ...card }}>
                   <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>
                     Income Statement — Last 30 Days
                   </p>
-
-                  {/* Revenue block */}
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: MUTED, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Revenue</div>
                     <StmtRow label="Orders (completed)" value={orderRevenue} color={GREEN} />
@@ -1363,15 +1255,11 @@ export default function DashboardPage() {
                     <StmtDivider />
                     <StmtRow label="Total Revenue" value={totalRevenue} color={GREEN} bold />
                   </div>
-
-                  {/* Expenses block — grouped by category */}
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: MUTED, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Expenses</div>
                     {(() => {
                       const byCategory: Record<string, number> = {};
-                      expenses.forEach((e) => {
-                        byCategory[e.category] = (byCategory[e.category] ?? 0) + Number(e.amount);
-                      });
+                      expenses.forEach((e) => { byCategory[e.category] = (byCategory[e.category] ?? 0) + Number(e.amount); });
                       return Object.entries(byCategory).length === 0
                         ? <div style={{ color: MUTED, fontSize: 13, paddingLeft: 8, marginBottom: 8 }}>No expenses recorded.</div>
                         : Object.entries(byCategory).map(([cat, amt]) => (
@@ -1381,31 +1269,19 @@ export default function DashboardPage() {
                     <StmtDivider />
                     <StmtRow label="Total Expenses" value={totalExpenses} color={RED} bold negate />
                   </div>
-
-                  {/* Net */}
                   <div style={{ borderTop: `2px solid ${BORDER}`, paddingTop: 14 }}>
-                    <StmtRow
-                      label="Net Profit / (Loss)"
-                      value={Math.abs(net)}
-                      color={net >= 0 ? GREEN : RED}
-                      bold
-                      prefix={net < 0 ? "(" : ""}
-                      suffix={net < 0 ? ")" : ""}
-                    />
+                    <StmtRow label="Net Profit / (Loss)" value={Math.abs(net)} color={net >= 0 ? GREEN : RED} bold prefix={net < 0 ? "(" : ""} suffix={net < 0 ? ")" : ""} />
                   </div>
                 </div>
 
-                {/* Expenses */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>
                       Expenses — ${totalExpenses.toFixed(2)} total
                     </p>
                     {!addingExpense && (
-                      <button
-                        onClick={() => setAddingExpense(true)}
-                        style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: TEXT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                      >
+                      <button onClick={() => setAddingExpense(true)}
+                        style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: TEXT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                         + Add expense
                       </button>
                     )}
@@ -1491,7 +1367,7 @@ export default function DashboardPage() {
                             <button onClick={() => { setEditingExpenseId(exp.id); setEditExpenseForm({ category: exp.category, amount: String(exp.amount), description: exp.description ?? "", expense_date: exp.expense_date }); }}
                               style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, cursor: "pointer" }}>Edit</button>
                             <button onClick={() => deleteExpense(exp.id)}
-                              style={{ background: "none", border: `1px solid ${RED}44`, borderRadius: 6, padding: "5px 10px", color: RED, fontSize: 11, cursor: "pointer" }}>Delete</button>
+                              style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "5px 10px", color: MUTED, fontSize: 11, cursor: "pointer" }}>Delete</button>
                           </div>
                         </div>
                       ))}
@@ -1499,12 +1375,9 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* ── Cancellations ────────────────────────────── */}
                 {(() => {
                   const periodStart = (() => {
-                    if (cancelPeriod === "day") {
-                      const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString();
-                    }
+                    if (cancelPeriod === "day") { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); }
                     if (cancelPeriod === "week") return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
                     return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
                   })();
@@ -1521,32 +1394,19 @@ export default function DashboardPage() {
 
                   return (
                     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 20 }}>
-                      {/* Header + period filter */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <p style={{ fontSize: 11, letterSpacing: 3, color: RED, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>
                           Cancellations — Last 30 Days
                         </p>
                         <div style={{ display: "flex", background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 3, gap: 2 }}>
                           {(["day", "week", "month"] as const).map((p) => (
-                            <button
-                              key={p}
-                              onClick={() => setCancelPeriod(p)}
-                              style={{
-                                background: cancelPeriod === p ? SURFACE : "none",
-                                border: "none", borderRadius: 6,
-                                padding: "5px 12px",
-                                color: cancelPeriod === p ? TEXT : MUTED,
-                                fontWeight: cancelPeriod === p ? 700 : 400,
-                                fontSize: 12, cursor: "pointer",
-                              }}
-                            >
+                            <button key={p} onClick={() => setCancelPeriod(p)}
+                              style={{ background: cancelPeriod === p ? SURFACE : "none", border: "none", borderRadius: 6, padding: "5px 12px", color: cancelPeriod === p ? TEXT : MUTED, fontWeight: cancelPeriod === p ? 700 : 400, fontSize: 12, cursor: "pointer" }}>
                               {p === "day" ? "Today" : p === "week" ? "7 days" : "30 days"}
                             </button>
                           ))}
                         </div>
                       </div>
-
-                      {/* KPI row */}
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                         <div style={{ background: RED + "11", border: `1px solid ${RED}33`, borderRadius: 10, padding: "16px 18px" }}>
                           <div style={{ fontSize: 11, color: RED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Cancelled orders</div>
@@ -1557,12 +1417,8 @@ export default function DashboardPage() {
                           <div style={{ fontSize: 28, fontWeight: 900, color: RED }}>${totalLost.toFixed(2)}</div>
                         </div>
                       </div>
-
-                      {/* Reason breakdown */}
                       {reasonRows.length === 0 ? (
-                        <div style={{ color: MUTED, fontSize: 13, textAlign: "center", padding: "12px 0" }}>
-                          No cancellations in this period.
-                        </div>
+                        <div style={{ color: MUTED, fontSize: 13, textAlign: "center", padding: "12px 0" }}>No cancellations in this period.</div>
                       ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                           <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>By Reason</div>
@@ -1572,9 +1428,7 @@ export default function DashboardPage() {
                               <div key={reason}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
                                   <span style={{ fontSize: 13, color: TEXT, fontWeight: 600 }}>{reason}</span>
-                                  <span style={{ fontSize: 12, color: MUTED, fontFamily: "monospace" }}>
-                                    {count}× · ${lost.toFixed(2)} ({pct.toFixed(0)}%)
-                                  </span>
+                                  <span style={{ fontSize: 12, color: MUTED, fontFamily: "monospace" }}>{count}× · ${lost.toFixed(2)} ({pct.toFixed(0)}%)</span>
                                 </div>
                                 <div style={{ height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden" }}>
                                   <div style={{ height: "100%", width: `${pct}%`, background: RED + "88", borderRadius: 3, transition: "width 0.3s" }} />
@@ -1587,11 +1441,9 @@ export default function DashboardPage() {
                     </div>
                   );
                 })()}
-
               </div>
             );
           })()}
-
         </div>
       </div>
     </div>
