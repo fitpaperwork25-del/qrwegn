@@ -20,27 +20,6 @@ const inputFocusStyle: React.CSSProperties = {
   border: `1px solid ${ACCENT}`,
 };
 
-function QRMark() {
-  return (
-    <svg width={32} height={32} viewBox="0 0 80 80" fill="none">
-      <rect x="2" y="2" width="30" height="30" rx="3" stroke={ACCENT} strokeWidth="4" fill="none" />
-      <rect x="10" y="10" width="14" height="14" fill={ACCENT} />
-      <rect x="48" y="2" width="30" height="30" rx="3" stroke={ACCENT} strokeWidth="4" fill="none" />
-      <rect x="56" y="10" width="14" height="14" fill={ACCENT} />
-      <rect x="2" y="48" width="30" height="30" rx="3" stroke={ACCENT} strokeWidth="4" fill="none" />
-      <rect x="10" y="56" width="14" height="14" fill={ACCENT} />
-      <rect x="48" y="48" width="8" height="8" fill={ACCENT} />
-      <rect x="60" y="48" width="8" height="8" fill={ACCENT} />
-      <rect x="72" y="48" width="8" height="8" fill={ACCENT} />
-      <rect x="48" y="60" width="8" height="8" fill={ACCENT} />
-      <rect x="72" y="60" width="8" height="8" fill={ACCENT} />
-      <rect x="48" y="72" width="8" height="8" fill={ACCENT} />
-      <rect x="60" y="72" width="8" height="8" fill={ACCENT} />
-      <rect x="72" y="72" width="8" height="8" fill={ACCENT} />
-    </svg>
-  );
-}
-
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -114,7 +93,7 @@ export default function LoginPage() {
           style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
           onClick={() => navigate("/")}
         >
-          <QRMark />
+          <img src="/logo.png" alt="QR-Wegn" style={{ height: 32, width: "auto" }} />
           <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: 1 }}>QR-Wegn</span>
         </div>
         <button

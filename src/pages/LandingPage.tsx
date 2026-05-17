@@ -9,27 +9,6 @@ const TEXT    = "#F0EDE8";
 const MUTED   = "#666666";
 const SURFACE = "#111111";
 
-function QRMark() {
-  return (
-    <svg width={32} height={32} viewBox="0 0 80 80" fill="none">
-      <rect x="2" y="2" width="30" height="30" rx="3" stroke={ACCENT} strokeWidth="4" fill="none" />
-      <rect x="10" y="10" width="14" height="14" fill={ACCENT} />
-      <rect x="48" y="2" width="30" height="30" rx="3" stroke={ACCENT} strokeWidth="4" fill="none" />
-      <rect x="56" y="10" width="14" height="14" fill={ACCENT} />
-      <rect x="2" y="48" width="30" height="30" rx="3" stroke={ACCENT} strokeWidth="4" fill="none" />
-      <rect x="10" y="56" width="14" height="14" fill={ACCENT} />
-      <rect x="48" y="48" width="8" height="8" fill={ACCENT} />
-      <rect x="60" y="48" width="8" height="8" fill={ACCENT} />
-      <rect x="72" y="48" width="8" height="8" fill={ACCENT} />
-      <rect x="48" y="60" width="8" height="8" fill={ACCENT} />
-      <rect x="72" y="60" width="8" height="8" fill={ACCENT} />
-      <rect x="48" y="72" width="8" height="8" fill={ACCENT} />
-      <rect x="60" y="72" width="8" height="8" fill={ACCENT} />
-      <rect x="72" y="72" width="8" height="8" fill={ACCENT} />
-    </svg>
-  );
-}
-
 // ── Demo dropdown ─────────────────────────────────────────────────────────────
 
 interface DemoDropdownProps {
@@ -181,7 +160,7 @@ export default function LandingPage() {
       {/* Nav */}
       <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 32px", borderBottom: `1px solid ${BORDER}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <QRMark />
+          <img src="/logo.png" alt="QR-Wegn" style={{ height: 32, width: "auto" }} />
           <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: 1, color: TEXT }}>QR-Wegn</span>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
