@@ -30,25 +30,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ step: "createUser", error: userError.message });
     }
 
-    // User exists in a ghost/unconfirmed state not returned by listUsers.
-    // generateLink({ type: "recovery" }) locates ANY user by email regardless
-    // of confirmation status and returns their full user object.
-    const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
-      type:  "recovery",
-      email: "fitpaperwork25@gmail.com",
-    });
+    // The email is soft-deleted — invisible to listUsers/generateLink but
+    // still blocks re-registration. Fetch including deleted records, hard-delete
+    // to free the email, then recreate.
+    const base    = process.env.SUPABASE_URL!;
+    const svcKey  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const headers = { "apikey": svcKey, "Authorization": `Bearer ${svcKey}` };
 
-    if (linkErr || !linkData?.user?.id) {
-      return res.status(500).json({ step: "generateLink", error: linkErr?.message ?? "no user returned" });
+    // Try to find the deleted user
+    const withDeleted = await fetch(
+      `${base}/auth/v1/admin/users?include_deleted=true&per_page=1000`,
+      { headers }
+    ).then((r) => r.json()) as any;
+
+    const allUsers: any[] = Array.isArray(withDeleted)
+      ? withDeleted
+      : (withDeleted.users ?? []);
+
+    const ghost = allUsers.find(
+      (u: any) => u.email?.toLowerCase() === "fitpaperwork25@gmail.com"
+    );
+
+    if (!ghost) {
+      return res.status(404).json({
+        error: "Ghost user not found even with include_deleted",
+        total: allUsers.length,
+        sample: allUsers.slice(0, 3).map((u: any) => ({ id: u.id, email: u.email, deleted_at: u.deleted_at })),
+      });
     }
 
-    userId = linkData.user.id;
+    // Hard-delete the ghost so the email is freed
+    await fetch(`${base}/auth/v1/admin/users/${ghost.id}`, {
+      method: "DELETE",
+      headers,
+    });
 
-    // Confirm email and reset password so they can sign in immediately
-    await supabase.auth.admin.updateUserById(userId, {
+    // Now recreate fresh
+    const { data: fresh, error: freshErr } = await supabase.auth.admin.createUser({
+      email:         "fitpaperwork25@gmail.com",
       password:      "TempAdmin2026!",
       email_confirm: true,
     });
+
+    if (freshErr || !fresh?.user?.id) {
+      return res.status(500).json({ step: "recreate", error: freshErr?.message ?? "no user" });
+    }
+
+    userId = fresh.user.id;
   } else {
     userId = userData.user.id;
   }
