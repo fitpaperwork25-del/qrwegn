@@ -343,6 +343,115 @@ export default function LandingPage() {
         )}
       </section>
 
+      {/* Pricing */}
+      <section style={{ background: BG, borderTop: `1px solid ${BORDER}`, padding: "80px 24px" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto" }}>
+          <p style={{ fontSize: 11, letterSpacing: 4, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20, textAlign: "center" }}>
+            Pricing
+          </p>
+          <h2 style={{ fontSize: "clamp(26px, 4.5vw, 44px)", fontWeight: 900, letterSpacing: -1, color: TEXT, marginBottom: 14, textAlign: "center", lineHeight: 1.15 }}>
+            Simple, transparent pricing
+          </h2>
+          <p style={{ fontSize: 16, color: MUTED, marginBottom: 52, textAlign: "center", lineHeight: 1.7 }}>
+            No setup fees. No contracts. Cancel any time.
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
+            {[
+              {
+                name:        "Starter",
+                price:       "$49",
+                recommended: false,
+                features:    ["1 location", "QR ordering", "Menu management", "Order dashboard"],
+              },
+              {
+                name:        "Pro",
+                price:       "$99",
+                recommended: true,
+                features:    ["Up to 5 locations", "Booking system", "Staff management", "Priority support"],
+              },
+              {
+                name:        "Enterprise",
+                price:       "$199",
+                recommended: false,
+                features:    ["Unlimited locations", "White label", "Custom domain", "Dedicated support"],
+              },
+            ].map((plan) => (
+              <div
+                key={plan.name}
+                style={{
+                  background:   SURFACE,
+                  border:       plan.recommended ? `2px solid ${ACCENT}55` : `1px solid ${BORDER}`,
+                  borderRadius: 14,
+                  padding:      "32px 28px",
+                  display:      "flex",
+                  flexDirection:"column",
+                  gap:          0,
+                  position:     "relative",
+                }}
+              >
+                {plan.recommended && (
+                  <div style={{
+                    position:     "absolute",
+                    top:          -13,
+                    left:         24,
+                    background:   ACCENT,
+                    color:        BG,
+                    fontSize:     10,
+                    fontWeight:   800,
+                    letterSpacing:2,
+                    padding:      "3px 12px",
+                    borderRadius: 4,
+                    textTransform:"uppercase",
+                  }}>
+                    Most Popular
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
+                  {plan.name}
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 28 }}>
+                  <span style={{ fontSize: 42, fontWeight: 900, color: plan.recommended ? ACCENT : TEXT, letterSpacing: -1 }}>{plan.price}</span>
+                  <span style={{ fontSize: 14, color: MUTED, fontWeight: 500 }}>/mo</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
+                  {plan.features.map((f) => (
+                    <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{
+                        flexShrink:    0,
+                        width:         18, height: 18, borderRadius: "50%",
+                        background:    ACCENT + "20",
+                        border:        `1px solid ${ACCENT}44`,
+                        display:       "flex", alignItems: "center", justifyContent: "center",
+                        fontSize:      10, color: ACCENT, fontWeight: 900,
+                      }}>✓</span>
+                      <span style={{ fontSize: 14, color: MUTED }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => navigate("/login")}
+                  style={{
+                    marginTop:    "auto",
+                    background:   plan.recommended ? ACCENT : "none",
+                    color:        plan.recommended ? BG : ACCENT,
+                    border:       `1.5px solid ${ACCENT}`,
+                    borderRadius: 9,
+                    padding:      "13px",
+                    fontWeight:   800,
+                    fontSize:     14,
+                    cursor:       "pointer",
+                    width:        "100%",
+                  }}
+                >
+                  Get started →
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Become a Promoter */}
       <section id="promoter" style={{ background: SURFACE, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "80px 24px", textAlign: "center" }}>
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
