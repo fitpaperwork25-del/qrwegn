@@ -359,7 +359,7 @@ export default function LandingPage() {
             {[
               "Sell any plan and earn the first month's value — $49, $99, or $199",
               "No limit on earnings — every sale counts",
-              "Get paid 37 days after the restaurant's first successful payment",
+              "Get paid 10 days after the restaurant's first successful payment",
             ].map((point) => (
               <div key={point} style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
                 <span style={{
