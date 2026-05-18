@@ -19,7 +19,22 @@
       "PowerShell(Get-ChildItem *)",
       "PowerShell($env:SUPABASE_SERVICE_ROLE_KEY; $env:VITE_SUPABASE_SERVICE_ROLE_KEY; $env:SUPABASE_URL; $env:VITE_SUPABASE_URL)",
       "PowerShell(Set-Content *)",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(npx supabase *)",
+      "Bash(git commit *)",
+      "Bash(git remote *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Michael Etbarekh\\\\Desktop\\\\Projects\\\\qrserve-v3\" -Force)",
+      "Bash(Format-Table Name, PSIsContainer)",
+      "Bash(supabase *)",
+      "Bash(mkdir -p \"/mnt/c/Users/Michael Etbarekh/Desktop/QRServe Operations\")",
+      "Read(//mnt/c/Users/Michael Etbarekh/Desktop/**)",
+      "PowerShell(New-Item *)",
+      "Bash(git *)",
+      "Bash(npm run *)",
+      "Bash(taskkill *)",
+      "PowerShell(Stop-Process *)",
+      "Bash(cat .env.local)",
+      "Bash(cat .env)"
     ]
   }
 }

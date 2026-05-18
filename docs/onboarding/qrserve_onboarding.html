@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QRServe — Client Onboarding</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #080808; --surface: #0f0f0f; --surface2: #141414;
+  --border: #1e1e1e; --accent: #E8C547; --text: #F0EDE8;
+  --muted: #666; --muted2: #333; --green: #4CAF50;
+  --red: #f44336; --orange: #F97316; --blue: #60a5fa;
+}
+
+body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; padding: 32px 24px; max-width: 1200px; margin: 0 auto; font-size: 16px; }
+
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 36px; padding-bottom: 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 16px; }
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-mark { width: 32px; height: 32px; background: var(--accent); display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 5px; border-radius: 5px; }
+.logo-mark span { background: var(--bg); border-radius: 2px; }
+.logo h1 { font-size: 18px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; }
+.logo h1 span { color: var(--accent); }
+
+.stats { display: flex; gap: 24px; font-size: 13px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; flex-wrap: wrap; }
+.stats div { display: flex; gap: 8px; align-items: center; }
+.stat-num { color: var(--accent); font-size: 24px; font-weight: 700; }
+.stat-mrr { color: var(--green) !important; }
+
+.toolbar { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+
+input, select, textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: inherit; font-size: 15px; padding: 11px 16px; outline: none; transition: border-color 0.15s; width: 100%; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+select option { background: var(--surface2); }
+
+button { font-family: inherit; cursor: pointer; border: none; border-radius: 7px; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 12px 22px; transition: opacity 0.15s; white-space: nowrap; }
+button:hover { opacity: 0.85; }
+.btn-primary { background: var(--accent); color: var(--bg); }
+.btn-ghost { background: none; border: 1px solid var(--border); color: var(--muted); }
+.btn-danger { background: none; border: 1px solid var(--red); color: var(--red); padding: 8px 14px; font-size: 12px; }
+.btn-small { padding: 7px 13px; font-size: 12px; }
+
+#search-box { max-width: 340px; border-color: var(--muted2); }
+#search-box:focus { border-color: var(--accent); }
+
+.add-form { background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; padding: 28px; margin-bottom: 24px; display: none; flex-direction: column; gap: 18px; }
+.add-form.open { display: flex; }
+.form-title { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-field { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 12px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+.form-actions { display: flex; gap: 10px; }
+
+.clients { display: flex; flex-direction: column; gap: 16px; }
+.client-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.client-card.live { border-left: 4px solid var(--green); }
+.client-card.in-progress { border-left: 4px solid var(--accent); }
+.client-card.pending { border-left: 4px solid var(--muted2); }
+
+.client-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; cursor: pointer; gap: 16px; flex-wrap: wrap; }
+.client-left { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0; }
+.client-name { font-size: 17px; font-weight: 700; letter-spacing: 0.5px; }
+.client-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+.progress-wrap { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.progress-bar { width: 120px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+.progress-fill.complete { background: var(--green); }
+.progress-pct { font-size: 13px; color: var(--muted); width: 36px; text-align: right; }
+
+.status-badge { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 4px 10px; border-radius: 5px; }
+.badge-live { background: #4CAF5022; color: var(--green); border: 1px solid #4CAF5044; }
+.badge-progress { background: #E8C54722; color: var(--accent); border: 1px solid #E8C54744; }
+.badge-pending { background: #33333322; color: var(--muted); border: 1px solid #33333344; }
+.chevron { color: var(--muted); font-size: 13px; transition: transform 0.2s; flex-shrink: 0; }
+.chevron.open { transform: rotate(180deg); }
+
+.client-body { border-top: 1px solid var(--border); display: none; }
+.client-body.open { display: block; }
+
+.client-tabs { display: flex; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+.client-tab { padding: 13px 22px; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.15s; background: none; border-radius: 0; }
+.client-tab:hover { color: var(--text); }
+.client-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-badge { background: var(--accent); color: var(--bg); font-size: 10px; border-radius: 10px; padding: 1px 6px; margin-left: 6px; font-weight: 900; }
+
+.client-panel { padding: 24px; display: none; }
+.client-panel.active { display: block; }
+
+.section { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+.section-title { font-size: 12px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.info-field { display: flex; flex-direction: column; gap: 5px; }
+.info-label { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+
+.editable-field { font-size: 14px; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 5px; padding: 6px 9px; font-family: inherit; width: 100%; transition: border-color 0.15s; }
+.editable-field:hover { border-color: var(--border); background: var(--surface2); }
+.editable-field:focus { border-color: var(--accent); background: var(--surface2); outline: none; }
+
+.link-row { display: flex; align-items: center; gap: 12px; padding: 11px 16px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); margin-bottom: 8px; }
+.link-label { font-size: 12px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; width: 150px; flex-shrink: 0; }
+.link-url { font-size: 13px; color: var(--accent); flex: 1; word-break: break-all; }
+.link-url a { color: var(--accent); text-decoration: none; }
+.link-url a:hover { text-decoration: underline; }
+.link-copy { background: none; border: 1px solid var(--border); color: var(--muted); padding: 5px 10px; font-size: 11px; border-radius: 5px; }
+
+.steps { display: flex; flex-direction: column; gap: 10px; }
+.step { display: flex; align-items: center; gap: 14px; padding: 13px 18px; border-radius: 9px; background: var(--surface2); border: 1px solid var(--border); cursor: pointer; transition: border-color 0.15s; user-select: none; }
+.step:hover { border-color: var(--accent); }
+.step.done { border-color: #4CAF5033; background: #4CAF5008; }
+.step-num { font-size: 12px; color: var(--muted); width: 24px; }
+.step-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; flex-shrink: 0; transition: all 0.15s; }
+.step.done .step-check { background: var(--green); border-color: var(--green); color: var(--bg); }
+.step-label { font-size: 14px; flex: 1; }
+.step.done .step-label { color: var(--muted); text-decoration: line-through; }
+.step-date { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+
+.table-list { display: flex; flex-direction: column; gap: 8px; }
+.table-row { display: grid; grid-template-columns: 100px 1fr 70px; gap: 10px; align-items: center; padding: 10px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+.table-name { color: var(--text); font-weight: 700; }
+.table-id { color: var(--muted); font-size: 12px; word-break: break-all; }
+
+textarea.notes { min-height: 100px; resize: vertical; font-size: 14px; line-height: 1.7; }
+
+.empty { text-align: center; padding: 60px; color: var(--muted); }
+.empty h3 { font-size: 18px; color: var(--text); margin-bottom: 10px; }
+.empty p { font-size: 14px; }
+
+.mrr-badge { font-size: 12px; color: var(--green); background: #4CAF5011; border: 1px solid #4CAF5033; padding: 3px 10px; border-radius: 5px; letter-spacing: 1px; margin-left: 10px; }
+.tag { display: inline-block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; margin-right: 5px; }
+.tag-community { background: #E8C54722; color: var(--accent); }
+.tag-referral { background: #4CAF5022; color: var(--green); }
+.tag-cold { background: #F9731622; color: var(--orange); }
+.tag-inbound { background: #60a5fa22; color: var(--blue); }
+
+/* Resources */
+.drive-card { background: var(--surface2); border: 1px solid var(--accent); border-radius: 10px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.drive-icon { font-size: 28px; flex-shrink: 0; }
+.drive-info { flex: 1; min-width: 0; }
+.drive-label { font-size: 12px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; }
+.drive-input { font-size: 14px; }
+.drive-open { background: var(--accent); color: var(--bg); padding: 10px 18px; border-radius: 7px; font-size: 12px; font-weight: 700; text-decoration: none; letter-spacing: 1px; white-space: nowrap; }
+
+.resource-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.resource-row { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; }
+.resource-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; }
+.resource-type-select { max-width: 160px; flex-shrink: 0; font-size: 13px; padding: 8px 12px; }
+.resource-url-input { flex: 1; font-size: 13px; padding: 8px 12px; }
+.resource-open { color: var(--accent); font-size: 18px; text-decoration: none; flex-shrink: 0; padding: 4px; }
+
+.table-add-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; align-items: flex-end; }
+.table-add-row input { max-width: 200px; }
+
+@media (max-width: 640px) {
+  .form-grid, .info-grid { grid-template-columns: 1fr; }
+  .progress-bar { width: 70px; }
+  .link-label { width: 90px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark"><span></span><span></span><span></span><span></span></div>
+    <h1>QR<span>Serve</span> — Onboarding</h1>
+  </div>
+  <div class="stats">
+    <div><span class="stat-num" id="stat-total">0</span> Total</div>
+    <div><span class="stat-num" id="stat-live">0</span> Live</div>
+    <div><span class="stat-num" id="stat-progress">0</span> In Progress</div>
+    <div><span class="stat-num stat-mrr" id="stat-mrr">$0</span> MRR</div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn-primary" onclick="toggleAddForm()">+ New Client</button>
+  <button class="btn-ghost" onclick="exportData()">↓ Export JSON</button>
+  <button class="btn-ghost" onclick="document.getElementById('import-file').click()">↑ Import JSON</button>
+  <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
+  <input id="search-box" placeholder="🔍  Search clients..." oninput="render()">
+  <button class="btn-ghost" id="filter-btn" onclick="cycleFilter()">All</button>
+</div>
+
+<div class="add-form" id="add-form">
+  <div class="form-title">New Client</div>
+  <div class="form-grid">
+    <div class="form-field"><label class="form-label">Restaurant Name *</label><input id="f-name" placeholder="e.g. Red Sea Restaurant"></div>
+    <div class="form-field"><label class="form-label">City</label><input id="f-city" placeholder="e.g. Minneapolis, MN"></div>
+    <div class="form-field"><label class="form-label">Owner Name</label><input id="f-owner" placeholder="e.g. Youhanes"></div>
+    <div class="form-field"><label class="form-label">Email</label><input id="f-email" type="email" placeholder="owner@email.com"></div>
+    <div class="form-field"><label class="form-label">Phone</label><input id="f-phone" placeholder="(612) 000-0000"></div>
+    <div class="form-field"><label class="form-label">Website</label><input id="f-website" placeholder="https://..."></div>
+    <div class="form-field"><label class="form-label">Plan</label>
+      <select id="f-plan">
+        <option value="starter">Starter — $49/mo</option>
+        <option value="pro">Pro — $99/mo</option>
+        <option value="enterprise">Enterprise — $199/mo</option>
+      </select>
+    </div>
+    <div class="form-field"><label class="form-label">How Acquired</label>
+      <select id="f-source">
+        <option value="community">Community</option>
+        <option value="referral">Referral</option>
+        <option value="cold">Cold outreach</option>
+        <option value="inbound">Inbound</option>
+      </select>
+    </div>
+    <div class="form-field"><label class="form-label">Language</label><input id="f-lang" placeholder="English, Tigrigna..."></div>
+    <div class="form-field"><label class="form-label">Cuisine</label><input id="f-cuisine" placeholder="Eritrean, Italian..."></div>
+  </div>
+  <div class="form-actions">
+    <button class="btn-primary" onclick="addClient()">Add Client</button>
+    <button class="btn-ghost" onclick="toggleAddForm()">Cancel</button>
+  </div>
+</div>
+
+<div class="clients" id="client-list"></div>
+
+<script>
+const STEPS = [
+  { id:"register",   label:"Client registers at qrserve-v3.vercel.app/register" },
+  { id:"ownership",  label:"Verify / transfer business ownership in Supabase" },
+  { id:"menu",       label:"Import menu via CSV (Menu tab → Import CSV)" },
+  { id:"tables",     label:"Add tables and download QR codes" },
+  { id:"qr_printed", label:"QR cards printed and delivered to restaurant" },
+  { id:"scan_test",  label:"Full scan → order → dashboard test on real phone" },
+  { id:"handoff",    label:"Hand off credentials and send welcome message" },
+];
+
+const RESOURCE_TYPES = [
+  { value:"logo",      label:"Logo",        icon:"🖼️",  color:"#E8C547" },
+  { value:"menu_csv",  label:"Menu CSV",    icon:"📄",  color:"#4CAF50" },
+  { value:"qr_cards",  label:"QR Cards",    icon:"📱",  color:"#60a5fa" },
+  { value:"agreement", label:"Agreement",   icon:"📋",  color:"#F97316" },
+  { value:"drive",     label:"Drive Link",  icon:"📁",  color:"#E8C547" },
+  { value:"image",     label:"Image",       icon:"🖼️",  color:"#a78bfa" },
+  { value:"other",     label:"Other",       icon:"🔗",  color:"#666" },
+];
+
+const PLAN_MRR = { starter:49, pro:99, enterprise:199 };
+const FILTERS  = ["all","live","in-progress","pending"];
+const FILTER_LABELS = { all:"All", live:"Live", "in-progress":"In Progress", pending:"Pending" };
+const KEY = "qrserve_onboarding_v3";
+
+let activeFilter = "all";
+
+function load() { try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; } }
+function save(c) { localStorage.setItem(KEY, JSON.stringify(c)); }
+
+function getStatus(c) {
+  const d = STEPS.filter(s => c.steps[s.id]).length;
+  return d === STEPS.length ? "live" : d > 0 ? "in-progress" : "pending";
+}
+function getPct(c) {
+  return Math.round((STEPS.filter(s => c.steps[s.id]).length / STEPS.length) * 100);
+}
+
+function getResourceIcon(type) {
+  return (RESOURCE_TYPES.find(r => r.value === type) || RESOURCE_TYPES[6]).icon;
+}
+function getResourceColor(type) {
+  return (RESOURCE_TYPES.find(r => r.value === type) || RESOURCE_TYPES[6]).color;
+}
+
+function cycleFilter() {
+  activeFilter = FILTERS[(FILTERS.indexOf(activeFilter)+1) % FILTERS.length];
+  document.getElementById("filter-btn").textContent = FILTER_LABELS[activeFilter];
+  render();
+}
+
+function buildLinks(c) {
+  const base = "https://qrserve-v3.vercel.app";
+  const links = [
+    { label:"Owner Dashboard", url:`${base}/dashboard` },
+    { label:"Staff Login",     url:`${base}/staff-login` },
+    { label:"Register",        url:`${base}/register` },
+    { label:"Forgot Password", url:`${base}/forgot-password` },
+  ];
+  if (c.business_id && c.tables && c.tables.length > 0) {
+    c.tables.forEach(t => links.push({ label:`Scan — ${t.name}`, url:`${base}/scan/${c.business_id}/${t.id}` }));
+  } else if (c.business_id) {
+    links.push({ label:"Scan URL", url:`${base}/scan/${c.business_id}/{table_id}` });
+  }
+  if (c.website) links.push({ label:"Website", url: c.website.startsWith("http") ? c.website : "https://"+c.website });
+  if (c.stripe_url) links.push({ label:"Stripe", url:c.stripe_url });
+  return links;
+}
+
+function render() {
+  const allClients = load();
+  const live  = allClients.filter(c => getStatus(c) === "live");
+  const prog  = allClients.filter(c => getStatus(c) === "in-progress");
+  const mrr   = live.reduce((s,c) => s + (PLAN_MRR[c.plan]||0), 0);
+
+  document.getElementById("stat-total").textContent   = allClients.length;
+  document.getElementById("stat-live").textContent    = live.length;
+  document.getElementById("stat-progress").textContent = prog.length;
+  document.getElementById("stat-mrr").textContent     = `$${mrr}`;
+
+  const q = (document.getElementById("search-box")?.value || "").toLowerCase().trim();
+  let clients = allClients;
+
+  if (q) {
+    clients = clients.filter(c => {
+      const resourceText = (c.resources||[]).map(r => `${r.label} ${r.url} ${r.type}`).join(" ");
+      return [c.name, c.city, c.owner, c.email, c.phone, c.plan, c.source,
+              c.cuisine, c.language, getStatus(c), c.notes, c.business_id,
+              c.owner_id, c.staff_pin, c.drive_folder, resourceText]
+        .some(v => (v||"").toLowerCase().includes(q));
+    });
+  }
+  if (activeFilter !== "all") {
+    clients = clients.filter(c => getStatus(c) === activeFilter);
+  }
+
+  const list = document.getElementById("client-list");
+  if (!allClients.length) {
+    list.innerHTML = `<div class="empty"><h3>No clients yet.</h3><p>Click "+ New Client" to start.</p></div>`;
+    return;
+  }
+  if (!clients.length) {
+    list.innerHTML = `<div class="empty"><h3>No results.</h3><p>Try a different search or filter.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = clients.map(c => {
+    const idx       = allClients.indexOf(c);
+    const status    = getStatus(c);
+    const pct       = getPct(c);
+    const isOpen    = c._open;
+    const activeTab = c._tab || "checklist";
+    const badgeClass = `badge-${status==="live"?"live":status==="in-progress"?"progress":"pending"}`;
+    const badgeLabel = status==="live"?"LIVE":status==="in-progress"?"IN PROGRESS":"PENDING";
+    const mrrBadge   = status==="live" ? `<span class="mrr-badge">$${PLAN_MRR[c.plan]||0}/mo</span>` : "";
+    const sourceTag  = c.source ? `<span class="tag tag-${c.source}">${c.source}</span>` : "";
+    const resourceCount = (c.resources||[]).length + (c.drive_folder ? 1 : 0);
+    const resBadge = resourceCount > 0 ? `<span class="tab-badge">${resourceCount}</span>` : "";
+
+    // ── Checklist ──
+    const stepsHtml = `<div class="steps">${STEPS.map((s,si) => {
+      const done = !!c.steps[s.id];
+      const date = c.step_dates?.[s.id] ? `<span class="step-date">${c.step_dates[s.id]}</span>` : "";
+      return `<div class="step ${done?"done":""}" onclick="toggleStep(${idx},'${s.id}')">
+        <div class="step-num">0${si+1}</div>
+        <div class="step-check">${done?"✓":""}</div>
+        <div class="step-label">${s.label}</div>${date}
+      </div>`;
+    }).join("")}</div>`;
+
+    // ── Links ──
+    const linksHtml = buildLinks(c).map(l =>
+      `<div class="link-row">
+        <div class="link-label">${l.label}</div>
+        <div class="link-url"><a href="${l.url}" target="_blank">${l.url}</a></div>
+        <button class="link-copy btn-small" onclick="event.stopPropagation();navigator.clipboard.writeText('${l.url}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='Copy',1200)})">Copy</button>
+      </div>`
+    ).join("");
+
+    // ── Identity & Menu ──
+    const identityHtml = `
+      <div class="section">
+        <div class="section-title">Business & Access</div>
+        <div class="info-grid">
+          <div class="info-field"><div class="info-label">Business ID</div><input class="editable-field" value="${c.business_id||""}" oninput="updateField(${idx},'business_id',this.value)" placeholder="Supabase business ID"></div>
+          <div class="info-field"><div class="info-label">Owner User ID</div><input class="editable-field" value="${c.owner_id||""}" oninput="updateField(${idx},'owner_id',this.value)" placeholder="Supabase user ID"></div>
+          <div class="info-field"><div class="info-label">Staff PIN</div><input class="editable-field" value="${c.staff_pin||""}" oninput="updateField(${idx},'staff_pin',this.value)" placeholder="e.g. 2026"></div>
+          <div class="info-field"><div class="info-label">Plan</div>
+            <select class="editable-field" onchange="updateField(${idx},'plan',this.value)">
+              <option value="starter" ${c.plan==="starter"?"selected":""}>Starter $49/mo</option>
+              <option value="pro" ${c.plan==="pro"?"selected":""}>Pro $99/mo</option>
+              <option value="enterprise" ${c.plan==="enterprise"?"selected":""}>Enterprise $199/mo</option>
+            </select>
+          </div>
+          <div class="info-field"><div class="info-label">Subscription Status</div><input class="editable-field" value="${c.sub_status||""}" oninput="updateField(${idx},'sub_status',this.value)" placeholder="trialing / active"></div>
+          <div class="info-field"><div class="info-label">Trial End Date</div><input class="editable-field" type="date" value="${c.trial_end||""}" onchange="updateField(${idx},'trial_end',this.value)"></div>
+          <div class="info-field"><div class="info-label">Stripe Customer URL</div><input class="editable-field" value="${c.stripe_url||""}" oninput="updateField(${idx},'stripe_url',this.value)" placeholder="https://dashboard.stripe.com/..."></div>
+          <div class="info-field"><div class="info-label">Date Registered</div><input class="editable-field" type="date" value="${c.date_registered||""}" onchange="updateField(${idx},'date_registered',this.value)"></div>
+          <div class="info-field"><div class="info-label">Date Went Live</div><input class="editable-field" type="date" value="${c.date_live||""}" onchange="updateField(${idx},'date_live',this.value)"></div>
+          <div class="info-field"><div class="info-label">Next Follow-up</div><input class="editable-field" type="date" value="${c.followup||""}" onchange="updateField(${idx},'followup',this.value)"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Menu</div>
+        <div class="info-grid">
+          <div class="info-field"><div class="info-label">Categories</div><input class="editable-field" value="${c.menu_categories||""}" oninput="updateField(${idx},'menu_categories',this.value)" placeholder="e.g. 15"></div>
+          <div class="info-field"><div class="info-label">Items</div><input class="editable-field" value="${c.menu_items||""}" oninput="updateField(${idx},'menu_items',this.value)" placeholder="e.g. 65"></div>
+          <div class="info-field"><div class="info-label">CSV File</div><input class="editable-field" value="${c.csv_file||""}" oninput="updateField(${idx},'csv_file',this.value)" placeholder="red_sea_menu.csv"></div>
+          <div class="info-field"><div class="info-label">Menu Last Updated</div><input class="editable-field" type="date" value="${c.menu_updated||""}" onchange="updateField(${idx},'menu_updated',this.value)"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Relationship</div>
+        <div class="info-grid">
+          <div class="info-field"><div class="info-label">How Acquired</div>
+            <select class="editable-field" onchange="updateField(${idx},'source',this.value)">
+              <option value="">—</option>
+              <option value="community" ${c.source==="community"?"selected":""}>Community</option>
+              <option value="referral" ${c.source==="referral"?"selected":""}>Referral</option>
+              <option value="cold" ${c.source==="cold"?"selected":""}>Cold outreach</option>
+              <option value="inbound" ${c.source==="inbound"?"selected":""}>Inbound</option>
+            </select>
+          </div>
+          <div class="info-field"><div class="info-label">Language</div><input class="editable-field" value="${c.language||""}" oninput="updateField(${idx},'language',this.value)" placeholder="English, Tigrigna..."></div>
+          <div class="info-field"><div class="info-label">Cuisine</div><input class="editable-field" value="${c.cuisine||""}" oninput="updateField(${idx},'cuisine',this.value)" placeholder="Eritrean, Italian..."></div>
+          <div class="info-field"><div class="info-label">Rating</div><input class="editable-field" value="${c.rating||""}" oninput="updateField(${idx},'rating',this.value)" placeholder="4.4 ⭐ (1,178)"></div>
+        </div>
+      </div>`;
+
+    // ── Tables ──
+    const tablesListHtml = (c.tables||[]).length > 0
+      ? (c.tables||[]).map((t,ti) =>
+          `<div class="table-row">
+            <div class="table-name">${t.name}</div>
+            <div class="table-id">${t.id}</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              ${c.business_id ? `<a href="https://qrserve-v3.vercel.app/scan/${c.business_id}/${t.id}" target="_blank" style="color:var(--accent);font-size:13px;text-decoration:none">↗</a>` : ""}
+              <button class="btn-danger btn-small" onclick="removeTable(${idx},${ti})">✕</button>
+            </div>
+          </div>`)
+        .join("")
+      : `<p style="color:var(--muted);font-size:14px">No tables yet.</p>`;
+
+    const tablesHtml = `
+      <div class="section">
+        <div class="section-title">Tables in DB</div>
+        <div class="table-list">${tablesListHtml}</div>
+        <div class="table-add-row">
+          <input id="tname-${idx}" placeholder="Table name" style="max-width:180px">
+          <input id="tid-${idx}" placeholder="Supabase location ID" style="max-width:340px">
+          <button class="btn-primary btn-small" onclick="addTable(${idx})">Add</button>
+        </div>
+      </div>`;
+
+    // ── Resources ──
+    const resources = c.resources || [];
+    const driveOpenBtn = c.drive_folder
+      ? `<a href="${c.drive_folder}" target="_blank" class="drive-open">↗ Open</a>`
+      : "";
+
+    const resourceRowsHtml = resources.length > 0
+      ? resources.map((r,ri) => {
+          const icon  = getResourceIcon(r.type);
+          const color = getResourceColor(r.type);
+          const typeOpts = RESOURCE_TYPES.map(t =>
+            `<option value="${t.value}" ${r.type===t.value?"selected":""}>${t.icon} ${t.label}</option>`
+          ).join("");
+          const openBtn = r.url
+            ? `<a href="${r.url.startsWith("http")?r.url:"https://"+r.url}" target="_blank" class="resource-open" title="Open">↗</a>`
+            : `<span style="width:28px"></span>`;
+          return `<div class="resource-row" style="border-color:${color}33">
+            <div class="resource-icon">${icon}</div>
+            <select class="editable-field resource-type-select" onchange="updateResource(${idx},${ri},'type',this.value)">${typeOpts}</select>
+            <input class="editable-field resource-url-input" value="${r.url||""}" oninput="updateResource(${idx},${ri},'url',this.value)" placeholder="Paste Google Drive link or URL...">
+            <input class="editable-field" value="${r.label||""}" oninput="updateResource(${idx},${ri},'label',this.value)" placeholder="Note (optional)" style="max-width:180px">
+            ${openBtn}
+            <button class="btn-danger btn-small" onclick="removeResource(${idx},${ri})">✕</button>
+          </div>`;
+        }).join("")
+      : `<p style="color:var(--muted);font-size:14px;margin-bottom:12px">No resources attached yet.</p>`;
+
+    const resourcesHtml = `
+      <div class="section">
+        <div class="section-title">Google Drive Folder</div>
+        <div class="drive-card">
+          <div class="drive-icon">📁</div>
+          <div class="drive-info">
+            <div class="drive-label">Client Drive Folder URL</div>
+            <input class="editable-field drive-input" value="${c.drive_folder||""}" oninput="updateField(${idx},'drive_folder',this.value)" placeholder="https://drive.google.com/drive/folders/...">
+          </div>
+          ${driveOpenBtn}
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Files & Assets</div>
+        <div class="resource-list">${resourceRowsHtml}</div>
+        <button class="btn-ghost btn-small" onclick="addResource(${idx})">+ Add Resource</button>
+      </div>
+      <div class="section">
+        <div class="section-title">Resource Notes</div>
+        <textarea class="notes" oninput="updateField(${idx},'resource_notes',this.value)" placeholder="File locations, asset notes, passwords for shared drives...">${c.resource_notes||""}</textarea>
+      </div>`;
+
+    // ── Contact ──
+    const contactHtml = `
+      <div class="section">
+        <div class="info-grid">
+          <div class="info-field"><div class="info-label">Owner Name</div><input class="editable-field" value="${c.owner||""}" oninput="updateField(${idx},'owner',this.value)"></div>
+          <div class="info-field"><div class="info-label">Email</div><input class="editable-field" value="${c.email||""}" oninput="updateField(${idx},'email',this.value)"></div>
+          <div class="info-field"><div class="info-label">Phone</div><input class="editable-field" value="${c.phone||""}" oninput="updateField(${idx},'phone',this.value)"></div>
+          <div class="info-field"><div class="info-label">Website</div><input class="editable-field" value="${c.website||""}" oninput="updateField(${idx},'website',this.value)"></div>
+          <div class="info-field"><div class="info-label">Address</div><input class="editable-field" value="${c.address||""}" oninput="updateField(${idx},'address',this.value)"></div>
+          <div class="info-field"><div class="info-label">City</div><input class="editable-field" value="${c.city||""}" oninput="updateField(${idx},'city',this.value)"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Notes</div>
+        <textarea class="notes" oninput="updateField(${idx},'notes',this.value)" placeholder="History, issues, preferences...">${c.notes||""}</textarea>
+      </div>
+      <div style="padding-top:8px">
+        <button class="btn-danger" onclick="deleteClient(${idx})">Delete Client</button>
+      </div>`;
+
+    const tabs      = ["checklist","links","identity","tables","resources","contact"];
+    const tabLabels = ["Checklist","Links","Identity & Menu","Tables",`Resources${resBadge}`,"Contact & Notes"];
+    const panels    = [stepsHtml, linksHtml, identityHtml, tablesHtml, resourcesHtml, contactHtml];
+
+    return `<div class="client-card ${status}" id="card-${idx}">
+      <div class="client-header" onclick="toggleCard(${idx})">
+        <div class="client-left">
+          <div>
+            <div class="client-name">${c.name}${mrrBadge}</div>
+            <div class="client-sub">${[c.owner,c.city].filter(Boolean).join(" · ")} ${sourceTag}</div>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar"><div class="progress-fill ${pct===100?"complete":""}" style="width:${pct}%"></div></div>
+          <div class="progress-pct">${pct}%</div>
+        </div>
+        <span class="status-badge ${badgeClass}">${badgeLabel}</span>
+        <span class="chevron ${isOpen?"open":""}">▼</span>
+      </div>
+      <div class="client-body ${isOpen?"open":""}">
+        <div class="client-tabs">
+          ${tabs.map((t,i) => `<button class="client-tab ${activeTab===t?"active":""}" onclick="event.stopPropagation();switchTab(${idx},'${t}')">${tabLabels[i]}</button>`).join("")}
+        </div>
+        ${tabs.map((t,i) => `<div class="client-panel ${activeTab===t?"active":""}">${panels[i]}</div>`).join("")}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── Actions ──
+function toggleCard(idx)       { const c=load(); c[idx]._open=!c[idx]._open; save(c); render(); }
+function switchTab(idx,tab)    { const c=load(); c[idx]._tab=tab; save(c); render(); }
+
+function toggleStep(idx,stepId) {
+  const c=load(), done=!c[idx].steps[stepId];
+  c[idx].steps[stepId]=done;
+  if(!c[idx].step_dates) c[idx].step_dates={};
+  c[idx].step_dates[stepId] = done ? new Date().toLocaleDateString() : "";
+  save(c); render();
+}
+
+function updateField(idx,field,value) {
+  const c=load(); c[idx][field]=value; save(c);
+  // update MRR stat live
+  const live=c.filter(x=>getStatus(x)==="live");
+  document.getElementById("stat-mrr").textContent=`$${live.reduce((s,x)=>s+(PLAN_MRR[x.plan]||0),0)}`;
+  document.getElementById("stat-live").textContent=live.length;
+}
+
+function addTable(idx) {
+  const name=document.getElementById(`tname-${idx}`).value.trim();
+  const id=document.getElementById(`tid-${idx}`).value.trim();
+  if(!name||!id){ alert("Enter both table name and Supabase location ID."); return; }
+  const c=load(); if(!c[idx].tables) c[idx].tables=[];
+  c[idx].tables.push({name,id}); save(c); render();
+}
+
+function removeTable(idx,ti) {
+  const c=load(); c[idx].tables.splice(ti,1); save(c); render();
+}
+
+function addResource(idx) {
+  const c=load(); if(!c[idx].resources) c[idx].resources=[];
+  c[idx].resources.push({type:"other",url:"",label:""}); save(c); render();
+}
+
+function removeResource(idx,ri) {
+  const c=load(); c[idx].resources.splice(ri,1); save(c); render();
+}
+
+function updateResource(idx,ri,field,value) {
+  const c=load();
+  if(!c[idx].resources[ri]) return;
+  c[idx].resources[ri][field]=value; save(c);
+  // re-render only for type change (to update icon); URL/label save silently
+  if(field==="type") render();
+}
+
+function toggleAddForm() {
+  const f=document.getElementById("add-form");
+  f.classList.toggle("open");
+  if(f.classList.contains("open")) document.getElementById("f-name").focus();
+}
+
+function addClient() {
+  const name=document.getElementById("f-name").value.trim();
+  if(!name){ alert("Restaurant name required."); return; }
+  const c=load();
+  c.unshift({
+    name, city:document.getElementById("f-city").value.trim(),
+    owner:document.getElementById("f-owner").value.trim(),
+    email:document.getElementById("f-email").value.trim(),
+    phone:document.getElementById("f-phone").value.trim(),
+    website:document.getElementById("f-website").value.trim(),
+    plan:document.getElementById("f-plan").value,
+    source:document.getElementById("f-source").value,
+    language:document.getElementById("f-lang").value.trim(),
+    cuisine:document.getElementById("f-cuisine").value.trim(),
+    notes:"", steps:{}, step_dates:{}, tables:[], resources:[],
+    business_id:"", owner_id:"", staff_pin:"", sub_status:"", trial_end:"",
+    stripe_url:"", date_registered:"", date_live:"", followup:"",
+    menu_categories:"", menu_items:"", csv_file:"", menu_updated:"",
+    address:"", rating:"", drive_folder:"", resource_notes:"",
+    created:new Date().toISOString(), _open:true, _tab:"checklist",
+  });
+  save(c);
+  ["f-name","f-city","f-owner","f-email","f-phone","f-website","f-lang","f-cuisine"]
+    .forEach(id => document.getElementById(id).value="");
+  toggleAddForm(); render();
+}
+
+function deleteClient(idx) {
+  if(!confirm("Delete this client? This cannot be undone.")) return;
+  const c=load(); c.splice(idx,1); save(c); render();
+}
+
+function exportData() {
+  const blob=new Blob([JSON.stringify(load(),null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`qrserve_clients_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function handleImport(e) {
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try {
+      const incoming=JSON.parse(ev.target.result);
+      if(!Array.isArray(incoming)){ alert("Invalid file."); return; }
+      const existing=load();
+      const existingNames=existing.map(c=>c.name.toLowerCase().trim());
+      const toAdd=incoming.filter(c=>!existingNames.includes(c.name.toLowerCase().trim()));
+      const duplicates=incoming.length-toAdd.length;
+      const merged=[...existing,...toAdd];
+      save(merged); render();
+      const msg=duplicates>0
+        ? `Imported ${toAdd.length} new client(s). Skipped ${duplicates} duplicate(s).`
+        : `Imported ${toAdd.length} client(s) successfully.`;
+      alert(msg);
+    } catch { alert("Could not parse JSON."); }
+  };
+  reader.readAsText(file);
+}
+
+function seedIfEmpty() {
+  if(load().length>0) return;
+  save([
+    {
+      name:"Snelling Cafe", city:"St. Paul, MN", owner:"Afwerki",
+      email:"beinafeworki@gmail.com", phone:"", website:"",
+      plan:"starter", source:"community", language:"English, Tigrigna",
+      cuisine:"Eritrean / Cafe", rating:"", address:"",
+      business_id:"a17aa26e-a855-40b6-b169-93568186dd59",
+      owner_id:"ad916e49-94ee-4fef-880a-5726b68a4441",
+      staff_pin:"2026", sub_status:"trialing", trial_end:"", stripe_url:"",
+      date_registered:"2026-05-13", date_live:"2026-05-16",
+      menu_categories:"multiple", menu_items:"58", csv_file:"", menu_updated:"2026-05-13",
+      followup:"", drive_folder:"", resource_notes:"",
+      resources:[
+        {type:"menu_csv", url:"", label:"snelling_cafe_menu.csv"},
+        {type:"qr_cards", url:"", label:"QR cards printed — 9 tables"},
+      ],
+      notes:"Full scan test passed May 16 2026. Handed off to Afwerki. Test orders deleted.",
+      steps:{register:true,ownership:true,menu:true,tables:true,qr_printed:false,scan_test:true,handoff:true},
+      step_dates:{register:"5/13/2026",ownership:"5/15/2026",menu:"5/13/2026",tables:"5/13/2026",scan_test:"5/16/2026",handoff:"5/15/2026"},
+      tables:[
+        {name:"Table 1",id:"cd8d1819-e865-427f-82aa-833990cf945e"},
+        {name:"Table 2",id:"f258cd9b-d4c0-475e-a1c4-af2da6fe992c"},
+        {name:"Table 3",id:"9278484c-102a-4eb4-997e-70ee52b7d1ee"},
+        {name:"Table 4",id:"febc8b08-d55e-4f24-b5e9-0a854f08868a"},
+        {name:"Table 5",id:"160412aa-71fb-4731-85ba-3ddac38a648c"},
+        {name:"Table 6",id:"efbc6e2f-7821-46fe-b81c-d598a9b05059"},
+        {name:"Table 7",id:"d47044b4-1b00-4f34-b833-812ac38aa844"},
+        {name:"Table 8",id:"24a12a78-eace-4149-8452-ca19c9d937c6"},
+        {name:"Table 9",id:"984c15dc-2c6c-43af-8107-918df782fd33"},
+      ],
+      created:new Date().toISOString(), _open:false, _tab:"checklist",
+    },
+    {
+      name:"Red Sea Restaurant", city:"Minneapolis, MN", owner:"Youhanes",
+      email:"", phone:"", website:"theredseampls.com",
+      plan:"starter", source:"community", language:"English, Tigrigna",
+      cuisine:"Eritrean / Ethiopian", rating:"", address:"",
+      business_id:"67557302-fce6-433e-9449-2966e71f0004",
+      owner_id:"", staff_pin:"2026", sub_status:"trialing", trial_end:"",
+      stripe_url:"", date_registered:"", date_live:"",
+      menu_categories:"15", menu_items:"65", csv_file:"red_sea_menu.csv", menu_updated:"",
+      followup:"", drive_folder:"", resource_notes:"",
+      resources:[
+        {type:"menu_csv", url:"", label:"red_sea_menu.csv — ready to import"},
+      ],
+      notes:"9 tables in DB. Menu scraped from theredseampls.com. Needs Youhanes to register. Walk in to close.",
+      steps:{register:false,ownership:false,menu:false,tables:true,qr_printed:false,scan_test:false,handoff:false},
+      step_dates:{tables:"5/13/2026"},
+      tables:[], created:new Date().toISOString(), _open:false, _tab:"checklist",
+    },
+    {
+      name:"Thirty Bales", city:"Minneapolis, MN", owner:"",
+      email:"", phone:"", website:"",
+      plan:"starter", source:"community", language:"", cuisine:"", rating:"", address:"",
+      business_id:"", owner_id:"", staff_pin:"", sub_status:"", trial_end:"",
+      stripe_url:"", date_registered:"", date_live:"",
+      menu_categories:"", menu_items:"", csv_file:"", menu_updated:"",
+      followup:"", drive_folder:"", resource_notes:"", resources:[],
+      notes:"Warm lead. Walk in to close.",
+      steps:{}, step_dates:{}, tables:[],
+      created:new Date().toISOString(), _open:false, _tab:"checklist",
+    },
+    {
+      name:"Cafe Aurora", city:"Alexandria, VA", owner:"Dahab Beyene",
+      email:"dahab@cafeaurorausa.com", phone:"(703) 567-4050", website:"cafeaurorausa.com",
+      plan:"starter", source:"community", language:"English, Tigrigna",
+      cuisine:"Eritrean / Italian", rating:"4.4 ⭐ (312 reviews)",
+      address:"50 S Pickett St #24, Alexandria, VA 22304",
+      business_id:"", owner_id:"", staff_pin:"", sub_status:"", trial_end:"",
+      stripe_url:"", date_registered:"", date_live:"",
+      menu_categories:"7", menu_items:"65", csv_file:"cafe_aurora_menu.csv", menu_updated:"2026-05-16",
+      followup:"", drive_folder:"", resource_notes:"",
+      resources:[
+        {type:"menu_csv", url:"", label:"cafe_aurora_menu.csv — ready to import"},
+      ],
+      notes:"Menu scraped May 2026. cafe_aurora_menu.csv ready to import. Est. 2004. Not yet contacted.",
+      steps:{}, step_dates:{}, tables:[],
+      created:new Date().toISOString(), _open:false, _tab:"checklist",
+    },
+    {
+      name:"Enjera Restaurant", city:"Arlington, VA", owner:"",
+      email:"", phone:"(703) 271-6040", website:"enjera1.com",
+      plan:"starter", source:"cold", language:"", cuisine:"Eritrean / Ethiopian",
+      rating:"4.4 ⭐ (1,178 reviews)", address:"549 23rd St S, Arlington, VA 22202",
+      business_id:"", owner_id:"", staff_pin:"", sub_status:"", trial_end:"",
+      stripe_url:"", date_registered:"", date_live:"",
+      menu_categories:"", menu_items:"", csv_file:"", menu_updated:"",
+      followup:"", drive_folder:"", resource_notes:"", resources:[],
+      notes:"High volume, bar service. Open daily 11am–11pm. Good candidate for bar tab feature. Not yet contacted.",
+      steps:{}, step_dates:{}, tables:[],
+      created:new Date().toISOString(), _open:false, _tab:"checklist",
+    },
+  ]);
+}
+
+seedIfEmpty();
+render();
+</script>
+</body>
+</html>
