@@ -36,26 +36,45 @@ async function hasActiveStripeSubscription(email: string): Promise<boolean> {
   return false;
 }
 
+const TALLY_LABEL_MAP: Record<string, string> = {
+  "full name":              "promoter_name",
+  "email address":          "promoter_email",
+  "restaurant email":       "restaurant_email",
+  "plan signed up for":     "plan",
+  "payment method":         "payment_method",
+  "payment details":        "payment_details",
+  "date of sale":           "date_of_sale",
+};
+
+function parseTallyFields(body: any): Record<string, string> {
+  const fields: { label: string; value: any }[] = body?.data?.fields ?? [];
+  const result: Record<string, string> = {};
+  for (const field of fields) {
+    const key = TALLY_LABEL_MAP[field.label?.toLowerCase().trim()];
+    if (key && field.value != null && field.value !== "") {
+      result[key] = String(field.value);
+    }
+  }
+  return result;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const {
-    promoter_name,
-    promoter_email,
-    restaurant_email,
-    plan,
-    payment_method,
-    payment_details,
-    date_of_sale,
-  } = req.body as {
-    promoter_name:    string;
-    promoter_email:   string;
-    restaurant_email: string;
-    plan:             string;
-    payment_method?:  string;
-    payment_details?: string;
-    date_of_sale?:    string;
-  };
+  const raw = req.body as Record<string, any>;
+
+  // Prefer direct fields; fall back to Tally array format if they're missing
+  const tally = (
+    !raw.promoter_name && !raw.promoter_email && !raw.restaurant_email
+  ) ? parseTallyFields(raw) : {};
+
+  const promoter_name    = raw.promoter_name    || tally.promoter_name    || "";
+  const promoter_email   = raw.promoter_email   || tally.promoter_email   || "";
+  const restaurant_email = raw.restaurant_email || tally.restaurant_email || "";
+  const plan             = raw.plan             || tally.plan             || "";
+  const payment_method   = raw.payment_method   || tally.payment_method   || undefined;
+  const payment_details  = raw.payment_details  || tally.payment_details  || undefined;
+  const date_of_sale     = raw.date_of_sale     || tally.date_of_sale     || undefined;
 
   if (!promoter_name || !promoter_email || !restaurant_email || !plan) {
     return res.status(400).json({ error: "promoter_name, promoter_email, restaurant_email, and plan are required" });
