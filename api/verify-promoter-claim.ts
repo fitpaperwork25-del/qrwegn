@@ -15,7 +15,7 @@ const supabase = createClient(
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const ADMIN_EMAIL = "fitpaperwork25@gmail.com";
-const FROM = "QRServe <onboarding@qrserve.app>";
+const FROM = "QR-Wegn <onboarding@resend.dev>";
 
 const COMMISSION: Record<string, number> = {
   starter:    49,
