@@ -120,6 +120,37 @@ export default function RegisterPage() {
       password: form.password,
     });
 
+    // "User already registered" means a previous signup attempt created an
+    // unconfirmed auth record. Try signing in — if it works and the user has
+    // no business yet, finish onboarding. Otherwise send them to login.
+    if (authError?.message?.toLowerCase().includes("user already registered")) {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: form.email.trim(),
+        password: form.password,
+      });
+
+      if (signInError || !signInData.session) {
+        setError("An account with this email already exists. Please log in instead.");
+        setLoading(false);
+        return;
+      }
+
+      const userId = signInData.session.user.id;
+      const { data: existing } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("owner_id", userId)
+        .maybeSingle();
+
+      if (existing) {
+        window.location.href = "/dashboard";
+        return;
+      }
+
+      await insertBusiness(userId);
+      return;
+    }
+
     if (authError) {
       setError(authError.message);
       setLoading(false);
