@@ -19,7 +19,7 @@ const RED    = "#f44336";
 const ORANGE = "#F97316";
 const BLUE   = "#3B82F6";
 
-const BIZ_TYPES = ["restaurant","cafe","barbershop","salon","hotel"] as const;
+const BIZ_TYPES = ["restaurant","cafe","barbershop","salon","hotel","platform"] as const;
 const QUICK_NOTES = ["QR code printed 🖨️","Staff trained ✅","Went live 🚀","Follow-up call 📞","Issue reported ⚠️"];
 
 // ── Types ─────────────────────────────────────────────────────────────────────

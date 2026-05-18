@@ -25,6 +25,7 @@ const BUSINESS_TYPES = [
   { value: "barbershop", label: "Barbershop" },
   { value: "salon",      label: "Salon" },
   { value: "hotel",      label: "Hotel" },
+  { value: "platform",   label: "Platform" },
 ] as const;
 
 const inputStyle: React.CSSProperties = {
