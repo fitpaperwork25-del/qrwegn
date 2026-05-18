@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QRServe — Client Onboarding</title>
+<title>QR-Wegn — Client Onboarding</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -219,7 +219,7 @@ textarea.notes { min-height: 100px; resize: vertical; font-size: 14px; line-heig
 
 <script>
 const STEPS = [
-  { id:"register",   label:"Client registers at qrserve-v3.vercel.app/register" },
+  { id:"register",   label:"Client registers at qrwegn.com/register" },
   { id:"ownership",  label:"Verify / transfer business ownership in Supabase" },
   { id:"menu",       label:"Import menu via CSV (Menu tab → Import CSV)" },
   { id:"tables",     label:"Add tables and download QR codes" },
@@ -270,7 +270,7 @@ function cycleFilter() {
 }
 
 function buildLinks(c) {
-  const base = "https://qrserve-v3.vercel.app";
+  const base = "https://qrwegn.com";
   const links = [
     { label:"Owner Dashboard", url:`${base}/dashboard` },
     { label:"Staff Login",     url:`${base}/staff-login` },
@@ -414,7 +414,7 @@ function render() {
             <div class="table-name">${t.name}</div>
             <div class="table-id">${t.id}</div>
             <div style="display:flex;gap:8px;align-items:center">
-              ${c.business_id ? `<a href="https://qrserve-v3.vercel.app/scan/${c.business_id}/${t.id}" target="_blank" style="color:var(--accent);font-size:13px;text-decoration:none">↗</a>` : ""}
+              ${c.business_id ? `<a href="https://qrwegn.com/scan/${c.business_id}/${t.id}" target="_blank" style="color:var(--accent);font-size:13px;text-decoration:none">↗</a>` : ""}
               <button class="btn-danger btn-small" onclick="removeTable(${idx},${ti})">✕</button>
             </div>
           </div>`)

@@ -2,7 +2,7 @@ import { Resend } from "resend";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const APP_URL = "https://qrserve-v3.vercel.app";
+const APP_URL = "https://qrwegn.com";
 
 function html(businessName: string, slug: string): string {
   const scanUrl      = `${APP_URL}/scan/${slug}`;
@@ -232,7 +232,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { error } = await resend.emails.send({
-      from: "QRServe <onboarding@qrserve.app>",
+      from: "QR-Wegn <onboarding@resend.dev>",
       to:   email,
       subject: `You're live, ${businessName} 🚀`,
       html: html(businessName, slug),

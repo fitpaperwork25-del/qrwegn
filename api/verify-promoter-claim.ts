@@ -174,14 +174,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await resend.emails.send({
       from:    FROM,
       to:      promoter_email,
-      subject: "Your QRServe Promoter Claim is Approved",
+      subject: "Your QR-Wegn Promoter Claim is Approved",
       html: `
         <p>Hi ${promoter_name},</p>
         <p>Great news — your promoter claim for <strong>${restaurant_email}</strong> (${plan} plan) has been <strong>verified and approved</strong>.</p>
         <p>Your commission of <strong>$${commission_amount}</strong> will be sent to you within <strong>10 days</strong> via ${payment_method ?? "your specified payment method"}.</p>
         <p>Payment details on file: ${payment_details ?? "—"}</p>
-        <p>Thank you for growing QRServe!</p>
-        <p style="color:#888;font-size:12px;">— The QRServe Team</p>
+        <p>Thank you for growing QR-Wegn!</p>
+        <p style="color:#888;font-size:12px;">— The QR-Wegn Team</p>
       `,
     });
   } else {
@@ -189,13 +189,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await resend.emails.send({
       from:    FROM,
       to:      promoter_email,
-      subject: "Your QRServe Promoter Claim is Pending",
+      subject: "Your QR-Wegn Promoter Claim is Pending",
       html: `
         <p>Hi ${promoter_name},</p>
         <p>We received your promoter claim for <strong>${restaurant_email}</strong>, but we weren't able to verify an active subscription for that restaurant yet.</p>
         <p>This usually means the restaurant's payment hasn't cleared yet. Please <strong>resubmit your claim in a few days</strong> once their subscription is active.</p>
         <p>If you believe this is an error, feel free to reply to this email.</p>
-        <p style="color:#888;font-size:12px;">— The QRServe Team</p>
+        <p style="color:#888;font-size:12px;">— The QR-Wegn Team</p>
       `,
     });
   }

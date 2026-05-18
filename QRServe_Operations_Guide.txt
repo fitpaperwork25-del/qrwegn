@@ -7,7 +7,7 @@ Platform owner: Michael A. Etbarekh (fitpaperwork25@gmail.com)
 PLATFORM OVERVIEW
 -----------------
 QRServe v3 is a QR-based ordering platform for restaurants and cafes.
-Live URL: https://qrserve-v3.vercel.app
+Live URL: https://qrwegn.com
 
 Three user roles:
 1. Platform Owner (you) — manages all businesses via /admin
@@ -15,15 +15,15 @@ Three user roles:
 3. Staff — views and manages orders via /staff
 
 Key URLs:
-- Landing page:     qrserve-v3.vercel.app
-- Owner login:      qrserve-v3.vercel.app/login
-- Owner dashboard:  qrserve-v3.vercel.app/dashboard
-- Staff login:      qrserve-v3.vercel.app/staff-login
-- Staff kitchen:    qrserve-v3.vercel.app/staff
-- Super admin:      qrserve-v3.vercel.app/admin
-- Register:         qrserve-v3.vercel.app/register
-- Demo:             qrserve-v3.vercel.app (click Try Demo)
-- Demo scan page:   qrserve-v3.vercel.app/scan/demo-restaurant
+- Landing page:     qrwegn.com
+- Owner login:      qrwegn.com/login
+- Owner dashboard:  qrwegn.com/dashboard
+- Staff login:      qrwegn.com/staff-login
+- Staff kitchen:    qrwegn.com/staff
+- Super admin:      qrwegn.com/admin
+- Register:         qrwegn.com/register
+- Demo:             qrwegn.com (click Try Demo)
+- Demo scan page:   qrwegn.com/scan/demo-restaurant
 
 
 INFRASTRUCTURE
@@ -40,24 +40,24 @@ ACTIVE BUSINESSES
 -----------------
 1. Snelling Cafe
    - Slug: snelling-cafe
-   - Scan page: qrserve-v3.vercel.app/scan/snelling-cafe
+   - Scan page: qrwegn.com/scan/snelling-cafe
    - Staff PIN: 2026
    - Plan: Pro / Active
 
 2. Red Sea
    - Slug: red-sea
-   - Scan page: qrserve-v3.vercel.app/scan/red-sea
+   - Scan page: qrwegn.com/scan/red-sea
    - Staff PIN: 2026
    - Plan: Starter / Trialing
 
 3. Ginkgo Cafe
    - Slug: ginkgo-cafe
-   - Scan page: qrserve-v3.vercel.app/scan/ginkgo-cafe
+   - Scan page: qrwegn.com/scan/ginkgo-cafe
    - Staff PIN: 2026
 
 4. Demo Restaurant
    - Slug: demo-restaurant
-   - Scan page: qrserve-v3.vercel.app/scan/demo-restaurant
+   - Scan page: qrwegn.com/scan/demo-restaurant
    - Owner login: demo@qrserve.app / Demo2026
    - Staff PIN: 1234
    - Purpose: prospect demos only
@@ -70,7 +70,7 @@ ACTIVE BUSINESSES
 ONBOARDING A NEW CLIENT (Step by Step)
 ---------------------------------------
 Step 1 — Client registers
-   - Send them: qrserve-v3.vercel.app/register
+   - Send them: qrwegn.com/register
    - They create their account and choose a plan
    - They appear automatically on your /admin page with NOT STARTED status
 
@@ -91,14 +91,14 @@ Step 4 — Print and deliver their QR code
 
 Step 5 — Train staff
    - Give staff their login details:
-     URL: qrserve-v3.vercel.app/staff-login
+     URL: qrwegn.com/staff-login
      Restaurant ID: their slug (e.g. red-sea)
      PIN: their staff PIN (default 2026, update on /admin if needed)
    - Show them the kitchen view and how to update order status
    - Click "Staff trained" in the Communication Log
 
 Step 6 — Go live
-   - Customer scan page is ready: qrserve-v3.vercel.app/scan/{slug}
+   - Customer scan page is ready: qrwegn.com/scan/{slug}
    - Click "Went live" in the Communication Log
    - Status changes to LIVE automatically after first order received
 
@@ -124,7 +124,7 @@ Deployment status badges:
 
 DEMO ACCOUNT (for prospects)
 ------------------------------
-Send prospects to: qrserve-v3.vercel.app
+Send prospects to: qrwegn.com
 They click "Try Demo" and choose:
 - Customer View: scan page with full menu
 - Staff Kitchen: kitchen view (slug: demo-restaurant, PIN: 1234)

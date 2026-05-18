@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 480" width="400" height="480" role="img" aria-label="QRServe logo">
-  <title>QRServe</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 480" width="400" height="480" role="img" aria-label="QR-Wegn logo">
+  <title>QR-Wegn</title>
 
   <!-- ── Background ──────────────────────────────────────────────────────── -->
   <rect width="400" height="480" fill="#080808" rx="20"/>
@@ -179,7 +179,7 @@
     font-size="38"
     letter-spacing="2"
     fill="#F0EDE8"
-  >QRServe</text>
+  >QR-Wegn</text>
 
   <text
     x="200" y="448"

@@ -129,7 +129,7 @@ export default function LandingPage() {
   const demoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    QRCode.toDataURL("https://qrserve-v3.vercel.app", {
+    QRCode.toDataURL("https://qrwegn.com", {
       width: 200,
       margin: 2,
       color: { dark: "#E8C547", light: "#080808" },
@@ -514,7 +514,7 @@ export default function LandingPage() {
           }
         </div>
         <p style={{ fontSize: 13, color: MUTED, marginTop: 16, fontFamily: "monospace" }}>
-          qrserve-v3.vercel.app
+          qrwegn.com
         </p>
       </section>
 

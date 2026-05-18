@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const SLUG    = 'snelling-cafe';
 const NAME    = 'SNELLING CAFE';
-const BASE    = 'https://qrserve-v3.vercel.app';
+const BASE    = 'https://qrwegn.com';
 const OUT_DIR = path.join(__dirname, '..', 'public', 'postcards');
 
 const W = 1800, H = 1200;
@@ -162,7 +162,7 @@ async function main() {
   console.log('\n✅ All 9 postcards saved to public/postcards/\n');
   console.log('Download links (after deploy):');
   for (let i = 1; i <= 9; i++) {
-    console.log(`  https://qrserve-v3.vercel.app/postcards/snelling-cafe-table-${i}.png`);
+    console.log(`  https://qrwegn.com/postcards/snelling-cafe-table-${i}.png`);
   }
 }
 

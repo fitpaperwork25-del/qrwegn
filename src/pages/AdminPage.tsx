@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabase";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SUPER_ADMIN = "fitpaperwork25@gmail.com";
-const APP_URL     = "https://qrserve-v3.vercel.app";
+const APP_URL     = "https://qrwegn.com";
 
 const BG     = "#080808";
 const CARD   = "#111111";

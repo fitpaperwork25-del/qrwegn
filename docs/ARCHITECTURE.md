@@ -8,7 +8,7 @@
 
 - **Product:** QRServe (formerly QRSolutions)
 - **Repo:** `fitpaperwork25-del/qrserve-v3`
-- **Live URL:** https://qrserve-v3.vercel.app *(update when deployed)*
+- **Live URL:** https://qrwegn.com
 - **Owner:** fitpaperwork25@gmail.com
 - **Supabase project:** `yizvlbupvamsietgjtys`
 
