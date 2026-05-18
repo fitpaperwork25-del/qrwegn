@@ -14,7 +14,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!token) return res.status(401).json({ error: "Missing token" });
 
   const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-  if (authErr || user?.email !== "fitpaperwork25@gmail.com") {
+  const ADMINS = ["fitpaperwork25@gmail.com", "etbarekh@me.com", "etbarekh@gmail.com"];
+  if (authErr || !ADMINS.includes(user?.email ?? "")) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
