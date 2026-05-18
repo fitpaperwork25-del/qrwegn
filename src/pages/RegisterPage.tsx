@@ -120,38 +120,55 @@ export default function RegisterPage() {
       password: form.password,
     });
 
-    // "User already registered" means a previous signup attempt created an
-    // unconfirmed auth record. Try signing in — if it works and the user has
-    // no business yet, finish onboarding. Otherwise send them to login.
-    if (authError?.message?.toLowerCase().includes("user already registered")) {
+    console.log("[register] signUp result:", { authData, authError });
+
+    // "User already registered" — account exists (possibly created via magic
+    // link with no password). Try password sign-in first, then magic link.
+    if (authError?.message?.toLowerCase().includes("user already registered") ||
+        authError?.message?.toLowerCase().includes("already registered")) {
+
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: form.email.trim(),
         password: form.password,
       });
 
-      if (signInError || !signInData.session) {
-        setError("An account with this email already exists. Please log in instead.");
-        setLoading(false);
+      console.log("[register] signIn fallback:", { signInData, signInError });
+
+      if (!signInError && signInData.session) {
+        const userId = signInData.session.user.id;
+        const { data: existing } = await supabase
+          .from("businesses").select("id").eq("owner_id", userId).maybeSingle();
+        if (existing) { window.location.href = "/dashboard"; return; }
+        await insertBusiness(userId);
         return;
       }
 
-      const userId = signInData.session.user.id;
-      const { data: existing } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", userId)
-        .maybeSingle();
+      // Password sign-in failed — account may have been created via magic link.
+      // Store pending business info and send a magic link to complete setup.
+      localStorage.setItem("qw_pending_registration", JSON.stringify({
+        businessName: form.businessName.trim(),
+        type:         form.type,
+      }));
 
-      if (existing) {
-        window.location.href = "/dashboard";
-        return;
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: form.email.trim(),
+        options: { shouldCreateUser: false },
+      });
+
+      console.log("[register] OTP fallback:", { otpError });
+
+      if (!otpError) {
+        setError(`We've sent a sign-in link to ${form.email.trim()}. Click it to complete your registration.`);
+      } else {
+        localStorage.removeItem("qw_pending_registration");
+        setError("This email is already registered. Please log in or reset your password.");
       }
-
-      await insertBusiness(userId);
+      setLoading(false);
       return;
     }
 
     if (authError) {
+      console.error("[register] unexpected authError:", authError);
       setError(authError.message);
       setLoading(false);
       return;

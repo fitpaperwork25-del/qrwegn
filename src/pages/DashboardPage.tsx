@@ -203,8 +203,28 @@ export default function DashboardPage() {
 
   async function load(userId: string) {
     setLoading(true);
-    const bizRes = await supabase.from("businesses").select("*").eq("owner_id", userId).single();
-    const biz = bizRes.data as Business | null;
+    const bizRes = await supabase.from("businesses").select("*").eq("owner_id", userId).maybeSingle();
+    let biz = bizRes.data as Business | null;
+
+    // User arrived via magic-link after a registration attempt that couldn't
+    // complete inline (e.g. account existed with no password). Create the
+    // business now using the data saved before the magic link was sent.
+    if (!biz) {
+      const pending = localStorage.getItem("qw_pending_registration");
+      if (pending) {
+        try {
+          const { businessName, type } = JSON.parse(pending) as { businessName: string; type: string };
+          const slug = businessName.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-") || `business-${Date.now()}`;
+          const { data: created } = await supabase.from("businesses").insert({
+            owner_id: userId, name: businessName, slug, type,
+            plan: "starter", subscription_status: "trialing",
+          }).select("*").single();
+          biz = created as Business | null;
+        } catch { /* ignore — fall through to no-business UI */ }
+        localStorage.removeItem("qw_pending_registration");
+      }
+    }
+
     setBusiness(biz);
     if (biz) {
       const [locRes, ordRes, catRes, tabsRes] = await Promise.all([
