@@ -16,7 +16,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  // Create auth user
+  // Try to create; if already exists, look up the existing user
+  let userId: string;
   const { data: userData, error: userError } = await supabase.auth.admin.createUser({
     email:          "fitpaperwork25@gmail.com",
     password:       "TempAdmin2026!",
@@ -24,10 +25,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   });
 
   if (userError) {
-    return res.status(400).json({ error: userError.message });
+    if (!userError.message.toLowerCase().includes("already been registered")) {
+      return res.status(400).json({ error: userError.message });
+    }
+    // User exists — find them by email
+    const { data: list, error: listErr } = await supabase.auth.admin.listUsers();
+    if (listErr) return res.status(500).json({ error: listErr.message });
+    const existing = list.users.find((u) => u.email === "fitpaperwork25@gmail.com");
+    if (!existing) return res.status(404).json({ error: "User not found after lookup" });
+    userId = existing.id;
+    // Reset password so they can log in
+    await supabase.auth.admin.updateUserById(userId, { password: "TempAdmin2026!" });
+  } else {
+    userId = userData.user.id;
   }
-
-  const userId = userData.user.id;
 
   // Insert business row
   const { error: bizError } = await supabase.from("businesses").insert({
