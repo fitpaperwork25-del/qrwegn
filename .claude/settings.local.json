@@ -34,7 +34,8 @@
       "Bash(taskkill *)",
       "PowerShell(Stop-Process *)",
       "Bash(cat .env.local)",
-      "Bash(cat .env)"
+      "Bash(cat .env)",
+      "Bash(curl *)"
     ]
   }
 }

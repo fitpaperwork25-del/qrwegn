@@ -4,7 +4,7 @@ import { useAuth } from "../lib/useAuth";
 import { supabase } from "../lib/supabase";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const SUPER_ADMINS = ["fitpaperwork25@gmail.com", "etbarekh@me.com", "etbarekh@gmail.com"];
+const SUPER_ADMIN = "fitpaperwork25@gmail.com";
 const APP_URL     = "https://qrwegn.com";
 
 const BG     = "#080808";
@@ -78,7 +78,7 @@ function timeAgo(iso: string) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const { session } = useAuth();
-  const isSuperAdmin = SUPER_ADMINS.includes(session?.user?.email ?? "");
+  const isSuperAdmin = session?.user?.email === SUPER_ADMIN;
 
   const [businesses, setBusinesses] = useState<AdminBiz[]>([]);
   const [notes,      setNotes]      = useState<Record<string, AdminNote[]>>({});
