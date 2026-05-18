@@ -62,6 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
   const raw = req.body as Record<string, any>;
+  console.log("RAW BODY:", JSON.stringify(raw, null, 2));
 
   // Prefer direct fields; fall back to Tally array format if they're missing
   const tally = (
