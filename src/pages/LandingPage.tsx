@@ -325,6 +325,53 @@ export default function LandingPage() {
         )}
       </section>
 
+      {/* Become a Promoter */}
+      <section style={{ background: SURFACE, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "80px 24px", textAlign: "center" }}>
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+          <p style={{ fontSize: 11, letterSpacing: 4, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>
+            Promoter Program
+          </p>
+          <h2 style={{ fontSize: "clamp(26px, 4.5vw, 44px)", fontWeight: 900, letterSpacing: -1, color: TEXT, marginBottom: 14, lineHeight: 1.15 }}>
+            Become a QR-Wegn Promoter
+          </h2>
+          <p style={{ fontSize: 16, color: MUTED, marginBottom: 40, lineHeight: 1.7 }}>
+            Earn cash for every restaurant you bring on board
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 44, textAlign: "left", maxWidth: 460, margin: "0 auto 44px" }}>
+            {[
+              "Sell any plan and earn the first month's value — $49, $99, or $199",
+              "No limit on earnings — every sale counts",
+              "Get paid 37 days after the restaurant's first successful payment",
+            ].map((point) => (
+              <div key={point} style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                <span style={{
+                  flexShrink: 0, marginTop: 2,
+                  width: 20, height: 20, borderRadius: "50%",
+                  background: ACCENT + "22", border: `1.5px solid ${ACCENT}55`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 11, color: ACCENT, fontWeight: 900,
+                }}>✓</span>
+                <span style={{ fontSize: 15, color: TEXT, lineHeight: 1.6 }}>{point}</span>
+              </div>
+            ))}
+          </div>
+          <a
+            href="https://tally.so/r/gDJWe4"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-block",
+              background: ACCENT, color: BG,
+              fontWeight: 800, fontSize: 15,
+              padding: "15px 32px", borderRadius: 10,
+              textDecoration: "none", letterSpacing: 0.3,
+            }}
+          >
+            Submit a Sale Claim →
+          </a>
+        </div>
+      </section>
+
       {/* QR Code */}
       <section style={{ background: BG, borderTop: `1px solid ${BORDER}`, padding: "60px 24px", textAlign: "center" }}>
         <p style={{ fontSize: 11, letterSpacing: 4, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>
