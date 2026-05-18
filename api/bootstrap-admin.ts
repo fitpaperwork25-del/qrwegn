@@ -16,54 +16,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  // Try to create; if already exists, find them via direct REST API call
   let userId: string;
+
+  // Try to create the user fresh
   const { data: userData, error: userError } = await supabase.auth.admin.createUser({
-    email:          "fitpaperwork25@gmail.com",
-    password:       "TempAdmin2026!",
-    email_confirm:  true,
+    email:         "fitpaperwork25@gmail.com",
+    password:      "TempAdmin2026!",
+    email_confirm: true,
   });
 
   if (userError) {
     if (!userError.message.toLowerCase().includes("already been registered")) {
-      return res.status(400).json({ error: userError.message });
+      return res.status(400).json({ step: "createUser", error: userError.message });
     }
 
-    // User exists — query directly via Admin REST API with email filter
-    const lookupUrl = `${process.env.SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent("fitpaperwork25@gmail.com")}`;
-    const lookupRes = await fetch(lookupUrl, {
-      headers: {
-        "apikey":        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
-      },
+    // User exists in a ghost/unconfirmed state not returned by listUsers.
+    // generateLink({ type: "recovery" }) locates ANY user by email regardless
+    // of confirmation status and returns their full user object.
+    const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+      type:  "recovery",
+      email: "fitpaperwork25@gmail.com",
     });
-    const lookupJson = await lookupRes.json() as any;
 
-    // Response may be { users: [...] } or an array directly
-    const users: any[] = Array.isArray(lookupJson) ? lookupJson : (lookupJson.users ?? []);
-    const existing = users.find(
-      (u: any) => u.email?.toLowerCase() === "fitpaperwork25@gmail.com"
-    );
-
-    if (!existing) {
-      // Fallback: paginate through all users
-      const { data: list } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-      const fallback = list?.users?.find(
-        (u) => u.email?.toLowerCase() === "fitpaperwork25@gmail.com"
-      );
-      if (!fallback) {
-        return res.status(404).json({
-          error: "User not found",
-          lookupResponse: lookupJson,
-          totalFromList: list?.users?.length ?? 0,
-        });
-      }
-      userId = fallback.id;
-    } else {
-      userId = existing.id;
+    if (linkErr || !linkData?.user?.id) {
+      return res.status(500).json({ step: "generateLink", error: linkErr?.message ?? "no user returned" });
     }
 
-    // Reset password so they can sign in
+    userId = linkData.user.id;
+
+    // Confirm email and reset password so they can sign in immediately
     await supabase.auth.admin.updateUserById(userId, {
       password:      "TempAdmin2026!",
       email_confirm: true,
