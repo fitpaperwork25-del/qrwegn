@@ -586,43 +586,131 @@ export default function AdminPage() {
     <div style={{ background: BG, minHeight: "100vh", color: TEXT, fontFamily: "sans-serif" }}>
 
       {/* Header */}
-      <header style={{ background: CARD, borderBottom: `1px solid ${BORDER}`, padding: "20px 28px", position: "sticky", top: 0, zIndex: 20 }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-          <div>
-            <p style={{ fontSize: 10, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 4px" }}>Super Admin</p>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>
-              Client Success — {businesses.length} business{businesses.length !== 1 ? "es" : ""}
-            </h1>
+      <header style={{ background: CARD, borderBottom: `1px solid ${BORDER}`, padding: "20px 28px 0", position: "sticky", top: 0, zIndex: 20 }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16, paddingBottom: 16 }}>
+            <div>
+              <p style={{ fontSize: 10, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 4px" }}>Super Admin</p>
+              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>
+                Client Success — {businesses.length} business{businesses.length !== 1 ? "es" : ""}
+              </h1>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+              {[
+                { label: "Live",        val: live,                   color: GREEN  },
+                { label: "In Progress", val: inProgress,             color: ACCENT },
+                { label: "Not Started", val: notStarted,             color: MUTED  },
+                { label: "MRR",         val: `$${mrr.toLocaleString()}`, color: GREEN  },
+                { label: "Total Orders",val: totalOrders,            color: TEXT   },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: s.color }}>{s.val}</div>
+                  <div style={{ fontSize: 10, color: MUTED, letterSpacing: 1, textTransform: "uppercase" }}>{s.label}</div>
+                </div>
+              ))}
+              <button
+                onClick={() => setShowHelp(true)}
+                style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 16px", color: MUTED, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+              >
+                ? Help
+              </button>
+              <button
+                onClick={() => setShowNewClient(true)}
+                style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: "pointer" }}
+              >
+                + New Client
+              </button>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            {[
-              { label: "Live",        val: live,       color: GREEN  },
-              { label: "In Progress", val: inProgress, color: ACCENT },
-              { label: "Not Started", val: notStarted, color: MUTED  },
-            ].map(s => (
-              <div key={s.label} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: s.color }}>{s.val}</div>
-                <div style={{ fontSize: 10, color: MUTED, letterSpacing: 1, textTransform: "uppercase" }}>{s.label}</div>
-              </div>
+          {/* Tab nav */}
+          <div style={{ display: "flex", borderTop: `1px solid ${BORDER}` }}>
+            {(["clients", "claims"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => switchTab(tab)}
+                style={{
+                  background: "none", border: "none",
+                  borderBottom: activeTab === tab ? `2px solid ${ACCENT}` : "2px solid transparent",
+                  padding: "12px 20px",
+                  color: activeTab === tab ? ACCENT : MUTED,
+                  fontWeight: 700, fontSize: 13, cursor: "pointer",
+                  textTransform: "uppercase", letterSpacing: 1,
+                }}
+              >
+                {tab === "clients" ? `Clients (${businesses.length})` : "Promoter Claims"}
+              </button>
             ))}
-            <button
-              onClick={() => setShowHelp(true)}
-              style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 16px", color: MUTED, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-            >
-              ? Help
-            </button>
-            <button
-              onClick={() => setShowNewClient(true)}
-              style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: "pointer" }}
-            >
-              + New Client
-            </button>
           </div>
         </div>
       </header>
 
-      {/* Business cards */}
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px", display: "flex", flexDirection: "column", gap: 24 }}>
+      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
+
+      {/* ── Promoter Claims tab ─────────────────────────────────────────────── */}
+      {activeTab === "claims" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {loadingClaims && (
+            <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
+              <div style={{ width: 32, height: 32, border: `3px solid rgba(255,255,255,0.08)`, borderTop: `3px solid ${ACCENT}`, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            </div>
+          )}
+          {claimsError && <p style={{ color: RED, margin: 0 }}>{claimsError}</p>}
+          {!loadingClaims && !claimsError && (
+            <>
+              {/* Summary cards */}
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                {[
+                  { label: "Approved", val: `$${claims.filter(c => c.status === "approved").reduce((s, c) => s + Number(c.commission_amount), 0).toFixed(2)}`, color: GREEN },
+                  { label: "Pending",  val: `$${claims.filter(c => c.status === "pending").reduce((s, c) => s + Number(c.commission_amount), 0).toFixed(2)}`,  color: ORANGE },
+                  { label: "Claims",   val: String(claims.length), color: TEXT },
+                ].map(card => (
+                  <div key={card.label} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "14px 22px" }}>
+                    <div style={{ fontSize: 10, color: MUTED, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{card.label}</div>
+                    <div style={{ fontSize: 24, fontWeight: 900, color: card.color }}>{card.val}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Table */}
+              {claims.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "80px 24px", color: MUTED, fontSize: 14 }}>No promoter claims yet.</div>
+              ) : (
+                <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: "hidden" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                        {["Promoter", "Restaurant Email", "Plan", "Commission", "Status", "Sale Date"].map(h => (
+                          <th key={h} style={{ textAlign: "left", padding: "12px 16px", fontSize: 10, letterSpacing: 1, color: MUTED, fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {claims.map((c, i) => (
+                        <tr key={c.id} style={{ borderBottom: i < claims.length - 1 ? `1px solid ${BORDER}` : "none" }}>
+                          <td style={{ padding: "12px 16px" }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{c.promoter_name}</div>
+                            <div style={{ fontSize: 11, color: MUTED }}>{c.promoter_email}</div>
+                          </td>
+                          <td style={{ padding: "12px 16px", fontSize: 12, color: MUTED }}>{c.restaurant_email}</td>
+                          <td style={{ padding: "12px 16px" }}><Badge color={planColor(c.plan)} label={c.plan} /></td>
+                          <td style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: GREEN }}>${Number(c.commission_amount).toFixed(2)}</td>
+                          <td style={{ padding: "12px 16px" }}><Badge color={c.status === "approved" ? GREEN : ORANGE} label={c.status} /></td>
+                          <td style={{ padding: "12px 16px", fontSize: 12, color: MUTED }}>
+                            {c.date_of_sale ? new Date(c.date_of_sale).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Clients tab ─────────────────────────────────────────────────────── */}
+      {activeTab === "clients" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         {businesses.map((biz) => {
           const deploy   = deployStatus(biz);
           const bizNotes = notes[biz.id] ?? [];
@@ -901,6 +989,9 @@ export default function AdminPage() {
             No businesses yet. Click "+ New Client" to add one.
           </div>
         )}
+        </div>
+      )}
+
       </main>
 
       {/* ── New Client modal ────────────────────────────────────────────────── */}
