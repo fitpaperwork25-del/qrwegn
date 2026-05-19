@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { data, error } = await supabaseAdmin.auth.admin.generateLink({
     type: "magiclink",
     email,
-    options: { redirectTo: `${APP_URL}/dashboard` },
+    options: { redirectTo: APP_URL },
   });
 
   if (error) return res.status(400).json({ error: error.message });

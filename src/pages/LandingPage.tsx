@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 
 const ACCENT  = "#E8C547";
 const BG      = "#080808";
@@ -127,6 +128,19 @@ export default function LandingPage() {
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [demoOpen, setDemoOpen]   = useState(false);
   const demoRef = useRef<HTMLDivElement>(null);
+
+  // When Supabase redirects back here after a magic-link click (hash contains
+  // access_token), wait for the SIGNED_IN event and forward to the right page.
+  useEffect(() => {
+    if (!window.location.hash.includes("access_token")) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        const dest = session.user.email === "fitpaperwork25@gmail.com" ? "/admin" : "/dashboard";
+        navigate(dest, { replace: true });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   useEffect(() => {
     QRCode.toDataURL("https://qrwegn.com", {
