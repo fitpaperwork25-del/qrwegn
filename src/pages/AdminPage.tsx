@@ -93,6 +93,8 @@ export default function AdminPage() {
   const [loading,         setLoading]         = useState(true);
   const [error,           setError]           = useState("");
   const [loadingDashboard, setLoadingDashboard] = useState<string | null>(null);
+  const [loadingInvite,    setLoadingInvite]    = useState<string | null>(null);
+  const [inviteSent,       setInviteSent]       = useState<string | null>(null);
   const [showHelp,         setShowHelp]         = useState(false);
 
   // Per-business table QR panel
@@ -238,6 +240,22 @@ export default function AdminPage() {
     const data = await res.json();
     setLoadingDashboard(null);
     if (data.link) window.open(data.link, "_blank");
+  }
+
+  async function sendInvite(biz: AdminBiz) {
+    if (!biz.owner_email) return;
+    setLoadingInvite(biz.id);
+    const jwt = session?.access_token;
+    const res = await fetch("/api/admin-send-invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${jwt}` },
+      body: JSON.stringify({ email: biz.owner_email, businessName: biz.name }),
+    });
+    setLoadingInvite(null);
+    if (res.ok) {
+      setInviteSent(biz.id);
+      setTimeout(() => setInviteSent(null), 4000);
+    }
   }
 
   async function toggleQrPanel(biz: AdminBiz) {
@@ -823,6 +841,13 @@ export default function AdminPage() {
                           title="Generates a magic link — opens owner's dashboard in a new tab"
                           style={{ background: INNER, border: `1px solid ${BORDER}`, borderRadius: 6, padding: "4px 10px", color: biz.owner_email ? BLUE : MUTED, fontSize: 11, fontWeight: 700, cursor: biz.owner_email ? "pointer" : "not-allowed", flexShrink: 0 }}>
                           {loadingDashboard === biz.id ? "…" : "Dashboard ↗"}
+                        </button>
+                        <button
+                          onClick={() => sendInvite(biz)}
+                          disabled={!biz.owner_email || loadingInvite === biz.id || inviteSent === biz.id}
+                          title="Sends a magic-link login email to the business owner"
+                          style={{ background: inviteSent === biz.id ? GREEN + "22" : INNER, border: `1px solid ${inviteSent === biz.id ? GREEN : BORDER}`, borderRadius: 6, padding: "4px 10px", color: inviteSent === biz.id ? GREEN : biz.owner_email ? ACCENT : MUTED, fontSize: 11, fontWeight: 700, cursor: biz.owner_email ? "pointer" : "not-allowed", flexShrink: 0 }}>
+                          {loadingInvite === biz.id ? "…" : inviteSent === biz.id ? "Sent ✓" : "Invite Owner"}
                         </button>
                       </div>
                     </div>
