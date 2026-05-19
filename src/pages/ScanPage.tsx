@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
@@ -17,6 +17,7 @@ export default function ScanPage() {
   const [orderId, setOrderId]         = useState(null);
   const [error, setError]             = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
+  const catNavRef = useRef(null);
 
   // Tab state
   const [openTab, setOpenTab]         = useState(null);   // { id, total, location_id }
@@ -30,6 +31,34 @@ export default function ScanPage() {
   useEffect(() => {
     fetchMenu();
   }, [bizId]);
+
+  // Highlight the category whose section is nearest the top of the viewport
+  useEffect(() => {
+    if (!categories.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter(e => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length > 0) {
+          setActiveCategory(visible[0].target.getAttribute('data-cat-id'));
+        }
+      },
+      { rootMargin: '-10% 0px -80% 0px', threshold: 0 }
+    );
+    categories.forEach(cat => {
+      const el = document.getElementById(`cat-${cat.id}`);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [categories]);
+
+  // Keep the active tab chip scrolled into view inside the nav bar
+  useEffect(() => {
+    if (!activeCategory || !catNavRef.current) return;
+    const btn = catNavRef.current.querySelector(`[data-cat-tab="${activeCategory}"]`);
+    if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [activeCategory]);
 
   async function fetchMenu() {
     setLoading(true);
@@ -421,11 +450,12 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* Category Nav */}
-      <div style={S.catNav}>
+      {/* Category Nav — sticky, scroll-spy driven */}
+      <div ref={catNavRef} style={S.catNav}>
         {categories.map(cat => (
           <button
             key={cat.id}
+            data-cat-tab={cat.id}
             style={{ ...S.catBtn, ...(activeCategory === cat.id ? S.catBtnActive : {}) }}
             onClick={() => {
               setActiveCategory(cat.id);
@@ -443,7 +473,7 @@ export default function ScanPage() {
           const catItems = itemsByCategory(cat.id);
           if (catItems.length === 0) return null;
           return (
-            <div key={cat.id} id={`cat-${cat.id}`} style={S.catSection}>
+            <div key={cat.id} id={`cat-${cat.id}`} data-cat-id={cat.id} style={S.catSection}>
               <h2 style={S.catTitle}>{cat.name}</h2>
               {catItems.map(item => (
                 <div key={item.id} style={S.itemCard}>
@@ -532,7 +562,7 @@ const S = {
     border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
   },
 
-  catNav:      { display: 'flex', flexWrap: 'nowrap', gap: 8, padding: '12px 16px', overflowX: 'auto', overflowY: 'hidden', borderBottom: `1px solid ${border}`, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' },
+  catNav:      { position: 'sticky', top: 0, zIndex: 10, background: dark, display: 'flex', flexWrap: 'nowrap', gap: 8, padding: '10px 16px', overflowX: 'auto', overflowY: 'hidden', borderBottom: `1px solid ${border}`, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' },
   catBtn:      { background: 'transparent', border: `1px solid ${border}`, color: muted, borderRadius: 20, padding: '6px 14px', fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' },
   catBtnActive:{ background: gold, borderColor: gold, color: '#000', fontWeight: 600 },
   menuArea:    { padding: '0 16px' },
