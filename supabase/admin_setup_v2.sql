@@ -41,6 +41,7 @@ RETURNS TABLE (
   id                  uuid,
   name                text,
   slug                text,
+  type                text,
   plan                text,
   subscription_status text,
   created_at          timestamptz,
@@ -60,7 +61,7 @@ BEGIN
   END IF;
   RETURN QUERY
   SELECT
-    b.id, b.name, b.slug, b.plan, b.subscription_status, b.created_at,
+    b.id, b.name, b.slug, b.type, b.plan, b.subscription_status, b.created_at,
     u.email::text,
     b.staff_pin,
     COUNT(DISTINCT l.id)::bigint,
@@ -75,7 +76,8 @@ BEGIN
   LEFT JOIN menu_items mi      ON mi.category_id = mc.id
   LEFT JOIN orders o           ON o.business_id  = b.id
   LEFT JOIN admin_checklist ac ON ac.business_id = b.id
-  GROUP BY b.id, b.name, b.slug, b.plan, b.subscription_status,
+  WHERE b.type != 'platform'
+  GROUP BY b.id, b.name, b.slug, b.type, b.plan, b.subscription_status,
            b.created_at, u.email, b.staff_pin, ac.qr_printed, ac.staff_trained
   ORDER BY b.created_at DESC;
 END;
