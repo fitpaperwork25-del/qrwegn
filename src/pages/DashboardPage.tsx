@@ -7,7 +7,7 @@ import { ACCENT, BG, BORDER, MUTED, SURFACE, TEXT, GREEN, RED } from "../constan
 type Business = {
   id: string; name: string; type: string; plan: string;
   subscription_status: string; logo_url: string | null; slug: string;
-  hero_image_url: string | null;
+  hero_image_url: string | null; staff_pin: string | null;
 };
 type Location  = { id: string; name: string; label: string | null; is_active: boolean };
 type Order     = { id: string; status: string; total: number; created_at: string; cancel_reason: string | null };
@@ -77,6 +77,11 @@ export default function DashboardPage() {
   const [newTableName, setNewTableName] = useState("");
   const [tableError, setTableError]     = useState("");
   const [tableSaving, setTableSaving]   = useState(false);
+
+  const [pinInput,  setPinInput]  = useState("");
+  const [pinSaving, setPinSaving] = useState(false);
+  const [pinError,  setPinError]  = useState("");
+  const [pinSaved,  setPinSaved]  = useState(false);
 
   const [addingCat, setAddingCat]   = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -268,6 +273,16 @@ export default function DashboardPage() {
     if (error) { setTableError(error.message); setTableSaving(false); return; }
     setLocations((prev) => [...prev, data as Location]);
     setNewTableName(""); setAddingTable(false); setTableSaving(false);
+  }
+
+  async function savePin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!business || pinInput.length !== 4) return;
+    setPinSaving(true); setPinError("");
+    const { error } = await supabase.from("businesses").update({ staff_pin: pinInput }).eq("id", business.id);
+    if (error) { setPinError(error.message); }
+    else { setPinSaved(true); setPinInput(""); setBusiness(prev => prev ? { ...prev, staff_pin: pinInput } : prev); setTimeout(() => setPinSaved(false), 3000); }
+    setPinSaving(false);
   }
 
   async function addCategory(e: React.FormEvent) {
@@ -805,6 +820,45 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
+
+              {/* Staff PIN */}
+              <div style={{ ...card }}>
+                <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 6px" }}>Staff PIN</p>
+                <p style={{ fontSize: 13, color: MUTED, margin: "0 0 16px", lineHeight: 1.5 }}>
+                  Your staff use this PIN to log in at <span style={{ color: TEXT, fontFamily: "monospace" }}>/staff-login</span>.
+                  {business?.staff_pin && <span> Current PIN: <span style={{ color: TEXT, letterSpacing: 4, fontFamily: "monospace" }}>{"•".repeat(business.staff_pin.length)}</span></span>}
+                </p>
+                <form onSubmit={savePin} style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="0000"
+                    value={pinInput}
+                    onChange={(e) => { setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4)); setPinError(""); setPinSaved(false); }}
+                    style={{
+                      background: BG, border: `1px solid ${BORDER}`, borderRadius: 8,
+                      padding: "10px 14px", color: TEXT, fontSize: 22, letterSpacing: 10,
+                      textAlign: "center", width: 90, outline: "none",
+                    }}
+                  />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <button
+                      type="submit"
+                      disabled={pinSaving || pinInput.length !== 4}
+                      style={{
+                        background: pinSaved ? GREEN : ACCENT, color: BG, border: "none",
+                        borderRadius: 8, padding: "10px 22px", fontWeight: 800, fontSize: 13,
+                        cursor: (pinSaving || pinInput.length !== 4) ? "not-allowed" : "pointer",
+                        opacity: pinInput.length !== 4 ? 0.5 : 1,
+                      }}
+                    >
+                      {pinSaving ? "Saving…" : pinSaved ? "Saved ✓" : "Update PIN"}
+                    </button>
+                    {pinError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{pinError}</p>}
+                  </div>
+                </form>
+              </div>
             </div>
           )}
 
