@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useAuth } from "../lib/useAuth";
 import { supabase } from "../lib/supabase";
@@ -38,6 +38,10 @@ type PromoterClaim = {
   plan: string; commission_amount: number; status: string;
   payment_method: string | null; payment_details: string | null;
   date_of_sale: string | null; created_at: string;
+};
+type AdminNotification = {
+  id: string; type: string; message: string;
+  business_id: string | null; read: boolean; created_at: string;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -130,21 +134,38 @@ export default function AdminPage() {
   const [creatingClient, setCreatingClient] = useState(false);
   const [newClientError, setNewClientError] = useState("");
 
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [notifOpen,     setNotifOpen]     = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => { if (isSuperAdmin) void load(); }, [isSuperAdmin]);
+
+  useEffect(() => {
+    if (!notifOpen) return;
+    function onClickOutside(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node))
+        setNotifOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [notifOpen]);
 
   // ── Load ──────────────────────────────────────────────────────────────────
   async function load() {
     setLoading(true);
-    const [bizRes, notesRes] = await Promise.all([
+    const [bizRes, notesRes, notifsRes] = await Promise.all([
       supabase.rpc("get_admin_businesses"),
       supabase.from("admin_notes").select("id, business_id, note, created_at")
                                   .order("created_at", { ascending: false }),
+      supabase.from("admin_notifications").select("*").order("created_at", { ascending: false }),
     ]);
 
     if (bizRes.error) { setError(bizRes.error.message); setLoading(false); return; }
 
-    const bizList = (bizRes.data ?? []) as AdminBiz[];
+    const bizList      = (bizRes.data    ?? []) as AdminBiz[];
+    const existingNotifs = notifsRes.error ? [] : (notifsRes.data ?? []) as AdminNotification[];
     setBusinesses(bizList);
+    setNotifications(existingNotifs);
 
     // Group notes by business
     const noteMap: Record<string, AdminNote[]> = {};
@@ -171,6 +192,7 @@ export default function AdminPage() {
     );
     setQrCodes(Object.fromEntries(entries));
     setLoading(false);
+    void seedNotifications(bizList, existingNotifs);
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -218,9 +240,73 @@ export default function AdminPage() {
     setLoadingClaims(true);
     setClaimsError("");
     const { data, error } = await supabase.rpc("get_promoter_claims");
-    if (error) setClaimsError(error.message);
-    else { setClaims((data ?? []) as PromoterClaim[]); setClaimsLoaded(true); }
+    if (error) { setClaimsError(error.message); }
+    else {
+      const claimData = (data ?? []) as PromoterClaim[];
+      setClaims(claimData);
+      setClaimsLoaded(true);
+
+      // Seed promoter claim notification if none exists yet
+      setNotifications(prev => {
+        const hasSeedNotif = prev.some(n => n.type === "new_promoter_claim");
+        if (!hasSeedNotif) {
+          const pendingCount = claimData.filter(c => c.status === "pending").length;
+          if (pendingCount > 0) {
+            const msg = `${pendingCount} pending promoter claim${pendingCount > 1 ? "s" : ""} need review`;
+            void supabase.from("admin_notifications")
+              .insert({ type: "new_promoter_claim", message: msg, business_id: null, read: false })
+              .then(({ error: e }) => {
+                if (e) return;
+                supabase.from("admin_notifications").select("*").order("created_at", { ascending: false })
+                  .then(({ data: d }) => { if (d) setNotifications(d as AdminNotification[]); });
+              });
+          }
+        }
+        return prev;
+      });
+    }
     setLoadingClaims(false);
+  }
+
+  async function seedNotifications(bizList: AdminBiz[], existing: AdminNotification[]) {
+    const existingKeys = new Set(
+      existing.filter(n => n.business_id).map(n => `${n.type}:${n.business_id}`)
+    );
+    const toInsert: { type: string; message: string; business_id: string | null; read: boolean }[] = [];
+    const now        = Date.now();
+    const sevenDays  = 7  * 24 * 60 * 60 * 1000;
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+
+    for (const biz of bizList.filter(b => b.type !== "platform")) {
+      const age = now - new Date(biz.created_at).getTime();
+
+      if (age < thirtyDays && !existingKeys.has(`new_business:${biz.id}`))
+        toInsert.push({ type: "new_business", message: `"${biz.name}" registered`, business_id: biz.id, read: false });
+
+      if (["past_due", "canceled", "unpaid"].includes(biz.subscription_status)
+          && !existingKeys.has(`subscription_failure:${biz.id}`))
+        toInsert.push({ type: "subscription_failure", message: `${biz.name}: subscription ${biz.subscription_status}`, business_id: biz.id, read: false });
+
+      if (age > sevenDays && (biz.location_count === 0 || biz.menu_item_count === 0)
+          && !existingKeys.has(`not_started:${biz.id}`))
+        toInsert.push({ type: "not_started", message: `${biz.name} stuck on Not Started`, business_id: biz.id, read: false });
+    }
+
+    if (toInsert.length === 0) return;
+    const { error } = await supabase.from("admin_notifications").insert(toInsert);
+    if (error) return;
+    const { data } = await supabase.from("admin_notifications").select("*").order("created_at", { ascending: false });
+    if (data) setNotifications(data as AdminNotification[]);
+  }
+
+  async function markNotifRead(id: string) {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    await supabase.from("admin_notifications").update({ read: true }).eq("id", id);
+  }
+
+  async function markAllRead() {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    await supabase.from("admin_notifications").update({ read: true }).eq("read", false);
   }
 
   function switchTab(tab: "clients" | "claims") {
@@ -635,6 +721,100 @@ export default function AdminPage() {
                   <div style={{ fontSize: 10, color: MUTED, letterSpacing: 1, textTransform: "uppercase" }}>{s.label}</div>
                 </div>
               ))}
+              {/* Notification Bell */}
+              <div ref={notifRef} style={{ position: "relative" }}>
+                <button
+                  onClick={() => setNotifOpen(o => !o)}
+                  style={{
+                    position: "relative", background: "none",
+                    border: `1px solid ${notifOpen ? ACCENT + "66" : BORDER}`,
+                    borderRadius: 8, padding: "10px 14px",
+                    color: notifOpen ? TEXT : MUTED, cursor: "pointer",
+                    display: "flex", alignItems: "center",
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                  </svg>
+                  {(() => {
+                    const unread = notifications.filter(n => !n.read).length;
+                    return unread > 0 ? (
+                      <span style={{
+                        position: "absolute", top: -5, right: -5,
+                        minWidth: 17, height: 17, background: RED,
+                        borderRadius: 9, border: `2px solid ${CARD}`,
+                        fontSize: 9, fontWeight: 800, color: "#fff",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        padding: "0 3px", lineHeight: 1,
+                      }}>
+                        {unread > 99 ? "99+" : unread}
+                      </span>
+                    ) : null;
+                  })()}
+                </button>
+
+                {notifOpen && (
+                  <div style={{
+                    position: "absolute", top: "calc(100% + 8px)", right: 0,
+                    width: 340, background: CARD, border: `1px solid ${BORDER}`,
+                    borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                    zIndex: 30, overflow: "hidden",
+                  }}>
+                    <div style={{ padding: "12px 16px", borderBottom: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: TEXT }}>
+                        Notifications
+                        {notifications.filter(n => !n.read).length > 0 && (
+                          <span style={{ marginLeft: 8, background: RED + "22", color: RED, border: `1px solid ${RED}44`, borderRadius: 10, padding: "1px 7px", fontSize: 10, fontWeight: 700 }}>
+                            {notifications.filter(n => !n.read).length}
+                          </span>
+                        )}
+                      </span>
+                      {notifications.some(n => !n.read) && (
+                        <button onClick={markAllRead} style={{ background: "none", border: "none", color: ACCENT, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ maxHeight: 380, overflowY: "auto" }}>
+                      {notifications.length === 0 ? (
+                        <div style={{ padding: "32px 16px", textAlign: "center", color: MUTED, fontSize: 13 }}>
+                          No notifications
+                        </div>
+                      ) : notifications.map((n, i) => (
+                        <div
+                          key={n.id}
+                          onClick={() => { if (!n.read) void markNotifRead(n.id); }}
+                          style={{
+                            padding: "12px 16px",
+                            borderBottom: i < notifications.length - 1 ? `1px solid ${BORDER}` : "none",
+                            background: n.read ? "transparent" : INNER,
+                            cursor: n.read ? "default" : "pointer",
+                            display: "flex", gap: 10, alignItems: "flex-start",
+                          }}
+                        >
+                          <span style={{ fontSize: 15, flexShrink: 0, marginTop: 2 }}>
+                            {n.type === "new_business"         ? "🏢"
+                            : n.type === "new_promoter_claim"  ? "🤝"
+                            : n.type === "subscription_failure" ? "⚠️"
+                            : "🕐"}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: 13, color: n.read ? MUTED : TEXT, lineHeight: 1.4, wordBreak: "break-word" }}>
+                              {n.message}
+                            </p>
+                            <p style={{ margin: "3px 0 0", fontSize: 11, color: MUTED }}>{timeAgo(n.created_at)}</p>
+                          </div>
+                          {!n.read && (
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: ACCENT, flexShrink: 0, marginTop: 5 }} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={() => setShowHelp(true)}
                 style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 16px", color: MUTED, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
