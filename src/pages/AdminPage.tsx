@@ -117,6 +117,8 @@ export default function AdminPage() {
   const [togglingCheck, setTogglingCheck] = useState<string | null>(null);
   const [copied,        setCopied]        = useState<string | null>(null);
 
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+
   // Tabs, search & promoter claims
   const [searchQuery,   setSearchQuery]   = useState("");
   const [activeTab,     setActiveTab]     = useState<"clients" | "claims">("clients");
@@ -218,6 +220,11 @@ export default function AdminPage() {
       setNoteInputs((prev) => ({ ...prev, [bizId]: "" }));
     }
     setSavingNote(null);
+  }
+
+  async function deleteNote(noteId: string, bizId: string) {
+    await supabase.from("admin_notes").delete().eq("id", noteId);
+    setNotes((prev) => ({ ...prev, [bizId]: (prev[bizId] ?? []).filter((n) => n.id !== noteId) }));
   }
 
   async function toggleCheck(bizId: string, field: "qr_printed" | "staff_trained", current: boolean) {
@@ -1117,18 +1124,47 @@ export default function AdminPage() {
                   </div>
 
                   {/* Log entries */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto" }}>
-                    {bizNotes.length === 0 ? (
-                      <p style={{ color: MUTED, fontSize: 12, margin: "4px 0 0" }}>No notes yet.</p>
-                    ) : (
-                      bizNotes.map((n) => (
-                        <div key={n.id} style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
-                          <span style={{ fontSize: 10, color: MUTED, flexShrink: 0, fontFamily: "monospace" }}>{timeAgo(n.created_at)}</span>
-                          <span style={{ fontSize: 13, color: TEXT }}>{n.note}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  {(() => {
+                    const isExpanded = expandedLogs.has(biz.id);
+                    const visible = isExpanded ? bizNotes : bizNotes.slice(0, 3);
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {bizNotes.length === 0 ? (
+                          <p style={{ color: MUTED, fontSize: 12, margin: "4px 0 0" }}>No notes yet.</p>
+                        ) : (
+                          <>
+                            {visible.map((n) => (
+                              <div key={n.id} style={{ display: "flex", gap: 10, alignItems: "baseline", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", gap: 10, alignItems: "baseline", minWidth: 0 }}>
+                                  <span style={{ fontSize: 10, color: MUTED, flexShrink: 0, fontFamily: "monospace" }}>{timeAgo(n.created_at)}</span>
+                                  <span style={{ fontSize: 13, color: TEXT }}>{n.note}</span>
+                                </div>
+                                <button
+                                  onClick={() => void deleteNote(n.id, biz.id)}
+                                  title="Delete entry"
+                                  style={{ background: "none", border: "none", color: MUTED, fontSize: 14, cursor: "pointer", flexShrink: 0, lineHeight: 1, padding: "0 2px", opacity: 0.6 }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")}
+                                >×</button>
+                              </div>
+                            ))}
+                            {bizNotes.length > 3 && (
+                              <button
+                                onClick={() => setExpandedLogs((prev) => {
+                                  const next = new Set(prev);
+                                  next.has(biz.id) ? next.delete(biz.id) : next.add(biz.id);
+                                  return next;
+                                })}
+                                style={{ background: "none", border: "none", color: ACCENT, fontSize: 11, fontWeight: 700, cursor: "pointer", textAlign: "left", padding: 0, marginTop: 2 }}
+                              >
+                                {isExpanded ? "Show less" : `Show all ${bizNotes.length} entries`}
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
               </div>
