@@ -838,8 +838,8 @@ export default function DashboardPage() {
                     onChange={(e) => { setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4)); setPinError(""); setPinSaved(false); }}
                     style={{
                       background: BG, border: `1px solid ${BORDER}`, borderRadius: 8,
-                      padding: "10px 14px", color: TEXT, fontSize: 22, letterSpacing: 10,
-                      textAlign: "center", width: 90, outline: "none",
+                      padding: "10px 14px", color: TEXT, fontSize: 20, letterSpacing: 8,
+                      textAlign: "center", width: 120, fontFamily: "monospace", outline: "none",
                     }}
                   />
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
