@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useAuth } from "../lib/useAuth";
 import { supabase } from "../lib/supabase";
+import { printAllQRCodes } from "../utils/brotherPrint";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SUPER_ADMIN = "fitpaperwork25@gmail.com";
 const APP_URL     = "https://qrwegn.com";
 
 const BG     = "#080808";
-const CARD   = "#111111";
+const CARD   = LIGHT: "#FFFFFF";
 const INNER  = "#161616";
 const BORDER = "rgba(255,255,255,0.07)";
 const TEXT   = "#F0EDE8";
@@ -106,8 +107,9 @@ export default function AdminPage() {
   const [tableQrs,    setTableQrs]    = useState<Record<string, string>>({});  // `${bizId}:${locId}`
   const [expandedQr,  setExpandedQr]  = useState<Set<string>>(new Set());
   const [loadingQr,   setLoadingQr]   = useState<string | null>(null);
-  const [zipping,     setZipping]     = useState<string | null>(null);
-  const [printingQr,  setPrintingQr]  = useState<string | null>(null);
+  const [zipping,         setZipping]         = useState<string | null>(null);
+  const [printingQr,      setPrintingQr]      = useState<string | null>(null);
+  const [printingBrother, setPrintingBrother] = useState<string | null>(null);
 
   // Per-business UI state
   const [pinInputs,     setPinInputs]     = useState<Record<string, string>>({});
@@ -188,7 +190,7 @@ export default function AdminPage() {
         b.id,
         await QRCode.toDataURL(`${APP_URL}/scan/${b.slug}`, {
           width: 140, margin: 1,
-          color: { dark: "#E8C547", light: "#111111" },
+          color: { dark: "#E8C547", light: LIGHT: "#FFFFFF" },
         }),
       ] as [string, string])
     );
@@ -379,7 +381,7 @@ export default function AdminPage() {
         const url = `${APP_URL}/scan/${biz.slug}?table=${loc.id}`;
         const dataUrl = await QRCode.toDataURL(url, {
           width: 200, margin: 1,
-          color: { dark: "#E8C547", light: "#111111" },
+          color: { dark: "#E8C547", light: LIGHT: "#FFFFFF" },
         });
         return [`${biz.id}:${loc.id}`, dataUrl] as [string, string];
       })
@@ -633,6 +635,25 @@ export default function AdminPage() {
     setTimeout(() => URL.revokeObjectURL(pdfUrl), 120_000);
 
     setPrintingQr(null);
+  }
+
+  async function printWithBrother(biz: AdminBiz) {
+    setPrintingBrother(biz.id);
+    let locs = tablesByBiz[biz.id];
+    if (!locs) {
+      const { data } = await supabase
+        .from("locations")
+        .select("id, name, label")
+        .eq("business_id", biz.id)
+        .eq("is_active", true)
+        .order("name");
+      locs = (data ?? []) as TableLoc[];
+      setTablesByBiz((prev) => ({ ...prev, [biz.id]: locs }));
+    }
+    if (locs.length) {
+      await printAllQRCodes(biz.slug, locs);
+    }
+    setPrintingBrother(null);
   }
 
   async function createClient() {
@@ -1186,6 +1207,13 @@ export default function AdminPage() {
                       style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: TEXT, fontSize: 12, fontWeight: 700, cursor: printingQr === biz.id ? "not-allowed" : "pointer" }}
                     >
                       {printingQr === biz.id ? "Preparing…" : "🖨 Print All QRs"}
+                    </button>
+                    <button
+                      onClick={() => printWithBrother(biz)}
+                      disabled={printingBrother === biz.id}
+                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 16px", color: TEXT, fontSize: 12, fontWeight: 700, cursor: printingBrother === biz.id ? "not-allowed" : "pointer" }}
+                    >
+                      {printingBrother === biz.id ? "Printing…" : "🏷 Print Labels"}
                     </button>
                   </div>
                   {expandedQr.has(biz.id) && (tablesByBiz[biz.id]?.length ?? 0) > 0 && (
