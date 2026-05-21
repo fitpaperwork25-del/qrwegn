@@ -1,18 +1,38 @@
-export async function printAllQRCodes(businessSlug, tables) {
+export async function printBrotherLabels({ businessSlug, tables }) {
+  if (!window.bpac) {
+    alert("Brother b-PAC is not loaded. Use Windows + Edge/Internet Explorer mode.");
+    return;
+  }
+
+  const templatePath = "C:\\qrwegn-print-server\\qrwegn-template.lbx";
+  const doc = new window.bpac.Document();
+
+  const opened = await doc.Open(templatePath);
+
+  if (!opened) {
+    alert("Could not open qrwegn-template.lbx");
+    return;
+  }
+
   try {
-    const response = await fetch("http://localhost:5000/generate-labels", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ businessSlug, tables }),
-    });
-    const result = await response.json();
-    if (result.success) {
-      alert("Batch printing complete.");
-    } else {
-      alert("Printing failed: " + result.message);
+    doc.StartPrint("", 0);
+
+    for (const table of tables) {
+      const tableName = table.name || `Table ${table.table_number || table.id}`;
+      const qrUrl = `https://qrwegn.com/scan/${businessSlug}/${table.id}`;
+
+      doc.GetObject("tableName").Text = tableName;
+      doc.GetObject("qrCode").Text = qrUrl;
+
+      doc.PrintOut(1, 0);
     }
-  } catch (err) {
-    console.error(err);
-    alert("Could not reach print server. Make sure it's running on port 5000.");
+
+    doc.EndPrint();
+    alert("Labels sent to Brother printer.");
+  } catch (error) {
+    console.error(error);
+    alert("Brother printing failed.");
+  } finally {
+    doc.Close();
   }
 }
