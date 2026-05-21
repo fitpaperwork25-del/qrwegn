@@ -1,1 +1,1 @@
-export function printAllQRCodes(data: any): Promise<void>;
+export function printAllQRCodes(data: any, options?: any): Promise<void>;
