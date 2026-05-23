@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useAuth } from "../lib/useAuth";
 import { supabase } from "../lib/supabase";
-import { printAllQRCodes } from "../utils/brotherPrint";
+import { printBrotherLabels } from "../utils/brotherPrint";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SUPER_ADMIN = "fitpaperwork25@gmail.com";
@@ -651,7 +651,7 @@ export default function AdminPage() {
       setTablesByBiz((prev) => ({ ...prev, [biz.id]: locs }));
     }
     if (locs.length) {
-      await printAllQRCodes(biz.slug, locs);
+      await printBrotherLabels({ businessSlug: biz.slug, tables: locs });
     }
     setPrintingBrother(null);
   }
