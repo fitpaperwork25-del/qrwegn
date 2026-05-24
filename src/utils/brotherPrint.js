@@ -88,7 +88,8 @@ export async function printBrotherLabels({ businessSlug, tables }) {
       tableObj.Text = tableName;
       await qrObj.SetData(0, qrDataUrl, 4);
 
-      await IDocument.PrintOut(1, 0);
+      // auto cut enabled
+      await IDocument.PrintOut(1, 1);
     }
 
     await IDocument.EndPrint();
