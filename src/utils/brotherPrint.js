@@ -15,16 +15,22 @@ function getTableName(table, index) {
   );
 }
 
-function getQrUrl(businessSlug, table, index) {
-  const tableValue =
+function getTableValue(table, index) {
+  return (
     table?.slug ||
     table?.table_slug ||
     table?.id ||
     table?.table_number ||
     table?.tableNumber ||
-    index + 1;
+    index + 1
+  );
+}
 
-  return `${APP_URL}/scan/${businessSlug}?table=${tableValue}`;
+function getQrUrl(businessSlug, table, index) {
+  const tableValue = getTableValue(table, index);
+  return `${APP_URL}/scan/${businessSlug}?table=${encodeURIComponent(
+    tableValue
+  )}`;
 }
 
 export async function printBrotherLabels({ businessSlug, tables }) {
@@ -33,7 +39,7 @@ export async function printBrotherLabels({ businessSlug, tables }) {
       "Brother b-PAC extension is not detected.\n\n" +
         "1. Open this page in Microsoft Edge.\n" +
         "2. Make sure the Brother b-PAC Extension is installed and enabled.\n" +
-        "3. Hard refresh the page with Ctrl + Shift + R."
+        "3. Hard refresh with Ctrl + Shift + R."
     );
     return;
   }
@@ -58,13 +64,19 @@ export async function printBrotherLabels({ businessSlug, tables }) {
   }
 
   try {
-    // Start print with cut option enabled
-    await IDocument.StartPrint("QR-Wegn Labels", 1);
+    await IDocument.StartPrint("QR-Wegn Labels", 0);
 
     for (let i = 0; i < tables.length; i++) {
       const table = tables[i];
       const tableName = getTableName(table, i);
       const qrUrl = getQrUrl(businessSlug, table, i);
+
+      console.log("QR label debug:", {
+        businessSlug,
+        table,
+        tableName,
+        qrUrl,
+      });
 
       const qrDataUrl = await QRCode.toDataURL(qrUrl, {
         margin: 1,
@@ -89,8 +101,7 @@ export async function printBrotherLabels({ businessSlug, tables }) {
       tableObj.Text = tableName;
       await qrObj.SetData(0, qrDataUrl, 4);
 
-      // Print each label with auto-cut enabled
-      await IDocument.PrintOut(1, 1);
+      await IDocument.PrintOut(1, 0);
     }
 
     await IDocument.EndPrint();
