@@ -146,7 +146,7 @@ export default function LandingPage() {
     QRCode.toDataURL("https://qrwegn.com", {
       width: 200,
       margin: 2,
-      color: { dark: "#E8C547", light: "#080808" },
+      color: { dark: "#000000", light: "#ffffff" },
     }).then(setQrDataUrl);
   }, []);
 

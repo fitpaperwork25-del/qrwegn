@@ -190,7 +190,7 @@ export default function AdminPage() {
         b.id,
         await QRCode.toDataURL(`${APP_URL}/scan/${b.slug}`, {
           width: 140, margin: 1,
-          color: { dark: "#E8C547", light: "#ffffff" },
+          color: { dark: "#000000", light: "#ffffff" },
         }),
       ] as [string, string])
     );
@@ -381,7 +381,7 @@ export default function AdminPage() {
         const url = `${APP_URL}/scan/${biz.slug}?table=${loc.id}`;
         const dataUrl = await QRCode.toDataURL(url, {
           width: 200, margin: 1,
-          color: { dark: "#E8C547", light: "#ffffff" },
+          color: { dark: "#000000", light: "#ffffff" },
         });
         return [`${biz.id}:${loc.id}`, dataUrl] as [string, string];
       })
@@ -445,7 +445,7 @@ export default function AdminPage() {
         const url     = `${APP_URL}/scan/${biz.slug}?table=${loc.id}`;
         const dataUrl = await QRCode.toDataURL(url, {
           scale: 10, margin: 1,
-          color: { dark: "#E8C547", light: "#080808" },
+          color: { dark: "#000000", light: "#ffffff" },
         });
         return { loc, dataUrl, url };
       })
