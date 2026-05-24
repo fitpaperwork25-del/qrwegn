@@ -4,6 +4,16 @@ import { IDocument, IsExtensionInstalled } from "./bpac.js";
 const APP_URL = "https://www.qrwegn.com";
 const TEMPLATE_PATH = "C:\\qrwegn-print-server\\qrwegn-template.lbx";
 
+function getBusinessName(table, businessSlug) {
+  return (
+    table?.business_name ||
+    table?.restaurant_name ||
+    table?.businessName ||
+    table?.business?.name ||
+    businessSlug
+  );
+}
+
 function getTableName(table, index) {
   return (
     table?.table_name ||
@@ -28,6 +38,7 @@ function getTableValue(table, index) {
 
 function getQrUrl(businessSlug, table, index) {
   const tableValue = getTableValue(table, index);
+
   return `${APP_URL}/scan/${businessSlug}?table=${encodeURIComponent(
     tableValue
   )}`;
@@ -68,11 +79,14 @@ export async function printBrotherLabels({ businessSlug, tables }) {
 
     for (let i = 0; i < tables.length; i++) {
       const table = tables[i];
+
+      const businessName = getBusinessName(table, businessSlug);
       const tableName = getTableName(table, i);
       const qrUrl = getQrUrl(businessSlug, table, i);
 
       console.log("QR label debug:", {
         businessSlug,
+        businessName,
         table,
         tableName,
         qrUrl,
@@ -87,8 +101,13 @@ export async function printBrotherLabels({ businessSlug, tables }) {
         },
       });
 
+      const businessObj = await IDocument.GetObject("businessName");
       const tableObj = await IDocument.GetObject("tableName");
       const qrObj = await IDocument.GetObject("qrCode");
+
+      if (!businessObj) {
+        throw new Error("Template object 'businessName' not found in .lbx file");
+      }
 
       if (!tableObj) {
         throw new Error("Template object 'tableName' not found in .lbx file");
@@ -98,7 +117,9 @@ export async function printBrotherLabels({ businessSlug, tables }) {
         throw new Error("Template object 'qrCode' not found in .lbx file");
       }
 
+      businessObj.Text = businessName;
       tableObj.Text = tableName;
+
       await qrObj.SetData(0, qrDataUrl, 4);
 
       await IDocument.PrintOut(1, 0);
