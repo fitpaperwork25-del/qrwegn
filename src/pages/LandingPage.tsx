@@ -33,9 +33,7 @@ function DemoDropdown({ onClose }: DemoDropdownProps) {
 
   function goOwner() {
     onClose();
-    navigate("/login", {
-      state: { from: "/dashboard", demoEmail: "demo@qrserve.app", demoPassword: "Demo2026" },
-    });
+    navigate("/demo");
   }
 
   const items = [
