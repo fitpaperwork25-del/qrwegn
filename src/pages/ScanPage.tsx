@@ -67,7 +67,7 @@ export default function ScanPage() {
       const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
       // Accept both UUID and business slug (e.g. /scan/snelling-cafe/table-1)
-      const bizQ = supabase.from('businesses').select('id, name, logo_url, hero_image_url');
+      const bizQ = supabase.from('business_public').select('id, name, logo_url, hero_image_url, tax_rate');
       const { data: biz, error: bizErr } = await (UUID_RE.test(bizId)
         ? bizQ.eq('id', bizId)
         : bizQ.eq('slug', bizId)
@@ -153,6 +153,18 @@ export default function ScanPage() {
   const cartTotal = cartItems.reduce((sum, i) => sum + i.price * i.qty, 0);
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
 
+  // ── Tax helpers ───────────────────────────────────────────────
+  const taxRate = Number(business?.tax_rate ?? 0);
+  const round2  = (n) => Math.round(Number(n) * 100) / 100;
+  // Given a pre-tax subtotal, return { sub, tax, grand }
+  const withTax = (sub) => {
+    const s = Number(sub) || 0;
+    const t = round2(s * taxRate);
+    return { sub: s, tax: t, grand: round2(s + t) };
+  };
+  const cartTax   = round2(cartTotal * taxRate);
+  const cartGrand = round2(cartTotal + cartTax);
+
   // ── Fetch all items ordered under a tab ──────────────────────
   async function fetchTabItems(tabId) {
     const { data: orders } = await supabase
@@ -207,7 +219,7 @@ export default function ScanPage() {
       const newOrderId = crypto.randomUUID();
       const { error: orderErr } = await supabase
         .from('orders')
-        .insert({ id: newOrderId, business_id: business?.id ?? bizId, location_id: locationUuid, total: cartTotal, status: 'new' });
+        .insert({ id: newOrderId, business_id: business?.id ?? bizId, location_id: locationUuid, subtotal: cartTotal, tax: cartTax, total: cartGrand, status: 'new' });
       if (orderErr) throw orderErr;
       const { error: itemsErr } = await supabase.from('order_items').insert(
         cartItems.map(i => ({ order_id: newOrderId, menu_item_id: i.id, quantity: i.qty, unit_price: i.price }))
@@ -232,15 +244,15 @@ export default function ScanPage() {
       const newOrderId = crypto.randomUUID();
       const { error: orderErr } = await supabase
         .from('orders')
-        .insert({ id: newOrderId, business_id: business?.id ?? bizId, location_id: locationUuid, total: cartTotal, status: 'new', tab_id: openTab.id });
+        .insert({ id: newOrderId, business_id: business?.id ?? bizId, location_id: locationUuid, subtotal: cartTotal, tax: cartTax, total: cartGrand, status: 'new', tab_id: openTab.id });
       if (orderErr) throw orderErr;
       const { error: itemsErr } = await supabase.from('order_items').insert(
         cartItems.map(i => ({ order_id: newOrderId, menu_item_id: i.id, quantity: i.qty, unit_price: i.price }))
       );
       if (itemsErr) throw itemsErr;
 
-      // Update running tab total
-      const newTotal = Number(openTab.total) + cartTotal;
+      // Update running tab total (stored PRE-TAX; tax is derived for display)
+      const newTotal = round2(Number(openTab.total) + cartTotal);
       await supabase.from('tabs').update({ total: newTotal }).eq('id', openTab.id);
       setOpenTab(prev => ({ ...prev, total: newTotal }));
 
@@ -260,14 +272,15 @@ export default function ScanPage() {
     setTabLoading(true);
     setError(null);
     try {
-      const final = Number(openTab.total);
+      const subtotal = Number(openTab.total);   // pre-tax running total
+      const grand = withTax(subtotal).grand;     // amount actually due
       const { error: tabErr } = await supabase
         .from('tabs')
-        .update({ status: 'closed', closed_at: new Date().toISOString(), total: final })
+        .update({ status: 'closed', closed_at: new Date().toISOString(), total: subtotal })
         .eq('id', openTab.id);
       if (tabErr) throw tabErr;
       localStorage.removeItem(`tab_${locationUuid}`);
-      setTabFinalTotal(final);
+      setTabFinalTotal(grand);
       setOpenTab(null);
       setShowCloseTab(false);
       setTabClosed(true);
@@ -278,6 +291,14 @@ export default function ScanPage() {
   }
 
   const itemsByCategory = (catId) => items.filter(i => i.category_id === catId);
+
+  // Small breakdown rows used in tab views
+  const breakdownRow = (label, val, opts = {}) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: opts.bold ? 15 : 13, padding: '4px 0' }}>
+      <span style={{ color: opts.bold ? text : muted, fontWeight: opts.bold ? 700 : 400 }}>{label}</span>
+      <span style={{ color: opts.bold ? gold : muted, fontWeight: opts.bold ? 800 : 400 }}>${Number(val).toFixed(2)}</span>
+    </div>
+  );
 
   // ── Loading ───────────────────────────────────────────────────
   if (loading) return (
@@ -302,12 +323,14 @@ export default function ScanPage() {
   );
 
   // ── Tab item list ─────────────────────────────────────────────
-  if (showTabItems) return (
+  if (showTabItems) {
+    const b = withTax(openTab?.total ?? 0);
+    return (
     <div style={{ background: dark, minHeight: '100vh', color: text, fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ padding: '20px 16px 14px', borderBottom: `1px solid ${border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Your Tab</div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>${Number(openTab?.total ?? 0).toFixed(2)}</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>${b.grand.toFixed(2)}</div>
         </div>
         <button onClick={() => setShowTabItems(false)} style={{ background: 'none', border: `1px solid ${border}`, borderRadius: 8, padding: '8px 14px', color: muted, fontSize: 13, cursor: 'pointer' }}>
           ← Back to Menu
@@ -318,15 +341,22 @@ export default function ScanPage() {
         {tabItems.length === 0 ? (
           <p style={{ color: muted, fontSize: 14, textAlign: 'center', marginTop: 40 }}>No items yet — add something from the menu.</p>
         ) : (
-          tabItems.map((item, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: `1px solid ${border}` }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <span style={{ color: gold, fontWeight: 800, fontSize: 18, minWidth: 28 }}>{item.quantity}×</span>
-                <span style={{ fontWeight: 600, fontSize: 15 }}>{item.name}</span>
+          <>
+            {tabItems.map((item, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: `1px solid ${border}` }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                  <span style={{ color: gold, fontWeight: 800, fontSize: 18, minWidth: 28 }}>{item.quantity}×</span>
+                  <span style={{ fontWeight: 600, fontSize: 15 }}>{item.name}</span>
+                </div>
+                <span style={{ color: muted, fontSize: 14 }}>${(item.unit_price * item.quantity).toFixed(2)}</span>
               </div>
-              <span style={{ color: muted, fontSize: 14 }}>${(item.unit_price * item.quantity).toFixed(2)}</span>
+            ))}
+            <div style={{ marginTop: 16, paddingTop: 8 }}>
+              {taxRate > 0 && breakdownRow('Subtotal', b.sub)}
+              {taxRate > 0 && breakdownRow(`Tax (${(taxRate * 100).toFixed(3).replace(/\.?0+$/, '')}%)`, b.tax)}
+              {breakdownRow('Total', b.grand, { bold: true })}
             </div>
-          ))
+          </>
         )}
       </div>
 
@@ -339,7 +369,8 @@ export default function ScanPage() {
         </button>
       </div>
     </div>
-  );
+    );
+  }
 
   // ── Order placed confirmation ─────────────────────────────────
   if (orderPlaced) return (
@@ -349,7 +380,7 @@ export default function ScanPage() {
         <h2 style={S.successTitle}>{openTab ? 'Added to Tab!' : 'Order Placed!'}</h2>
         <p style={S.successSub}>
           {openTab
-            ? `Tab running total: $${Number(openTab.total).toFixed(2)}`
+            ? `Tab running total: $${withTax(openTab.total).grand.toFixed(2)}`
             : 'Your order has been sent to the kitchen.'}
         </p>
         <p style={S.orderId}>#{orderId?.slice(-6).toUpperCase()}</p>
@@ -367,23 +398,32 @@ export default function ScanPage() {
   );
 
   // ── Close tab confirmation overlay ────────────────────────────
-  if (showCloseTab) return (
+  if (showCloseTab) {
+    const b = withTax(openTab?.total ?? 0);
+    return (
     <div style={S.centered}>
       <div style={S.successBox}>
         <div style={{ fontSize: 44, marginBottom: 12 }}>🧾</div>
         <h2 style={S.successTitle}>Close Your Tab?</h2>
-        <p style={S.successSub}>Running total</p>
-        <div style={{ fontSize: 36, fontWeight: 800, color: gold, margin: '8px 0 20px' }}>
-          ${Number(openTab?.total ?? 0).toFixed(2)}
+        <p style={S.successSub}>Amount due</p>
+        <div style={{ fontSize: 36, fontWeight: 800, color: gold, margin: '8px 0 16px' }}>
+          ${b.grand.toFixed(2)}
         </div>
         {tabItems.length > 0 && (
-          <div style={{ width: '100%', textAlign: 'left', margin: '0 0 20px', borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}`, padding: '12px 0' }}>
+          <div style={{ width: '100%', textAlign: 'left', margin: '0 0 16px', borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}`, padding: '12px 0' }}>
             {tabItems.map((item, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '4px 0' }}>
                 <span style={{ color: text }}><span style={{ color: gold, fontWeight: 700, marginRight: 8 }}>{item.quantity}×</span>{item.name}</span>
                 <span style={{ color: muted }}>${(item.unit_price * item.quantity).toFixed(2)}</span>
               </div>
             ))}
+          </div>
+        )}
+        {taxRate > 0 && (
+          <div style={{ width: '100%', textAlign: 'left', margin: '0 0 16px' }}>
+            {breakdownRow('Subtotal', b.sub)}
+            {breakdownRow(`Tax (${(taxRate * 100).toFixed(3).replace(/\.?0+$/, '')}%)`, b.tax)}
+            {breakdownRow('Total', b.grand, { bold: true })}
           </div>
         )}
         <p style={{ ...S.successSub, fontSize: 13 }}>
@@ -406,7 +446,8 @@ export default function ScanPage() {
         {error && <p style={{ color: '#e53e3e', fontSize: 13, marginTop: 12 }}>{error}</p>}
       </div>
     </div>
-  );
+    );
+  }
 
   // ── Main menu page ────────────────────────────────────────────
   return (
@@ -430,7 +471,7 @@ export default function ScanPage() {
         <div style={S.tabBannerOpen}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 12, color: muted }}>Tab open</span>
-            <span style={{ fontWeight: 800, color: gold, fontSize: 16 }}>${Number(openTab.total).toFixed(2)}</span>
+            <span style={{ fontWeight: 800, color: gold, fontSize: 16 }}>${withTax(openTab.total).grand.toFixed(2)}</span>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button style={{ ...S.closeTabBtn, background: gold + '22' }} onClick={() => setShowTabItems(true)}>
@@ -513,7 +554,10 @@ export default function ScanPage() {
             <span style={S.cartLabel}>item{cartCount > 1 ? 's' : ''} in cart</span>
           </div>
           <div style={S.cartRight}>
-            <span style={S.cartTotal}>${cartTotal.toFixed(2)}</span>
+            <div style={{ textAlign: 'right' }}>
+              <span style={S.cartTotal}>${cartGrand.toFixed(2)}</span>
+              {taxRate > 0 && <div style={{ fontSize: 10, color: muted, marginTop: 2 }}>incl. ${cartTax.toFixed(2)} tax</div>}
+            </div>
             {openTab ? (
               <button style={S.placeBtn} onClick={addToTabOrder} disabled={placing}>
                 {placing ? 'Adding…' : 'Add to Tab'}
