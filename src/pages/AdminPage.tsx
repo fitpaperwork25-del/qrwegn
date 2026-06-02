@@ -108,6 +108,8 @@ export default function AdminPage() {
   const [loadingDashboard, setLoadingDashboard] = useState<string | null>(null);
   const [loadingInvite,    setLoadingInvite]    = useState<string | null>(null);
   const [inviteSent,       setInviteSent]       = useState<string | null>(null);
+  const [loadingMagicLink, setLoadingMagicLink] = useState<string | null>(null);
+  const [magicLinks,       setMagicLinks]       = useState<Record<string, string>>({});
   const [showHelp,         setShowHelp]         = useState(false);
 
   // Per-business table QR panel
@@ -359,6 +361,23 @@ export default function AdminPage() {
     if (res.ok) {
       setInviteSent(biz.id);
       setTimeout(() => setInviteSent(null), 4000);
+    }
+  }
+
+  async function getMagicLink(biz: AdminBiz) {
+    if (!biz.owner_email) return;
+    setLoadingMagicLink(biz.id);
+    const jwt = session?.access_token;
+    const res = await fetch("/api/admin-get-magic-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${jwt}` },
+      body: JSON.stringify({ email: biz.owner_email }),
+    });
+    const data = await res.json();
+    setLoadingMagicLink(null);
+    if (data.link) {
+      setMagicLinks((prev) => ({ ...prev, [biz.id]: data.link }));
+      await copy(data.link, `magic-${biz.id}`);
     }
   }
 
@@ -1066,7 +1085,26 @@ export default function AdminPage() {
                           style={{ background: inviteSent === biz.id ? GREEN + "22" : INNER, border: `1px solid ${inviteSent === biz.id ? GREEN : BORDER}`, borderRadius: 6, padding: "4px 10px", color: inviteSent === biz.id ? GREEN : biz.owner_email ? ACCENT : MUTED, fontSize: 11, fontWeight: 700, cursor: biz.owner_email ? "pointer" : "not-allowed", flexShrink: 0 }}>
                           {loadingInvite === biz.id ? "…" : inviteSent === biz.id ? "Sent ✓" : "Invite Owner"}
                         </button>
+                        <button
+                          onClick={() => getMagicLink(biz)}
+                          disabled={!biz.owner_email || loadingMagicLink === biz.id}
+                          title="Generates a one-time magic link — auto-copies to clipboard"
+                          style={{ background: copied === `magic-${biz.id}` ? GREEN + "22" : INNER, border: `1px solid ${copied === `magic-${biz.id}` ? GREEN + "44" : BORDER}`, borderRadius: 6, padding: "4px 10px", color: copied === `magic-${biz.id}` ? GREEN : biz.owner_email ? TEXT : MUTED, fontSize: 11, fontWeight: 700, cursor: biz.owner_email ? "pointer" : "not-allowed", flexShrink: 0 }}>
+                          {loadingMagicLink === biz.id ? "…" : copied === `magic-${biz.id}` ? "Copied ✓" : "Magic Link"}
+                        </button>
                       </div>
+                      {magicLinks[biz.id] && (
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <span style={{ fontSize: 11, color: MUTED, fontFamily: "monospace", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {magicLinks[biz.id]}
+                          </span>
+                          <button
+                            onClick={() => copy(magicLinks[biz.id] ?? "", `magic-copy-${biz.id}`)}
+                            style={{ background: copied === `magic-copy-${biz.id}` ? GREEN + "22" : INNER, border: `1px solid ${BORDER}`, borderRadius: 6, padding: "4px 10px", color: copied === `magic-copy-${biz.id}` ? GREEN : MUTED, fontSize: 11, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                            {copied === `magic-copy-${biz.id}` ? "✓ Copied" : "Copy"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
