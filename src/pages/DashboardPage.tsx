@@ -10,7 +10,7 @@ type Business = {
   hero_image_url: string | null; staff_pin: string | null; tax_rate: number | null;
 };
 type Location  = { id: string; name: string; label: string | null; is_active: boolean };
-type Order     = { id: string; status: string; total: number; created_at: string; cancel_reason: string | null };
+type Order     = { id: string; status: string; total: number; subtotal: number | null; tax: number | null; created_at: string; cancel_reason: string | null };
 type OpenTab   = { id: string; table_name: string; total: number; opened_at: string };
 type OrderItem = { id: string; name: string; quantity: number; unit_price: number };
 type Category  = { id: string; name: string; display_order: number };
@@ -161,7 +161,7 @@ export default function DashboardPage() {
     if (!business?.id) return;
     const fetchOrders = async (isPolling = false) => {
       const [ordRes, tabsRes] = await Promise.all([
-        supabase.from("orders").select("id, status, total, created_at, cancel_reason").eq("business_id", business.id).order("created_at", { ascending: false }).limit(20),
+        supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", business.id).order("created_at", { ascending: false }).limit(20),
         supabase.from("tabs").select("id, total, opened_at, locations(name, label)").eq("business_id", business.id).eq("status", "open").order("opened_at", { ascending: true }),
       ]);
       if (ordRes.data) {
@@ -192,10 +192,10 @@ export default function DashboardPage() {
     const fetchFinancials = async () => {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const [doneRes, expRes, revRes, cancelRes] = await Promise.all([
-        supabase.from("orders").select("id, status, total, created_at, cancel_reason").eq("business_id", business.id).neq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", business.id).neq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
         supabase.from("business_expenses").select("id, amount, category, description, expense_date").eq("business_id", business.id).order("expense_date", { ascending: false }),
         supabase.from("manual_revenue").select("id, amount, category, description, revenue_date").eq("business_id", business.id).order("date", { ascending: false }),
-        supabase.from("orders").select("id, status, total, created_at, cancel_reason").eq("business_id", business.id).eq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", business.id).eq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
       ]);
       setDoneOrders((doneRes.data as Order[]) ?? []);
       setExpenses((expRes.data as Expense[]) ?? []);
@@ -234,7 +234,7 @@ export default function DashboardPage() {
     if (biz) {
       const [locRes, ordRes, catRes, tabsRes] = await Promise.all([
         supabase.from("locations").select("id, name, label, is_active").eq("business_id", biz.id).order("name"),
-        supabase.from("orders").select("id, status, total, created_at, cancel_reason").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(20),
+        supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(20),
         supabase.from("menu_categories").select("id, name, display_order").eq("business_id", biz.id).order("display_order"),
         supabase.from("tabs").select("id, total, opened_at, locations(name, label)").eq("business_id", biz.id).eq("status", "open").order("opened_at", { ascending: true }),
       ]);
@@ -251,10 +251,10 @@ export default function DashboardPage() {
       }
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const [doneRes, expRes, revRes, cancelRes] = await Promise.all([
-        supabase.from("orders").select("id, status, total, created_at, cancel_reason").eq("business_id", biz.id).neq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", biz.id).neq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
         supabase.from("business_expenses").select("id, amount, category, description, expense_date").eq("business_id", biz.id).order("expense_date", { ascending: false }),
         supabase.from("manual_revenue").select("id, amount, category, description, revenue_date").eq("business_id", biz.id).order("date", { ascending: false }),
-        supabase.from("orders").select("id, status, total, created_at, cancel_reason").eq("business_id", biz.id).eq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", biz.id).eq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
       ]);
       setDoneOrders((doneRes.data as Order[]) ?? []);
       setExpenses((expRes.data as Expense[]) ?? []);
@@ -1158,6 +1158,13 @@ export default function DashboardPage() {
                                     </div>
                                   ))}
                               </div>
+                              {order.subtotal != null && (
+                                <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 10, display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: MUTED }}><span>Subtotal</span><span>${Number(order.subtotal).toFixed(2)}</span></div>
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: MUTED }}><span>Tax</span><span>${Number(order.tax ?? 0).toFixed(2)}</span></div>
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 800, color: TEXT }}><span>Total</span><span style={{ color: ACCENT }}>${Number(order.total).toFixed(2)}</span></div>
+                                </div>
+                              )}
                               {order.status === "cancelled" && <div style={{ fontSize: 12, color: RED, fontStyle: "italic" }}>Cancelled{order.cancel_reason ? `: ${order.cancel_reason}` : ""}</div>}
                               {order.status !== "cancelled" && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
