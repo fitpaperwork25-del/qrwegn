@@ -7,7 +7,7 @@ import { ACCENT, BG, BORDER, MUTED, SURFACE, TEXT, GREEN, RED } from "../constan
 type Business = {
   id: string; name: string; type: string; plan: string;
   subscription_status: string; logo_url: string | null; slug: string;
-  hero_image_url: string | null; staff_pin: string | null;
+  hero_image_url: string | null; staff_pin: string | null; tax_rate: number | null;
 };
 type Location  = { id: string; name: string; label: string | null; is_active: boolean };
 type Order     = { id: string; status: string; total: number; created_at: string; cancel_reason: string | null };
@@ -283,6 +283,31 @@ export default function DashboardPage() {
     if (error) { setPinError(error.message); }
     else { setPinSaved(true); setPinInput(""); setBusiness(prev => prev ? { ...prev, staff_pin: pinInput } : prev); setTimeout(() => setPinSaved(false), 3000); }
     setPinSaving(false);
+  }
+
+  // ── Sales tax rate ────────────────────────────────────────────
+  const [taxInput, setTaxInput] = useState("");
+  const [taxSaving, setTaxSaving] = useState(false);
+  const [taxSaved, setTaxSaved]   = useState(false);
+  const [taxError, setTaxError]   = useState("");
+
+  useEffect(() => {
+    if (!business) return;
+    setTaxInput(business.tax_rate != null ? String(Math.round(business.tax_rate * 1e6) / 1e4) : "");
+  }, [business?.id]);
+
+  async function saveTaxRate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!business) return;
+    const pct = parseFloat(taxInput);
+    if (isNaN(pct) || pct < 0 || pct > 100) { setTaxError("Enter a rate between 0 and 100."); return; }
+    setTaxSaving(true); setTaxError("");
+    const rate = Math.round((pct / 100) * 1e6) / 1e6;
+    const { error } = await supabase.from("businesses").update({ tax_rate: rate }).eq("id", business.id);
+    if (error) { setTaxError(error.message); setTaxSaving(false); return; }
+    setBusiness((prev) => prev ? { ...prev, tax_rate: rate } : prev);
+    setTaxSaved(true); setTimeout(() => setTaxSaved(false), 3000);
+    setTaxSaving(false);
   }
 
   async function addCategory(e: React.FormEvent) {
@@ -857,6 +882,32 @@ export default function DashboardPage() {
                     </button>
                     {pinError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{pinError}</p>}
                   </div>
+                </form>
+              </div>
+
+              
+
+              {/* Sales Tax */}
+              <div style={{ ...card }}>
+                <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 6px" }}>Sales Tax Rate</p>
+                <p style={{ fontSize: 13, color: MUTED, margin: "0 0 16px", lineHeight: 1.5 }}>
+                  Applied to customer orders at checkout. Enter your local rate as a percent (e.g. <span style={{ color: TEXT }}>9.875</span> for St. Paul, MN). Use 0 for no tax.
+                </p>
+                <form onSubmit={saveTaxRate} style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "0 14px" }}>
+                    <input
+                      type="number" min="0" max="100" step="0.001" placeholder="0"
+                      value={taxInput}
+                      onChange={(e) => { setTaxInput(e.target.value); setTaxError(""); setTaxSaved(false); }}
+                      style={{ background: "none", border: "none", padding: "10px 0", color: TEXT, fontSize: 18, width: 90, outline: "none", fontFamily: "monospace" }}
+                    />
+                    <span style={{ color: MUTED, fontSize: 16 }}>%</span>
+                  </div>
+                  <button type="submit" disabled={taxSaving}
+                    style={{ background: taxSaved ? GREEN : ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 22px", fontWeight: 800, fontSize: 13, cursor: taxSaving ? "not-allowed" : "pointer" }}>
+                    {taxSaving ? "Saving…" : taxSaved ? "Saved ✓" : "Save rate"}
+                  </button>
+                  {taxError && <p style={{ color: RED, fontSize: 12, margin: "10px 0 0", width: "100%" }}>{taxError}</p>}
                 </form>
               </div>
             </div>
