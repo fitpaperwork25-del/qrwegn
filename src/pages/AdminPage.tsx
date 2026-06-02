@@ -28,7 +28,7 @@ const PLAN_MRR: Record<string, number> = { starter: 49, pro: 99, enterprise: 199
 type AdminBiz = {
   id: string; name: string; slug: string; type: string; plan: string;
   subscription_status: string; created_at: string;
-  owner_email: string | null; staff_pin: string | null;
+  owner_id: string | null; owner_email: string | null; staff_pin: string | null;
   location_count: number; menu_item_count: number; order_count: number;
   qr_printed: boolean; staff_trained: boolean;
 };
@@ -87,6 +87,14 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function emailAccessRisk(email: string | null): { level: "ok" | "warn" | "blocked"; reason: string } {
+  if (!email)                          return { level: "blocked", reason: "No email on file — owner cannot log in" };
+  if (email.endsWith("@qrwegn.com"))   return { level: "warn",    reason: "Placeholder @qrwegn.com address — no real inbox" };
+  if (/^(test|demo|noreply|no-reply|placeholder|fake|temp)(\+[^@]*)?@/i.test(email))
+                                       return { level: "warn",    reason: "Looks like a placeholder/test address" };
+  return { level: "ok", reason: "" };
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const { session } = useAuth();
@@ -119,7 +127,8 @@ export default function AdminPage() {
   const [togglingCheck, setTogglingCheck] = useState<string | null>(null);
   const [copied,        setCopied]        = useState<string | null>(null);
 
-  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+  const [expandedLogs,   setExpandedLogs]   = useState<Set<string>>(new Set());
+  const [expandedAccess, setExpandedAccess] = useState<Set<string>>(new Set());
 
   // Tabs, search & promoter claims
   const [searchQuery,   setSearchQuery]   = useState("");
@@ -1189,6 +1198,127 @@ export default function AdminPage() {
                 </div>
 
               </div>
+
+              {/* ── Owner Access Recovery ──────────────────────────────── */}
+              {(() => {
+                const risk     = emailAccessRisk(biz.owner_email);
+                const isOpen   = expandedAccess.has(biz.id);
+                const loginNote = biz.owner_email && risk.level === "ok"
+                  ? `Login at https://www.qrwegn.com/login using: ${biz.owner_email}`
+                  : null;
+                const riskColor = risk.level === "blocked" ? RED : risk.level === "warn" ? ORANGE : GREEN;
+
+                return (
+                  <div style={{ borderTop: `1px solid ${BORDER}` }}>
+                    <button
+                      onClick={() => setExpandedAccess(prev => {
+                        const next = new Set(prev);
+                        next.has(biz.id) ? next.delete(biz.id) : next.add(biz.id);
+                        return next;
+                      })}
+                      style={{
+                        width: "100%", textAlign: "left", background: "none",
+                        border: "none", padding: "14px 22px",
+                        display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
+                      }}
+                    >
+                      <span style={{ fontSize: 10, letterSpacing: 2, color: ACCENT, fontWeight: 700, textTransform: "uppercase" as const }}>
+                        Owner Access
+                      </span>
+                      {risk.level !== "ok" && (
+                        <span style={{
+                          background: riskColor + "22", color: riskColor,
+                          border: `1px solid ${riskColor}44`,
+                          borderRadius: 5, padding: "1px 7px",
+                          fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+                        }}>
+                          {risk.level === "blocked" ? "NO ACCESS" : "AT RISK"}
+                        </span>
+                      )}
+                      <span style={{ marginLeft: "auto", fontSize: 11, color: MUTED }}>{isOpen ? "▲" : "▼"}</span>
+                    </button>
+
+                    {isOpen && (
+                      <div style={{ padding: "0 22px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+                        {/* Identity grid */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                          {[
+                            { label: "Business",  value: biz.name,                         mono: false },
+                            { label: "Slug",       value: `/${biz.slug}`,                   mono: true  },
+                            { label: "Owner ID",   value: biz.owner_id ?? "not available",  mono: true  },
+                            { label: "Owner Email",value: biz.owner_email ?? "—",           mono: false },
+                          ].map(({ label, value, mono }) => (
+                            <div key={label} style={{ background: INNER, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 14px" }}>
+                              <div style={{ fontSize: 10, letterSpacing: 1, color: MUTED, fontWeight: 700, textTransform: "uppercase" as const, marginBottom: 4 }}>{label}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                                <span style={{
+                                  fontSize: 12, color: TEXT,
+                                  fontFamily: mono ? "monospace" : "inherit",
+                                  wordBreak: "break-all" as const, flex: 1,
+                                }}>{value}</span>
+                                {value !== "—" && value !== "not available" && (
+                                  <button
+                                    onClick={() => copy(value, `access-${label}-${biz.id}`)}
+                                    style={{ background: copied === `access-${label}-${biz.id}` ? GREEN + "22" : "transparent", border: `1px solid ${BORDER}`, borderRadius: 5, padding: "2px 8px", color: copied === `access-${label}-${biz.id}` ? GREEN : MUTED, fontSize: 10, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+                                  >
+                                    {copied === `access-${label}-${biz.id}` ? "✓" : "Copy"}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Login note — only shown when email is usable */}
+                        {loginNote && (
+                          <div style={{ background: INNER, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 14px" }}>
+                            <div style={{ fontSize: 10, letterSpacing: 1, color: MUTED, fontWeight: 700, textTransform: "uppercase" as const, marginBottom: 6 }}>Login Note (send to owner)</div>
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                              <span style={{ fontSize: 12, color: TEXT, flex: 1, lineHeight: 1.5, wordBreak: "break-all" as const, fontFamily: "monospace" }}>
+                                {loginNote}
+                              </span>
+                              <button
+                                onClick={() => copy(loginNote, `login-note-${biz.id}`)}
+                                style={{ background: copied === `login-note-${biz.id}` ? GREEN + "22" : "transparent", border: `1px solid ${BORDER}`, borderRadius: 5, padding: "3px 10px", color: copied === `login-note-${biz.id}` ? GREEN : MUTED, fontSize: 10, fontWeight: 700, cursor: "pointer", flexShrink: 0, marginTop: 1 }}
+                              >
+                                {copied === `login-note-${biz.id}` ? "✓ Copied" : "Copy"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Warning / recovery instructions */}
+                        {risk.level !== "ok" && (
+                          <div style={{ background: riskColor + "11", border: `1px solid ${riskColor}33`, borderRadius: 8, padding: "12px 16px" }}>
+                            <div style={{ fontSize: 12, color: riskColor, fontWeight: 700, marginBottom: 8 }}>
+                              {risk.level === "blocked" ? "⛔ Access blocked" : "⚠️ Access at risk"} — {risk.reason}
+                            </div>
+                            <div style={{ fontSize: 12, color: TEXT, lineHeight: 1.7 }}>
+                              To restore owner access, reset via the <strong>Supabase Dashboard</strong>:
+                              <ol style={{ margin: "6px 0 0 16px", padding: 0, color: TEXT }}>
+                                <li>Open <span style={{ fontFamily: "monospace", color: ACCENT }}>supabase.com → Authentication → Users</span></li>
+                                <li>
+                                  Search by user ID:{" "}
+                                  {biz.owner_id ? (
+                                    <span style={{ fontFamily: "monospace", color: ACCENT, wordBreak: "break-all" as const }}>{biz.owner_id}</span>
+                                  ) : (
+                                    <span style={{ color: MUTED }}>not available — check businesses table</span>
+                                  )}
+                                </li>
+                                <li>Update their email to a real address, then click <strong>Send magic link</strong></li>
+                              </ol>
+                              <div style={{ marginTop: 8, fontSize: 11, color: MUTED }}>
+                                Do not expose service role keys in the browser. All password resets must be done server-side via Supabase dashboard or Admin API.
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* ── Table QR panel ─────────────────────────────────────── */}
               <div style={{ borderTop: `1px solid ${BORDER}`, padding: "14px 22px" }}>
