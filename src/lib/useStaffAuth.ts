@@ -55,13 +55,24 @@ export async function getStaffProfile(): Promise<StaffProfile | null> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return null;
 
+  // 1. Staff PIN session (stored at login)
   const raw = sessionStorage.getItem(BIZ_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as StaffProfile;
-  } catch {
-    return null;
+  if (raw) {
+    try { return JSON.parse(raw) as StaffProfile; } catch { /* fall through to owner check */ }
   }
+
+  // 2. Owner access: if this user owns a business, grant full access (no PIN needed)
+  const { data: biz } = await supabase
+    .from("businesses")
+    .select("id, name")
+    .eq("owner_id", session.user.id)
+    .limit(1)
+    .maybeSingle();
+  if (biz) {
+    return { bizId: (biz as any).id, bizName: (biz as any).name ?? "Staff Dashboard" };
+  }
+
+  return null;
 }
 
 export async function signOutStaff(): Promise<void> {
