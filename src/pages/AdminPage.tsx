@@ -403,10 +403,10 @@ export default function AdminPage() {
     const locs = (data ?? []) as TableLoc[];
     setTablesByBiz((prev) => ({ ...prev, [biz.id]: locs }));
 
-    // Generate a QR per table pointing to /scan/{slug}?table={locId}
+    // Generate a QR per table pointing to /scan/{slug}/{locId}
     const entries = await Promise.all(
       locs.map(async (loc) => {
-        const url = `${APP_URL}/scan/${biz.slug}?table=${loc.id}`;
+        const url = `${APP_URL}/scan/${biz.slug}/${loc.id}`;
         const dataUrl = await QRCode.toDataURL(url, {
           width: 200, margin: 1,
           color: { dark: "#000000", light: "#ffffff" },
@@ -470,7 +470,7 @@ export default function AdminPage() {
     // High-res branded QRs: gold on dark, scale=10
     const entries = await Promise.all(
       locs.map(async (loc) => {
-        const url     = `${APP_URL}/scan/${biz.slug}?table=${loc.id}`;
+        const url     = `${APP_URL}/scan/${biz.slug}/${loc.id}`;
         const dataUrl = await QRCode.toDataURL(url, {
           scale: 10, margin: 1,
           color: { dark: "#000000", light: "#ffffff" },
