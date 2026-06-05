@@ -18,6 +18,7 @@ type MenuItem  = { id: string; category_id: string; name: string; price: number;
 type Expense       = { id: string; amount: number; category: string; description: string | null; expense_date: string };
 type ManualRevenue = { id: string; amount: number; category: string; description: string | null; revenue_date: string };
 type CsvRow    = { category: string; name: string; price: string; description: string; error?: string };
+type StaffPin  = { id: string; name: string; is_active: boolean; created_at: string };
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const EMPTY_EXPENSE = { category: "", amount: "", description: "", expense_date: TODAY };
@@ -30,7 +31,7 @@ const ORDER_STATUS_COLOR: Record<string, string> = {
 const ORDER_STATUSES = ["new", "preparing", "ready", "done"] as const;
 const CANCEL_REASONS = ["Wrong order", "Customer refused", "Item unavailable", "Other"] as const;
 
-type Tab = "tables" | "menu" | "orders" | "financials" | "branding";
+type Tab = "tables" | "menu" | "orders" | "financials" | "branding" | "staff";
 const EMPTY_ITEM = { name: "", price: "", description: "", category_id: "" };
 
 const card: React.CSSProperties = {
@@ -146,6 +147,14 @@ export default function DashboardPage() {
   const [brandingHeroUploading, setBrandingHeroUploading] = useState(false);
   const [brandingError, setBrandingError]               = useState("");
 
+  const [staffPins, setStaffPins]         = useState<StaffPin[]>([]);
+  const [staffLoaded, setStaffLoaded]     = useState(false);
+  const [staffLoading, setStaffLoading]   = useState(false);
+  const [newStaffName, setNewStaffName]   = useState("");
+  const [newStaffPin, setNewStaffPin]     = useState("");
+  const [staffAddError, setStaffAddError] = useState("");
+  const [staffAddSaving, setStaffAddSaving] = useState(false);
+
   useEffect(() => {
     if (!session?.user.id) return;
     void load(session.user.id);
@@ -156,6 +165,10 @@ export default function DashboardPage() {
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
+
+  useEffect(() => {
+    if (tab === "staff" && business?.id && !staffLoaded) void loadStaffPins();
+  }, [tab, business?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!business?.id) return;
@@ -712,6 +725,39 @@ export default function DashboardPage() {
     e.target.value = "";
   }
 
+  async function loadStaffPins() {
+    if (!business) return;
+    setStaffLoading(true);
+    const { data } = await supabase
+      .from("staff_pins")
+      .select("id, name, is_active, created_at")
+      .eq("business_id", business.id)
+      .order("created_at");
+    setStaffPins((data as StaffPin[]) ?? []);
+    setStaffLoaded(true);
+    setStaffLoading(false);
+  }
+
+  async function deleteStaffPin(staffId: string) {
+    if (!window.confirm("Remove this staff member?")) return;
+    const { error } = await supabase.from("staff_pins").delete().eq("id", staffId);
+    if (!error) setStaffPins((prev) => prev.filter((s) => s.id !== staffId));
+  }
+
+  async function addStaffPin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!business || !newStaffName.trim() || newStaffPin.length !== 4) return;
+    setStaffAddError(""); setStaffAddSaving(true);
+    const { error } = await supabase.rpc("set_staff_pin", {
+      bid:        business.id,
+      staff_name: newStaffName.trim(),
+      new_pin:    newStaffPin,
+    });
+    if (error) { setStaffAddError(error.message); setStaffAddSaving(false); return; }
+    setNewStaffName(""); setNewStaffPin(""); setStaffAddSaving(false);
+    void loadStaffPins();
+  }
+
   if (loading) {
     return <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontFamily: "sans-serif" }}>Loading…</div>;
   }
@@ -802,7 +848,7 @@ export default function DashboardPage() {
         {/* Tabs */}
         <div>
           <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${BORDER}`, marginBottom: 24, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
-            {(["tables", "menu", "orders", "financials", "branding"] as Tab[]).map((t) => (
+            {(["tables", "menu", "orders", "financials", "branding", "staff"] as Tab[]).map((t) => (
               <button key={t} onClick={() => setTab(t)}
                 style={{ background: "none", border: "none", borderBottom: tab === t ? `2px solid ${ACCENT}` : "2px solid transparent", color: tab === t ? ACCENT : MUTED, padding: isMobile ? "10px 14px" : "12px 24px", fontWeight: 700, fontSize: isMobile ? 13 : 14, cursor: "pointer", textTransform: "capitalize", letterSpacing: 0.5, transition: "color 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}>
                 {t}
@@ -1524,6 +1570,89 @@ export default function DashboardPage() {
               </div>
             );
           })()}
+
+          {/* Staff tab */}
+          {tab === "staff" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+              {/* Login instructions */}
+              <div style={card}>
+                <p style={{ fontSize: 13, color: MUTED, margin: 0, lineHeight: 1.6 }}>
+                  Staff log in at{" "}
+                  <span style={{ color: TEXT, fontFamily: "monospace" }}>/staff-login</span>
+                  {" "}using restaurant ID{" "}
+                  <span style={{ color: ACCENT, fontFamily: "monospace" }}>'{business.slug}'</span>
+                  {" "}and their PIN.
+                </p>
+              </div>
+
+              {/* Current staff list */}
+              <div style={card}>
+                <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 16px" }}>
+                  Current Staff
+                </p>
+                {staffLoading ? (
+                  <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>Loading…</p>
+                ) : staffPins.length === 0 ? (
+                  <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>No staff added yet.</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {staffPins.map((s) => (
+                      <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: BG, borderRadius: 8, border: `1px solid ${BORDER}` }}>
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>{s.name}</span>
+                          {!s.is_active && <span style={{ marginLeft: 10, fontSize: 11, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>inactive</span>}
+                        </div>
+                        <button
+                          onClick={() => deleteStaffPin(s.id)}
+                          style={{ background: "none", border: `1px solid rgba(244,67,54,0.3)`, borderRadius: 8, padding: "6px 14px", color: RED, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Add staff form */}
+              <div style={card}>
+                <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 16px" }}>
+                  Add Staff
+                </p>
+                <form onSubmit={addStaffPin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <input
+                      type="text"
+                      placeholder="Staff name"
+                      value={newStaffName}
+                      onChange={(e) => { setNewStaffName(e.target.value); setStaffAddError(""); }}
+                      style={{ flex: 2, minWidth: 160, background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none" }}
+                    />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="PIN"
+                      value={newStaffPin}
+                      onChange={(e) => { setNewStaffPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setStaffAddError(""); }}
+                      style={{ flex: 1, minWidth: 100, background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 20, letterSpacing: 8, textAlign: "center", fontFamily: "monospace", outline: "none" }}
+                    />
+                  </div>
+                  {staffAddError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{staffAddError}</p>}
+                  <div>
+                    <button
+                      type="submit"
+                      disabled={staffAddSaving || !newStaffName.trim() || newStaffPin.length !== 4}
+                      style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "11px 24px", fontWeight: 800, fontSize: 13, cursor: (staffAddSaving || !newStaffName.trim() || newStaffPin.length !== 4) ? "not-allowed" : "pointer", opacity: (!newStaffName.trim() || newStaffPin.length !== 4) ? 0.5 : 1 }}
+                    >
+                      {staffAddSaving ? "Adding…" : "Add staff"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {/* Branding tab */}
           {tab === "branding" && (
