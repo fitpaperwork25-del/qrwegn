@@ -43,7 +43,7 @@ const STATUS_LABEL: Record<string, string> = {
   done: "Delivered",
 };
 
-const STAFF_STATUSES = ["new", "preparing", "ready", "done"] as const;
+const STAFF_STATUSES = ["new", "preparing", "ready"] as const;
 const CANCEL_REASONS = ["Wrong order", "Customer refused", "Item unavailable", "Other"] as const;
 const REFRESH_MS = 15_000;
 
@@ -446,7 +446,7 @@ export default function StaffDashboardPage() {
                 <div style={{
                   padding: "8px 18px 16px",
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                  gridTemplateColumns: "1fr 1fr 1fr",
                   gap: 8,
                 }}>
                   {STAFF_STATUSES.map((s) => {
