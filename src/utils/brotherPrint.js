@@ -39,9 +39,7 @@ function getTableValue(table, index) {
 function getQrUrl(businessSlug, table, index) {
   const tableValue = getTableValue(table, index);
 
-  return `${APP_URL}/scan/${businessSlug}?table=${encodeURIComponent(
-    tableValue
-  )}`;
+  return `${APP_URL}/scan/${businessSlug}/${encodeURIComponent(tableValue)}`;
 }
 
 export async function printBrotherLabels({ businessSlug, tables }) {
@@ -120,7 +118,7 @@ export async function printBrotherLabels({ businessSlug, tables }) {
       businessObj.Text = businessName;
       tableObj.Text = tableName;
 
-      await qrObj.SetData(0, qrDataUrl, 4);
+      await qrObj.SetData(0, qrUrl, 4);
 
       await IDocument.PrintOut(1, 0);
     }
