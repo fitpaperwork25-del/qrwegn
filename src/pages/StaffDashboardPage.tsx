@@ -33,17 +33,17 @@ const STATUS_COLOR: Record<string, string> = {
   new:       "#E8C547",
   preparing: "#F97316",
   ready:     "#4CAF50",
-  delivered: "#64748b",
+  done: "#64748b",
 };
 
 const STATUS_LABEL: Record<string, string> = {
   new:       "New",
   preparing: "Preparing",
   ready:     "Ready",
-  delivered: "Delivered",
+  done: "Delivered",
 };
 
-const STAFF_STATUSES = ["new", "preparing", "ready", "delivered"] as const;
+const STAFF_STATUSES = ["new", "preparing", "ready", "done"] as const;
 const CANCEL_REASONS = ["Wrong order", "Customer refused", "Item unavailable", "Other"] as const;
 const REFRESH_MS = 15_000;
 
@@ -242,7 +242,7 @@ export default function StaffDashboardPage() {
 
     if (!error) {
       // Remove from KDS when moving past the visible window ("new" / "preparing")
-      if (newStatus === "ready" || newStatus === "delivered") {
+      if (newStatus === "ready" || newStatus === "done") {
         setOrders((prev) => prev.filter((o) => o.id !== orderId));
       } else {
         setOrders((prev) =>
