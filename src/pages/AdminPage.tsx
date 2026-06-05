@@ -406,7 +406,7 @@ export default function AdminPage() {
     // Generate a QR per table pointing to /scan/{slug}/{locId}
     const entries = await Promise.all(
       locs.map(async (loc) => {
-        const url = `${APP_URL}/scan/${biz.slug}/${loc.id}`;
+        const url = `${APP_URL}/scan/${biz.id}/${loc.id}`;
         const dataUrl = await QRCode.toDataURL(url, {
           width: 200, margin: 1,
           color: { dark: "#000000", light: "#ffffff" },
@@ -679,7 +679,7 @@ export default function AdminPage() {
       setTablesByBiz((prev) => ({ ...prev, [biz.id]: locs }));
     }
     if (locs.length) {
-      await printBrotherLabels({ businessSlug: biz.slug, tables: locs });
+      await printBrotherLabels({ businessId: biz.id, businessName: biz.name, tables: locs });
     }
     setPrintingBrother(null);
   }

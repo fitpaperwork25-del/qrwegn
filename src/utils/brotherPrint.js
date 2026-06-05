@@ -5,16 +5,6 @@ const APP_URL = "https://www.qrwegn.com";
 const TEMPLATE_PATH = "C:\\qrwegn-print-server\\qrwegn-template.lbx";
 const PRINT_SERVER = "http://localhost:5000";
 
-function getBusinessName(table, businessSlug) {
-  return (
-    table?.business_name ||
-    table?.restaurant_name ||
-    table?.businessName ||
-    table?.business?.name ||
-    businessSlug
-  );
-}
-
 function getTableName(table, index) {
   return (
     table?.table_name ||
@@ -24,22 +14,6 @@ function getTableName(table, index) {
     table?.table_number ||
     `Table ${index + 1}`
   );
-}
-
-function getTableValue(table, index) {
-  return (
-    table?.slug ||
-    table?.table_slug ||
-    table?.id ||
-    table?.table_number ||
-    table?.tableNumber ||
-    index + 1
-  );
-}
-
-function getQrUrl(businessSlug, table, index) {
-  const tableValue = getTableValue(table, index);
-  return `${APP_URL}/scan/${businessSlug}/${encodeURIComponent(tableValue)}`;
 }
 
 async function savePngViaServer(base64) {
@@ -53,7 +27,7 @@ async function savePngViaServer(base64) {
   return filePath;
 }
 
-export async function printBrotherLabels({ businessSlug, tables }) {
+export async function printBrotherLabels({ businessId, businessName, tables }) {
   if (!IsExtensionInstalled()) {
     alert(
       "Brother b-PAC extension is not detected.\n\n" +
@@ -64,8 +38,8 @@ export async function printBrotherLabels({ businessSlug, tables }) {
     return;
   }
 
-  if (!businessSlug) {
-    alert("Missing business slug.");
+  if (!businessId) {
+    alert("Missing business ID.");
     return;
   }
 
@@ -89,11 +63,11 @@ export async function printBrotherLabels({ businessSlug, tables }) {
     for (let i = 0; i < tables.length; i++) {
       const table = tables[i];
 
-      const businessName = getBusinessName(table, businessSlug);
+      const displayName = businessName || businessId;
       const tableName = getTableName(table, i);
-      const qrUrl = getQrUrl(businessSlug, table, i);
+      const qrUrl = `${APP_URL}/scan/${businessId}/${table.id}`;
 
-      console.log("[Brother] Printing label:", { businessName, tableName, qrUrl });
+      console.log("[Brother] Printing label:", { displayName, tableName, qrUrl });
 
       const businessObj = await IDocument.GetObject("businessName");
       const tableObj = await IDocument.GetObject("tableName");
@@ -107,7 +81,7 @@ export async function printBrotherLabels({ businessSlug, tables }) {
         "insert an Image placeholder in its place, and name it 'qrCode'."
       );
 
-      businessObj.Text = businessName;
+      businessObj.Text = displayName;
       tableObj.Text = tableName;
 
       // Generate QR as PNG, write to disk via print server, inject into image object.
