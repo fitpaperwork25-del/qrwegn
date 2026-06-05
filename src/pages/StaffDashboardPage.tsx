@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { getStaffSession, clearStaffSession } from "../lib/useStaffAuth";
+import { getStaffProfile, signOutStaff } from "../lib/useStaffAuth";
 import { ACCENT, BG, BORDER, MUTED, SURFACE, TEXT } from "../constants/theme";
 
 // ── Types ─────────────────────────────────────────────────────
@@ -79,9 +79,9 @@ function formatElapsed(dateStr: string, now: number): { text: string; color: str
 // ── Component ──────────────────────────────────────────────────
 export default function StaffDashboardPage() {
   const navigate = useNavigate();
-  const session  = getStaffSession();
-  const bizId    = session?.bizId ?? null;
-  const bizName  = session?.bizName ?? "Staff Dashboard";
+
+  const [bizId, setBizId]   = useState<string | null>(null);
+  const [bizName, setBizName] = useState("Staff Dashboard");
 
   const [orders, setOrders]           = useState<OrderRow[]>([]);
   const [items, setItems]             = useState<OrderItem[]>([]);
@@ -89,6 +89,15 @@ export default function StaffDashboardPage() {
   const [loading, setLoading]         = useState(true);
   const [lastChecked, setLastChecked] = useState(nowStr());
   const [now, setNow]                 = useState(Date.now());
+
+  // Load business identity from Supabase auth + staff_profiles.
+  useEffect(() => {
+    getStaffProfile().then((profile) => {
+      if (!profile) { navigate("/staff-login", { replace: true }); return; }
+      setBizId(profile.bizId);
+      setBizName(profile.bizName);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason]           = useState("");
@@ -101,7 +110,7 @@ export default function StaffDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!bizId) { navigate("/staff-login", { replace: true }); return; }
+    if (!bizId) return;
 
     async function fetchOrders() {
       const [ordRes, tabRes] = await Promise.all([
@@ -213,8 +222,8 @@ export default function StaffDashboardPage() {
     }
   }
 
-  function handleSignOut() {
-    clearStaffSession();
+  async function handleSignOut() {
+    await signOutStaff();
     navigate("/staff-login", { replace: true });
   }
 

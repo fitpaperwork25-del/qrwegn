@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { staffLogin } from "../lib/useStaffAuth";
 import { ACCENT, BG, SURFACE, BORDER, TEXT, MUTED, RED } from "../constants/theme";
 
@@ -18,28 +18,11 @@ const inputStyle: React.CSSProperties = {
 
 export default function StaffLoginPage() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
 
-  // Pre-fill from router state (Try Demo) or URL query params (Admin Deploy Kit)
-  const demo    = location.state as { demoSlug?: string; demoPin?: string } | null;
-  const initSlug = demo?.demoSlug ?? searchParams.get("slug") ?? "";
-  const initPin  = demo?.demoPin  ?? searchParams.get("pin")  ?? "";
-
-  const [slug, setSlug] = useState(initSlug);
-  const [pin, setPin]   = useState(initPin);
+  const [slug, setSlug] = useState("");
+  const [pin, setPin]   = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
-
-  // Auto-submit when credentials are pre-filled (Demo or Admin Deploy Kit)
-  useEffect(() => {
-    if (!initSlug || !initPin) return;
-    setLoading(true);
-    staffLogin(initSlug, initPin).then(({ error: err }) => {
-      if (err) { setError(err); setLoading(false); }
-      else navigate("/staff");
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLogin = async () => {
     if (!slug.trim()) { setError("Enter your restaurant ID."); return; }
@@ -124,7 +107,7 @@ export default function StaffLoginPage() {
           </div>
           <input
             type="text"
-            placeholder="e.g. snelling-cafe"
+            placeholder="e.g. red-sea"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -170,7 +153,7 @@ export default function StaffLoginPage() {
             fontSize: 15,
           }}
         >
-          {loading ? "Checking..." : "Enter Staff Dashboard →"}
+          {loading ? "Checking…" : "Enter Staff Dashboard →"}
         </button>
 
         <button

@@ -1,56 +1,75 @@
 import { supabase } from "./supabase";
 
-const SESSION_KEY = "qrs_staff_session";
+const BIZ_KEY = "qrs_staff_biz";
 
-export interface StaffSession {
+export interface StaffProfile {
   bizId: string;
   bizName: string;
-  bizSlug: string;
 }
 
-export function getStaffSession(): StaffSession | null {
-  const raw = sessionStorage.getItem(SESSION_KEY);
+// Calls the staff-login Edge Function (slug + PIN → real JWT for the
+// per-business synthetic auth user). Sets the Supabase session so all
+// subsequent queries carry a valid JWT and RLS policies can evaluate
+// auth.uid().
+export async function staffLogin(
+  restaurant: string,
+  pin: string
+): Promise<{ error: string | null }> {
+  const supabaseUrl    = import.meta.env.VITE_SUPABASE_URL as string;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+  let data: any;
+  try {
+    const resp = await fetch(`${supabaseUrl}/functions/v1/staff-login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": supabaseAnonKey,
+      },
+      body: JSON.stringify({ restaurant: restaurant.trim().toLowerCase(), pin: String(pin) }),
+    });
+    data = await resp.json();
+    if (!resp.ok) return { error: data.error || `Login failed (${resp.status})` };
+  } catch (e: any) {
+    return { error: `Network error: ${e?.message ?? e}` };
+  }
+
+  const { error: sessionErr } = await supabase.auth.setSession({
+    access_token:  data.access_token,
+    refresh_token: data.refresh_token,
+  });
+  if (sessionErr) return { error: sessionErr.message };
+
+  sessionStorage.setItem(BIZ_KEY, JSON.stringify({
+    bizId:   data.business_id,
+    bizName: data.name || "Staff Dashboard",
+  } satisfies StaffProfile));
+
+  return { error: null };
+}
+
+// Checks that a real Supabase session is active and returns the
+// stored business profile. Returns null if the session has expired
+// or the profile key is missing (triggers redirect to login).
+export async function getStaffProfile(): Promise<StaffProfile | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+
+  const raw = sessionStorage.getItem(BIZ_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as StaffSession;
+    return JSON.parse(raw) as StaffProfile;
   } catch {
     return null;
   }
 }
 
-export function clearStaffSession(): void {
-  sessionStorage.removeItem(SESSION_KEY);
+export async function signOutStaff(): Promise<void> {
+  sessionStorage.removeItem(BIZ_KEY);
+  await supabase.auth.signOut();
 }
 
-export async function staffLogin(
-  slug: string,
-  pin: string
-): Promise<{ session: StaffSession | null; error: string | null }> {
-  const { data, error } = await supabase
-    .from("businesses")
-    .select("id, name, slug, staff_pin")
-    .eq("slug", slug.trim().toLowerCase())
-    .maybeSingle();
-
-  if (error) {
-    console.error("staffLogin query error:", error);
-    return { session: null, error: `Lookup failed: ${error.message}` };
-  }
-  if (!data) {
-    return { session: null, error: "Restaurant not found. Check the ID and try again." };
-  }
-  if (!data.staff_pin) {
-    return { session: null, error: "No staff PIN set for this restaurant. Ask your manager." };
-  }
-  if (data.staff_pin !== pin) {
-    return { session: null, error: "Incorrect PIN. Try again." };
-  }
-
-  const session: StaffSession = {
-    bizId: data.id as string,
-    bizName: data.name as string,
-    bizSlug: data.slug as string,
-  };
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  return { session, error: null };
-}
+// ── Legacy stubs (kept so any lingering import sites compile) ──
+export function getStaffSession() { return null; }
+export function clearStaffSession() { void signOutStaff(); }
+export interface StaffSession { bizId: string; bizName: string; bizSlug: string }
