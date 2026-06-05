@@ -33,33 +33,72 @@ const STATUS_COLOR: Record<string, string> = {
   new:       "#E8C547",
   preparing: "#F97316",
   ready:     "#4CAF50",
+  delivered: "#64748b",
 };
 
-const STAFF_STATUSES = ["new", "preparing", "ready"] as const;
+const STATUS_LABEL: Record<string, string> = {
+  new:       "New",
+  preparing: "Preparing",
+  ready:     "Ready",
+  delivered: "Delivered",
+};
+
+const STAFF_STATUSES = ["new", "preparing", "ready", "delivered"] as const;
 const CANCEL_REASONS = ["Wrong order", "Customer refused", "Item unavailable", "Other"] as const;
 const REFRESH_MS = 15_000;
 
 function nowStr() {
-  return new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return new Date().toLocaleTimeString(undefined, {
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+}
+
+// Returns MM:SS (or H:MM:SS past 1 hour) elapsed + urgency color.
+// Appends "Z" when no timezone indicator is present so the string is
+// always parsed as UTC, not local time.
+function formatElapsed(dateStr: string, now: number): { text: string; color: string } {
+  const normalized = /[Zz]|[+-]\d{2}:?\d{2}$/.test(dateStr.trim())
+    ? dateStr
+    : dateStr + "Z";
+  const epoch = Date.parse(normalized);
+  if (isNaN(epoch)) return { text: "--:--", color: MUTED };
+
+  const ms        = Math.max(0, now - epoch);
+  const totalSecs = Math.floor(ms / 1000);
+  const h         = Math.floor(totalSecs / 3600);
+  const m         = Math.floor((totalSecs % 3600) / 60);
+  const s         = totalSecs % 60;
+  const pad       = (n: number) => n.toString().padStart(2, "0");
+  const text      = h > 0
+    ? `${h}:${pad(m)}:${pad(s)}`
+    : `${pad(m)}:${pad(s)}`;
+  const color     = ms >= 600_000 ? "#f44336" : ms >= 300_000 ? "#F97316" : "#4CAF50";
+  return { text, color };
 }
 
 // ── Component ──────────────────────────────────────────────────
 export default function StaffDashboardPage() {
-  const navigate   = useNavigate();
-  const session    = getStaffSession();
-  const bizId      = session?.bizId ?? null;
-  const bizName    = session?.bizName ?? "Staff Dashboard";
+  const navigate = useNavigate();
+  const session  = getStaffSession();
+  const bizId    = session?.bizId ?? null;
+  const bizName  = session?.bizName ?? "Staff Dashboard";
 
-  const [orders, setOrders]         = useState<OrderRow[]>([]);
-  const [items, setItems]           = useState<OrderItem[]>([]);
-  const [openTabs, setOpenTabs]     = useState<TabRow[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [orders, setOrders]           = useState<OrderRow[]>([]);
+  const [items, setItems]             = useState<OrderItem[]>([]);
+  const [openTabs, setOpenTabs]       = useState<TabRow[]>([]);
+  const [loading, setLoading]         = useState(true);
   const [lastChecked, setLastChecked] = useState(nowStr());
+  const [now, setNow]                 = useState(Date.now());
 
-  // Order cancellation
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason]           = useState("");
   const [cancelError, setCancelError]             = useState("");
+
+  // 1-second tick for live elapsed time — independent of data polling.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!bizId) { navigate("/staff-login", { replace: true }); return; }
@@ -79,6 +118,9 @@ export default function StaffDashboardPage() {
           .eq("status", "open")
           .order("opened_at", { ascending: true }),
       ]);
+
+      if (ordRes.error) console.error("[KDS] orders query error:", ordRes.error);
+      if (tabRes.error) console.error("[KDS] tabs query error:", tabRes.error);
 
       const rows: OrderRow[] = (ordRes.data ?? []).map((o: any) => ({
         id:          o.id,
@@ -160,8 +202,8 @@ export default function StaffDashboardPage() {
       .eq("id", orderId);
 
     if (!error) {
-      if (newStatus === "ready") {
-        // Remove from active list once marked ready
+      // Remove from KDS when moving past the visible window ("new" / "preparing")
+      if (newStatus === "ready" || newStatus === "delivered") {
         setOrders((prev) => prev.filter((o) => o.id !== orderId));
       } else {
         setOrders((prev) =>
@@ -176,13 +218,6 @@ export default function StaffDashboardPage() {
     navigate("/staff-login", { replace: true });
   }
 
-  function minutesAgo(dateStr: string) {
-    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
-    if (diff < 1) return "just now";
-    if (diff === 1) return "1 min ago";
-    return `${diff} mins ago`;
-  }
-
   if (loading) {
     return (
       <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontFamily: "sans-serif", fontSize: 16 }}>
@@ -194,15 +229,27 @@ export default function StaffDashboardPage() {
   return (
     <div style={{ background: BG, minHeight: "100vh", color: TEXT, fontFamily: "sans-serif" }}>
 
-      {/* Header */}
-      <header style={{ background: SURFACE, borderBottom: `1px solid ${BORDER}`, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 10 }}>
+      {/* ── Header ── */}
+      <header style={{
+        background: SURFACE,
+        borderBottom: `1px solid ${BORDER}`,
+        padding: "16px 20px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+      }}>
         <div>
-          <div style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Kitchen View</div>
+          <div style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>
+            Kitchen Display
+          </div>
           <div style={{ fontWeight: 900, fontSize: 18 }}>{bizName}</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <div style={{ fontSize: 11, color: MUTED, fontFamily: "monospace" }}>
-            {orders.length} active · last checked {lastChecked}
+            {orders.length} active · {lastChecked}
           </div>
           <button
             onClick={handleSignOut}
@@ -213,50 +260,58 @@ export default function StaffDashboardPage() {
         </div>
       </header>
 
-      {/* Open Tabs */}
+      {/* ── Open Tabs ── */}
       {openTabs.length > 0 && (
         <div style={{ padding: "16px 16px 0", maxWidth: 680, margin: "0 auto" }}>
-          <div style={{ fontSize: 11, letterSpacing: 3, color: "#E8C547", fontWeight: 700, textTransform: "uppercase", marginBottom: 10 }}>
+          <div style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 10 }}>
             Open Tabs — {openTabs.length}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {openTabs.map((tab) => (
-              <div key={tab.id} style={{ background: "#1a1400", border: "1px solid #E8C54733", borderRadius: 12, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 16 }}>{tab.table_name}</div>
-                  <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{minutesAgo(tab.opened_at)}</div>
+            {openTabs.map((tab) => {
+              const { text: elText, color: elColor } = formatElapsed(tab.opened_at, now);
+              return (
+                <div
+                  key={tab.id}
+                  style={{ background: "#1a1400", border: "1px solid #E8C54733", borderRadius: 12, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 16 }}>{tab.table_name}</div>
+                    <div style={{ fontSize: 12, color: elColor, marginTop: 2, fontFamily: "monospace", fontWeight: 700 }}>
+                      ⏱ {elText}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontWeight: 900, fontSize: 18, color: ACCENT }}>${Number(tab.total).toFixed(2)}</span>
+                    <button
+                      onClick={() => closeTab(tab.id)}
+                      style={{ background: "none", border: "1px solid #E8C54766", borderRadius: 8, padding: "5px 12px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Close Tab
+                    </button>
+                  </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontWeight: 900, fontSize: 18, color: "#E8C547" }}>${Number(tab.total).toFixed(2)}</span>
-                  <button
-                    onClick={() => closeTab(tab.id)}
-                    style={{ background: "none", border: "1px solid #E8C54766", borderRadius: 8, padding: "5px 12px", color: "#E8C547", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                  >
-                    Close Tab
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Orders */}
+      {/* ── Orders ── */}
       <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16, maxWidth: 680, margin: "0 auto" }}>
-
         {orders.length === 0 ? (
           <div style={{ textAlign: "center", padding: "80px 24px" }}>
             <div style={{ fontSize: 40, marginBottom: 16 }}>✓</div>
             <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 8 }}>All clear</div>
-            <div style={{ color: MUTED, fontSize: 14 }}>No active orders right now.</div>
+            <div style={{ color: MUTED, fontSize: 14 }}>No active orders.</div>
             <div style={{ color: MUTED, fontSize: 12, marginTop: 12, fontFamily: "monospace" }}>
               Last checked: {lastChecked}
             </div>
           </div>
         ) : (
-          orders.map((order) => {
-            const orderItems = items.filter((i) => i.order_id === order.id);
+          orders.map((order, queueIdx) => {
+            const orderItems  = items.filter((i) => i.order_id === order.id);
             const statusColor = STATUS_COLOR[order.status] ?? MUTED;
+            const { text: elText, color: elColor } = formatElapsed(order.created_at, now);
 
             return (
               <div
@@ -268,53 +323,79 @@ export default function StaffDashboardPage() {
                   overflow: "hidden",
                 }}
               >
-                {/* Order header */}
-                <div style={{ background: statusColor + "18", borderBottom: `1px solid ${statusColor}33`, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                {/* ── Card header ── */}
+                <div style={{
+                  background: statusColor + "18",
+                  borderBottom: `1px solid ${statusColor}33`,
+                  padding: "14px 18px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                }}>
                   <div>
-                    <div style={{ fontWeight: 900, fontSize: 20 }}>{order.table_name}</div>
-                    <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{minutesAgo(order.created_at)}</div>
+                    <div style={{ fontSize: 10, letterSpacing: 2, color: MUTED, textTransform: "uppercase", fontWeight: 700, marginBottom: 4 }}>
+                      Order #{queueIdx + 1}
+                    </div>
+                    <div style={{ fontWeight: 900, fontSize: 26, lineHeight: 1, letterSpacing: -0.5 }}>
+                      {order.table_name}
+                    </div>
+                    <div style={{ fontSize: 14, color: elColor, marginTop: 6, fontFamily: "monospace", fontWeight: 700 }}>
+                      ⏱ {elText}
+                    </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div
-                      style={{
-                        display: "inline-block",
-                        background: statusColor + "33",
-                        color: statusColor,
-                        border: `1px solid ${statusColor}66`,
-                        borderRadius: 8,
-                        padding: "4px 12px",
-                        fontSize: 12,
-                        fontWeight: 800,
-                        letterSpacing: 1,
-                        textTransform: "uppercase",
-                        marginBottom: 4,
-                      }}
-                    >
-                      {order.status}
+                    <div style={{
+                      display: "inline-block",
+                      background: statusColor + "33",
+                      color: statusColor,
+                      border: `1px solid ${statusColor}66`,
+                      borderRadius: 8,
+                      padding: "4px 12px",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                      marginBottom: 6,
+                    }}>
+                      {STATUS_LABEL[order.status] ?? order.status}
                     </div>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: TEXT }}>${Number(order.total).toFixed(2)}</div>
+                    <div style={{ fontWeight: 800, fontSize: 18, color: TEXT }}>
+                      ${Number(order.total).toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>
+                      {orderItems.length} item{orderItems.length !== 1 ? "s" : ""}
+                    </div>
                   </div>
                 </div>
 
-                {/* Items */}
-                <div style={{ padding: "14px 18px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {/* ── Items ── */}
+                <div style={{ padding: "14px 18px 12px", display: "flex", flexDirection: "column", gap: 12 }}>
                   {orderItems.length === 0 ? (
                     <div style={{ color: MUTED, fontSize: 13 }}>No items</div>
                   ) : (
                     orderItems.map((item, idx) => (
                       <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                          <span style={{ fontWeight: 900, fontSize: 22, color: ACCENT, minWidth: 28 }}>{item.quantity}×</span>
-                          <span style={{ fontWeight: 700, fontSize: 17 }}>{item.name}</span>
+                          <span style={{ fontWeight: 900, fontSize: 24, color: ACCENT, minWidth: 32, lineHeight: 1 }}>
+                            {item.quantity}×
+                          </span>
+                          <span style={{ fontWeight: 700, fontSize: 18 }}>{item.name}</span>
                         </div>
-                        <span style={{ color: MUTED, fontSize: 14 }}>${(item.unit_price * item.quantity).toFixed(2)}</span>
+                        <span style={{ color: MUTED, fontSize: 14 }}>
+                          ${(item.unit_price * item.quantity).toFixed(2)}
+                        </span>
                       </div>
                     ))
                   )}
                 </div>
 
-                {/* Status buttons */}
-                <div style={{ padding: "10px 18px 16px", display: "flex", gap: 10 }}>
+                {/* ── Status buttons ── */}
+                <div style={{
+                  padding: "8px 18px 16px",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                  gap: 8,
+                }}>
                   {STAFF_STATUSES.map((s) => {
                     const active = order.status === s;
                     const color  = STATUS_COLOR[s];
@@ -323,27 +404,27 @@ export default function StaffDashboardPage() {
                         key={s}
                         onClick={() => updateStatus(order.id, s)}
                         style={{
-                          flex: 1,
-                          padding: "12px 8px",
+                          padding: "12px 4px",
                           borderRadius: 10,
                           border: `2px solid ${active ? color : BORDER}`,
                           background: active ? color + "33" : "none",
                           color: active ? color : MUTED,
                           fontWeight: active ? 900 : 600,
-                          fontSize: 13,
+                          fontSize: 11,
                           cursor: "pointer",
                           textTransform: "uppercase",
                           letterSpacing: 0.5,
                           transition: "all 0.15s",
+                          minHeight: 44,
                         }}
                       >
-                        {s}
+                        {STATUS_LABEL[s]}
                       </button>
                     );
                   })}
                 </div>
 
-                {/* Cancel section */}
+                {/* ── Cancel ── */}
                 {cancellingOrderId === order.id ? (
                   <div style={{ borderTop: `1px solid rgba(255,255,255,0.06)`, padding: "10px 18px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
