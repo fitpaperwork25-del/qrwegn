@@ -12,6 +12,7 @@ type Tab = { id: string; location_id: string; total: number };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const PAYMENT_METHODS = ["Cash", "Card", "Other"] as const;
+const POPULAR = "__popular__";
 
 export default function StaffFloorPage() {
   const navigate = useNavigate();
@@ -24,11 +25,13 @@ export default function StaffFloorPage() {
   const [cats, setCats] = useState<Cat[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [openTabs, setOpenTabs] = useState<Tab[]>([]);
+  const [popularIds, setPopularIds] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"floor" | "order" | "closeout">("floor");
   const [activeTable, setActiveTable] = useState<Table | null>(null);
-  const [activeCat, setActiveCat] = useState<string | null>(null);
+  const [activeCat, setActiveCat] = useState<string>(POPULAR);
+  const [search, setSearch] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -59,15 +62,38 @@ export default function StaffFloorPage() {
         .eq("business_id", id).eq("is_visible", true).order("display_order");
       const catList = (c as Cat[]) || [];
       setCats(catList);
-      setActiveCat(catList[0]?.id ?? null);
 
+      let itemList: Item[] = [];
       if (catList.length) {
         const { data: it } = await supabase
           .from("menu_items").select("id, category_id, name, price")
           .in("category_id", catList.map((x) => x.id))
           .eq("is_available", true).order("display_order");
-        setItems((it as Item[]) || []);
+        itemList = (it as Item[]) || [];
+        setItems(itemList);
       }
+
+      // Popular = most-ordered items for this business (from order history)
+      try {
+        const { data: oi } = await supabase
+          .from("order_items")
+          .select("menu_item_id, quantity, orders!inner(business_id)")
+          .eq("orders.business_id", id);
+        const counts: Record<string, number> = {};
+        (oi as any[] | null)?.forEach((r) => {
+          if (!r.menu_item_id) return;
+          counts[r.menu_item_id] = (counts[r.menu_item_id] || 0) + Number(r.quantity || 0);
+        });
+        const top = Object.entries(counts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 8)
+          .map(([mid]) => mid)
+          .filter((mid) => itemList.some((i) => i.id === mid));
+        setPopularIds(top);
+      } catch {
+        setPopularIds([]);
+      }
+
       await loadTabs(id);
     },
     [loadTabs]
@@ -117,7 +143,8 @@ export default function StaffFloorPage() {
   function openTable(t: Table) {
     setActiveTable(t);
     setCart({});
-    setActiveCat(cats[0]?.id ?? null);
+    setSearch("");
+    setActiveCat(popularIds.length ? POPULAR : (cats[0]?.id ?? POPULAR));
     setMsg("");
     setView("order");
   }
@@ -192,7 +219,7 @@ export default function StaffFloorPage() {
   const page: React.CSSProperties = { minHeight: "100vh", background: BG, color: TEXT, padding: 16 };
   const topbar: React.CSSProperties = {
     display: "flex", alignItems: "center", justifyContent: "space-between",
-    marginBottom: 18, gap: 12, flexWrap: "wrap",
+    marginBottom: 14, gap: 12, flexWrap: "wrap",
   };
   const pill = (active: boolean): React.CSSProperties => ({
     padding: "8px 14px", borderRadius: 20, fontWeight: 700, fontSize: 13, cursor: "pointer",
@@ -208,6 +235,10 @@ export default function StaffFloorPage() {
     background: ACCENT, color: BG, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
     width: "100%",
   });
+  const searchInput: React.CSSProperties = {
+    width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${BORDER}`,
+    background: SURFACE, color: TEXT, fontSize: 15, marginBottom: 12, boxSizing: "border-box",
+  };
 
   if (loading) {
     return <div style={{ ...page, display: "grid", placeItems: "center" }}>Loading floor…</div>;
@@ -215,7 +246,6 @@ export default function StaffFloorPage() {
 
   // ── FLOOR VIEW ──
   if (view === "floor") {
-    const openCount = openTabs.length;
     return (
       <div style={page}>
         <div style={topbar}>
@@ -224,16 +254,13 @@ export default function StaffFloorPage() {
             <div style={{ fontSize: 22, fontWeight: 900 }}>{bizName}</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ color: MUTED, fontSize: 13 }}>{openCount} open</span>
+            <span style={{ color: MUTED, fontSize: 13 }}>{openTabs.length} open</span>
             <button style={ghostBtn} onClick={() => navigate("/staff")}>Kitchen view</button>
             <button style={ghostBtn} onClick={handleSignOut}>Sign out</button>
           </div>
         </div>
 
-        <div style={{
-          display: "grid", gap: 12,
-          gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-        }}>
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
           {tables.map((t) => {
             const tab = tabForTable(t.id);
             const isOpen = !!tab;
@@ -242,13 +269,12 @@ export default function StaffFloorPage() {
                 key={t.id}
                 onClick={() => openTable(t)}
                 style={{
-                  textAlign: "left", cursor: "pointer", borderRadius: 14, padding: 16,
-                  background: SURFACE,
+                  textAlign: "left", cursor: "pointer", borderRadius: 14, padding: 16, background: SURFACE,
                   border: `1px solid ${isOpen ? GREEN : BORDER}`,
                   minHeight: 96, display: "flex", flexDirection: "column", justifyContent: "space-between",
                 }}
               >
-                <div style={{ fontWeight: 800, fontSize: 17 }}>{t.name}</div>
+                <div style={{ fontWeight: 800, fontSize: 18 }}>{t.name}</div>
                 {isOpen ? (
                   <div>
                     <div style={{ color: GREEN, fontWeight: 700, fontSize: 12 }}>OPEN</div>
@@ -274,32 +300,56 @@ export default function StaffFloorPage() {
   // ── ORDER VIEW ──
   if (view === "order" && activeTable) {
     const tab = tabForTable(activeTable.id);
-    const shownItems = items.filter((i) => i.category_id === activeCat);
+    const q = search.trim().toLowerCase();
+    let shownItems: Item[];
+    if (q) {
+      shownItems = items.filter((i) => i.name.toLowerCase().includes(q));
+    } else if (activeCat === POPULAR) {
+      shownItems = popularIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as Item[];
+    } else {
+      shownItems = items.filter((i) => i.category_id === activeCat);
+    }
+
     return (
       <div style={{ ...page, paddingBottom: 200 }}>
+        {/* prominent table header */}
         <div style={topbar}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <button style={ghostBtn} onClick={() => { setView("floor"); setActiveTable(null); }}>← Floor</button>
-            <div style={{ fontSize: 20, fontWeight: 900 }}>{activeTable.name}</div>
+            <div>
+              <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED }}>TABLE</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: ACCENT }}>{activeTable.name}</div>
+            </div>
           </div>
           {tab && (
             <button
               style={{ ...ghostBtn, borderColor: ACCENT, color: ACCENT }}
-              onClick={() => { setView("closeout"); }}
+              onClick={() => setView("closeout")}
             >
               Close out · ${withTax(Number(tab.total)).toFixed(2)}
             </button>
           )}
         </div>
 
-        {/* category chips */}
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 12 }}>
-          {cats.map((c) => (
-            <div key={c.id} style={pill(c.id === activeCat)} onClick={() => setActiveCat(c.id)}>
-              {c.name}
-            </div>
-          ))}
-        </div>
+        {/* search */}
+        <input
+          style={searchInput}
+          placeholder="Search menu…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        {/* category chips (hidden while searching) */}
+        {!q && (
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 12 }}>
+            {popularIds.length > 0 && (
+              <div style={pill(activeCat === POPULAR)} onClick={() => setActiveCat(POPULAR)}>★ Popular</div>
+            )}
+            {cats.map((c) => (
+              <div key={c.id} style={pill(c.id === activeCat)} onClick={() => setActiveCat(c.id)}>{c.name}</div>
+            ))}
+          </div>
+        )}
 
         {/* items */}
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))" }}>
@@ -326,6 +376,9 @@ export default function StaffFloorPage() {
               </div>
             );
           })}
+          {shownItems.length === 0 && (
+            <div style={{ color: MUTED }}>{q ? "No items match." : "Nothing here yet."}</div>
+          )}
         </div>
 
         {/* cart bar */}
@@ -335,7 +388,7 @@ export default function StaffFloorPage() {
         }}>
           {msg && <div style={{ marginBottom: 8, fontSize: 13, color: msg.startsWith("Error") ? RED : GREEN }}>{msg}</div>}
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 14 }}>
-            <span style={{ color: MUTED }}>{cartLines.reduce((s, l) => s + l.qty, 0)} item(s)</span>
+            <span style={{ color: MUTED }}>{activeTable.name} · {cartLines.reduce((s, l) => s + l.qty, 0)} item(s)</span>
             <span style={{ fontWeight: 800 }}>${cartGrand.toFixed(2)}</span>
           </div>
           <button style={primaryBtn(sending || cartLines.length === 0)} disabled={sending || cartLines.length === 0} onClick={sendOrder}>
