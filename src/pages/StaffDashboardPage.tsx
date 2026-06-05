@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { getStaffProfile, signOutStaff } from "../lib/useStaffAuth";
@@ -82,6 +82,7 @@ export default function StaffDashboardPage() {
 
   const [bizId, setBizId]   = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const [bizName, setBizName] = useState("Staff Dashboard");
 
   const [orders, setOrders]           = useState<OrderRow[]>([]);
@@ -110,12 +111,30 @@ export default function StaffDashboardPage() {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    audioCtxRef.current = ctx;
+    const unlock = () => { void ctx.resume(); };
+    window.addEventListener("click", unlock);
+    window.addEventListener("touchstart", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("touchstart", unlock);
+      window.removeEventListener("keydown", unlock);
+      ctx.close();
+    };
+  }, []);
+
   function notifyNewOrder() {
     setFlash(true);
     setTimeout(() => setFlash(false), 4000);
     try {
-      const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
-      const ctx = new Ctx();
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      if (ctx.state === "suspended") void ctx.resume();
       const beep = (t: number, f: number) => {
         const o = ctx.createOscillator();
         const g = ctx.createGain();
@@ -127,7 +146,6 @@ export default function StaffDashboardPage() {
         o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.26);
       };
       beep(0, 880); beep(0.18, 1175);
-      setTimeout(() => ctx.close(), 900);
     } catch {}
   }
 
