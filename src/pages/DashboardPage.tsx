@@ -799,6 +799,14 @@ export default function DashboardPage() {
             style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
             Staff login
           </button>
+          <button onClick={() => window.open("/staff", "_blank")}
+            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
+            Kitchen
+          </button>
+          <button onClick={() => window.open("/staff/floor", "_blank")}
+            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
+            Floor
+          </button>
           <button onClick={signOut}
             style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
             Sign out
