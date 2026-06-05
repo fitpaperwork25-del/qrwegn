@@ -12,6 +12,7 @@ import ScanLandingPage from "./pages/ScanLandingPage";
 import SuccessPage from "./pages/SuccessPage";
 import StaffDashboardPage from "./pages/StaffDashboardPage";
 import StaffLoginPage from "./pages/StaffLoginPage";
+import StaffFloorPage from "./pages/StaffFloorPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DemoDashboardPage from "./pages/DemoDashboardPage";
@@ -95,6 +96,14 @@ export default function App() {
         element={
           <StaffGuard>
             <StaffDashboardPage />
+          </StaffGuard>
+        }
+      />
+      <Route
+        path="/staff/floor"
+        element={
+          <StaffGuard>
+            <StaffFloorPage />
           </StaffGuard>
         }
       />

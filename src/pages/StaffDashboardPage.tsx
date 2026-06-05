@@ -260,12 +260,20 @@ export default function StaffDashboardPage() {
           <div style={{ fontSize: 11, color: MUTED, fontFamily: "monospace" }}>
             {orders.length} active · {lastChecked}
           </div>
-          <button
-            onClick={handleSignOut}
-            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "6px 14px", color: MUTED, fontSize: 12, cursor: "pointer" }}
-          >
-            Sign out
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => navigate("/staff/floor")}
+              style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "6px 14px", color: MUTED, fontSize: 12, cursor: "pointer" }}
+            >
+              Floor view
+            </button>
+            <button
+              onClick={handleSignOut}
+              style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "6px 14px", color: MUTED, fontSize: 12, cursor: "pointer" }}
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
