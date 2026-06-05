@@ -316,6 +316,12 @@ export default function StaffDashboardPage() {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button
+              onClick={() => navigate("/dashboard")}
+              style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "6px 14px", color: MUTED, fontSize: 12, cursor: "pointer" }}
+            >
+              Dashboard
+            </button>
+            <button
               onClick={() => navigate("/staff/floor")}
               style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "6px 14px", color: MUTED, fontSize: 12, cursor: "pointer" }}
             >

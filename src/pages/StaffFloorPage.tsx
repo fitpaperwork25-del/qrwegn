@@ -255,6 +255,7 @@ export default function StaffFloorPage() {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ color: MUTED, fontSize: 13 }}>{openTabs.length} open</span>
+            <button style={ghostBtn} onClick={() => navigate("/dashboard")}>Dashboard</button>
             <button style={ghostBtn} onClick={() => navigate("/staff")}>Kitchen view</button>
             <button style={ghostBtn} onClick={handleSignOut}>Sign out</button>
           </div>
