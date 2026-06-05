@@ -269,7 +269,7 @@ export default function StaffFloorPage() {
                 key={t.id}
                 onClick={() => openTable(t)}
                 style={{
-                  textAlign: "left", cursor: "pointer", borderRadius: 14, padding: 16, background: SURFACE,
+                  textAlign: "left", cursor: "pointer", borderRadius: 14, padding: 16, background: SURFACE, color: TEXT,
                   border: `1px solid ${isOpen ? GREEN : BORDER}`,
                   minHeight: 96, display: "flex", flexDirection: "column", justifyContent: "space-between",
                 }}
