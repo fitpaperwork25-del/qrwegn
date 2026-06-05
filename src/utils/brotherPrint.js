@@ -3,6 +3,7 @@ import { IDocument, IsExtensionInstalled } from "./bpac.js";
 
 const APP_URL = "https://www.qrwegn.com";
 const TEMPLATE_PATH = "C:\\qrwegn-print-server\\qrwegn-template.lbx";
+const PRINT_SERVER = "http://localhost:5000";
 
 function getBusinessName(table, businessSlug) {
   return (
@@ -38,8 +39,18 @@ function getTableValue(table, index) {
 
 function getQrUrl(businessSlug, table, index) {
   const tableValue = getTableValue(table, index);
-
   return `${APP_URL}/scan/${businessSlug}/${encodeURIComponent(tableValue)}`;
+}
+
+async function savePngViaServer(base64) {
+  const resp = await fetch(`${PRINT_SERVER}/save-qr-png`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ base64 }),
+  });
+  if (!resp.ok) throw new Error(`Print server error ${resp.status} — is node server.js running?`);
+  const { filePath } = await resp.json();
+  return filePath;
 }
 
 export async function printBrotherLabels({ businessSlug, tables }) {
@@ -82,43 +93,43 @@ export async function printBrotherLabels({ businessSlug, tables }) {
       const tableName = getTableName(table, i);
       const qrUrl = getQrUrl(businessSlug, table, i);
 
-      console.log("QR label debug:", {
-        businessSlug,
-        businessName,
-        table,
-        tableName,
-        qrUrl,
-      });
-
-      const qrDataUrl = await QRCode.toDataURL(qrUrl, {
-        margin: 1,
-        width: 500,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
-        },
-      });
+      console.log("[Brother] Printing label:", { businessName, tableName, qrUrl });
 
       const businessObj = await IDocument.GetObject("businessName");
       const tableObj = await IDocument.GetObject("tableName");
       const qrObj = await IDocument.GetObject("qrCode");
 
-      if (!businessObj) {
-        throw new Error("Template object 'businessName' not found in .lbx file");
-      }
-
-      if (!tableObj) {
-        throw new Error("Template object 'tableName' not found in .lbx file");
-      }
-
-      if (!qrObj) {
-        throw new Error("Template object 'qrCode' not found in .lbx file");
-      }
+      if (!businessObj) throw new Error("Template object 'businessName' not found");
+      if (!tableObj) throw new Error("Template object 'tableName' not found");
+      if (!qrObj) throw new Error(
+        "Template object 'qrCode' not found.\n\n" +
+        "Open qrwegn-template.lbx in P-touch Editor, delete the QR barcode object, " +
+        "insert an Image placeholder in its place, and name it 'qrCode'."
+      );
 
       businessObj.Text = businessName;
       tableObj.Text = tableName;
 
-      await qrObj.SetData(0, qrUrl, 4);
+      // Generate QR as PNG, write to disk via print server, inject into image object.
+      const dataUrl = await QRCode.toDataURL(qrUrl, {
+        width: 300,
+        margin: 1,
+        color: { dark: "#000000", light: "#ffffff" },
+      });
+      const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+      const filePath = await savePngViaServer(base64);
+
+      console.log("[Brother] PNG written to:", filePath);
+
+      const result = await qrObj.SetData(1, filePath, 0);
+      console.log("[Brother] SetData(1, filePath, 0):", result);
+
+      if (!result) {
+        throw new Error(
+          "SetData returned false for 'qrCode' object.\n\n" +
+          "Make sure 'qrCode' is an IMAGE object (not barcode) in the template."
+        );
+      }
 
       await IDocument.PrintOut(1, 0);
     }
