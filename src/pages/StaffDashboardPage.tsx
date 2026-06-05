@@ -81,6 +81,7 @@ export default function StaffDashboardPage() {
   const navigate = useNavigate();
 
   const [bizId, setBizId]   = useState<string | null>(null);
+  const [flash, setFlash] = useState(false);
   const [bizName, setBizName] = useState("Staff Dashboard");
 
   const [orders, setOrders]           = useState<OrderRow[]>([]);
@@ -108,6 +109,27 @@ export default function StaffDashboardPage() {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  function notifyNewOrder() {
+    setFlash(true);
+    setTimeout(() => setFlash(false), 4000);
+    try {
+      const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+      const ctx = new Ctx();
+      const beep = (t: number, f: number) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = f; o.type = "sine";
+        g.gain.setValueAtTime(0.0001, ctx.currentTime + t);
+        g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.25);
+        o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.26);
+      };
+      beep(0, 880); beep(0.18, 1175);
+      setTimeout(() => ctx.close(), 900);
+    } catch {}
+  }
 
   useEffect(() => {
     if (!bizId) return;
@@ -172,12 +194,20 @@ export default function StaffDashboardPage() {
 
     void fetchOrders();
 
+    const channel = supabase
+      .channel(`kds-orders-${bizId}`)
+      .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "orders", filter: `business_id=eq.${bizId}` },
+        () => { notifyNewOrder(); void fetchOrders(); }
+      )
+      .subscribe();
+
     const id = setInterval(() => {
       setLastChecked(nowStr());
       void fetchOrders();
     }, REFRESH_MS);
 
-    return () => clearInterval(id);
+    return () => { clearInterval(id); supabase.removeChannel(channel); };
   }, [bizId]);
 
   async function closeTab(tabId: string) {
@@ -237,6 +267,12 @@ export default function StaffDashboardPage() {
 
   return (
     <div style={{ background: BG, minHeight: "100vh", color: TEXT, fontFamily: "sans-serif" }}>
+
+      {flash && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "#4CAF50", color: "#000", textAlign: "center", padding: "10px", fontWeight: 800 }}>
+          🔔 New order received
+        </div>
+      )}
 
       {/* ── Header ── */}
       <header style={{
