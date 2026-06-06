@@ -29,17 +29,20 @@ CREATE POLICY "owner can insert business assets"
     )
   );
 
--- UPDATE uses bucket_id only: the SELECT policy already gates visibility to
--- the owner's own folder, so USING(foldername) is redundant and was found to
--- be unreliable in Supabase storage's ON CONFLICT DO UPDATE execution path.
 CREATE POLICY "owner can update business assets"
   ON storage.objects FOR UPDATE
   TO authenticated
   USING (
     bucket_id = ANY (ARRAY['business-assets'::text, 'menu-images'::text])
+    AND (storage.foldername(name))[1] IN (
+      SELECT id::text FROM businesses WHERE owner_id = auth.uid()
+    )
   )
   WITH CHECK (
     bucket_id = ANY (ARRAY['business-assets'::text, 'menu-images'::text])
+    AND (storage.foldername(name))[1] IN (
+      SELECT id::text FROM businesses WHERE owner_id = auth.uid()
+    )
   );
 
 CREATE POLICY "owner can delete business assets"
