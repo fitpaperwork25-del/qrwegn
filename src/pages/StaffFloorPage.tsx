@@ -19,6 +19,7 @@ export default function StaffFloorPage() {
 
   const [bizId, setBizId] = useState<string | null>(null);
   const [bizName, setBizName] = useState("Floor");
+  const [serverId, setServerId] = useState<string | null>(null);
   const [taxRate, setTaxRate] = useState(0);
 
   const [tables, setTables] = useState<Table[]>([]);
@@ -34,6 +35,7 @@ export default function StaffFloorPage() {
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState("");
+  const [tip, setTip] = useState("");
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
   const [msg, setMsg] = useState("");
@@ -106,6 +108,7 @@ export default function StaffFloorPage() {
       if (!profile) { navigate("/staff-login"); return; }
       setBizId(profile.bizId);
       setBizName(profile.bizName || "Floor");
+      setServerId(profile.serverId);
       await loadAll(profile.bizId);
       setLoading(false);
     })();
@@ -145,6 +148,7 @@ export default function StaffFloorPage() {
     setActiveTable(t);
     setCart({});
     setNotes("");
+    setTip("");
     setSearch("");
     setActiveCat(popularIds.length ? POPULAR : (cats[0]?.id ?? POPULAR));
     setMsg("");
@@ -202,10 +206,12 @@ export default function StaffFloorPage() {
       const { error } = await supabase.from("tabs").update({
         status: "closed", closed_at: new Date().toISOString(),
         total: Number(tab.total), payment_method: method,
+        tip_amount: Number(tip) || 0, server_id: serverId,
       }).eq("id", tab.id);
       if (error) throw new Error(error.message);
       await loadTabs(bizId);
       setActiveTable(null);
+      setTip("");
       setView("floor");
     } catch (e: any) {
       setMsg(`Error: ${e?.message ?? e}`);
@@ -278,8 +284,8 @@ export default function StaffFloorPage() {
                 key={t.id}
                 onClick={() => openTable(t)}
                 style={{
-                  textAlign: "left", cursor: "pointer", borderRadius: 14, padding: 16, background: SURFACE, color: TEXT,
-                  border: `1px solid ${isOpen ? GREEN : BORDER}`,
+                  textAlign: "left", cursor: "pointer", borderRadius: 14, padding: 16, background: SURFACE,
+                  border: `1px solid ${isOpen ? GREEN : BORDER}`, color: TEXT,
                   minHeight: 96, display: "flex", flexDirection: "column", justifyContent: "space-between",
                 }}
               >
@@ -429,6 +435,32 @@ export default function StaffFloorPage() {
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 24, maxWidth: 420 }}>
           <div style={{ color: MUTED, fontSize: 13 }}>Amount due</div>
           <div style={{ fontSize: 40, fontWeight: 900, color: ACCENT, marginBottom: 20 }}>${grand.toFixed(2)}</div>
+
+          <div style={{ color: MUTED, fontSize: 12, marginBottom: 8, fontWeight: 600 }}>TIP (OPTIONAL)</div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+            {[0.15, 0.18, 0.20].map((p) => {
+              const amt = round2(grand * p);
+              return (
+                <button key={p} style={{ ...ghostBtn, borderColor: ACCENT, color: ACCENT }} onClick={() => setTip(String(amt))}>
+                  {Math.round(p * 100)}% · ${amt.toFixed(2)}
+                </button>
+              );
+            })}
+            <button style={ghostBtn} onClick={() => setTip("")}>No tip</button>
+          </div>
+          <input
+            type="number"
+            inputMode="decimal"
+            placeholder="Custom tip $"
+            value={tip}
+            onChange={(e) => setTip(e.target.value)}
+            style={searchInput}
+          />
+
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20, fontSize: 15 }}>
+            <span style={{ color: MUTED }}>Total with tip</span>
+            <span style={{ fontWeight: 800 }}>${(grand + (Number(tip) || 0)).toFixed(2)}</span>
+          </div>
 
           <div style={{ color: MUTED, fontSize: 12, marginBottom: 8, fontWeight: 600 }}>RECORD PAYMENT</div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
