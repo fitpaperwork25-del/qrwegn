@@ -278,12 +278,12 @@ export default function StaffFloorPage() {
                 key={t.id}
                 onClick={() => openTable(t)}
                 style={{
-                  textAlign: "left", cursor: "pointer", borderRadius: 14, padding: 16, background: SURFACE,
+                  textAlign: "left", cursor: "pointer", borderRadius: 14, padding: 16, background: SURFACE, color: TEXT,
                   border: `1px solid ${isOpen ? GREEN : BORDER}`,
                   minHeight: 96, display: "flex", flexDirection: "column", justifyContent: "space-between",
                 }}
               >
-                <div style={{ fontWeight: 800, fontSize: 18 }}>{t.name}</div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: TEXT }}>{t.name}</div>
                 {isOpen ? (
                   <div>
                     <div style={{ color: GREEN, fontWeight: 700, fontSize: 12 }}>OPEN</div>
