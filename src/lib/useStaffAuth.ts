@@ -5,6 +5,7 @@ const BIZ_KEY = "qrs_staff_biz";
 export interface StaffProfile {
   bizId: string;
   bizName: string;
+  serverId: string | null;
 }
 
 // Calls the staff-login Edge Function (slug + PIN → real JWT for the
@@ -41,8 +42,9 @@ export async function staffLogin(
   if (sessionErr) return { error: sessionErr.message };
 
   sessionStorage.setItem(BIZ_KEY, JSON.stringify({
-    bizId:   data.business_id,
-    bizName: data.name || "Staff Dashboard",
+    bizId:    data.business_id,
+    bizName:  data.name || "Staff Dashboard",
+    serverId: data.server_id ?? null,
   } satisfies StaffProfile));
 
   return { error: null };
@@ -58,7 +60,10 @@ export async function getStaffProfile(): Promise<StaffProfile | null> {
   // 1. Staff PIN session (stored at login)
   const raw = sessionStorage.getItem(BIZ_KEY);
   if (raw) {
-    try { return JSON.parse(raw) as StaffProfile; } catch { /* fall through to owner check */ }
+    try {
+      const parsed = JSON.parse(raw);
+      return { bizId: parsed.bizId, bizName: parsed.bizName, serverId: (parsed as any).serverId ?? null };
+    } catch { /* fall through to owner check */ }
   }
 
   // 2. Owner access: if this user owns a business, grant full access (no PIN needed)
@@ -69,7 +74,7 @@ export async function getStaffProfile(): Promise<StaffProfile | null> {
     .limit(1)
     .maybeSingle();
   if (biz) {
-    return { bizId: (biz as any).id, bizName: (biz as any).name ?? "Staff Dashboard" };
+    return { bizId: (biz as any).id, bizName: (biz as any).name ?? "Staff Dashboard", serverId: null };
   }
 
   return null;
