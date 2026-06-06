@@ -10,6 +10,7 @@ export default function ScanPage() {
   const [categories, setCategories]   = useState([]);
   const [items, setItems]             = useState([]);
   const [cart, setCart]               = useState({});
+  const [notes, setNotes]             = useState('');
   const [locationUuid, setLocationUuid] = useState(null);
   const [loading, setLoading]         = useState(true);
   const [placing, setPlacing]         = useState(false);
@@ -219,7 +220,7 @@ export default function ScanPage() {
       const newOrderId = crypto.randomUUID();
       const { error: orderErr } = await supabase
         .from('orders')
-        .insert({ id: newOrderId, business_id: business?.id ?? bizId, location_id: locationUuid, subtotal: cartTotal, tax: cartTax, total: cartGrand, status: 'new' });
+        .insert({ id: newOrderId, business_id: business?.id ?? bizId, location_id: locationUuid, subtotal: cartTotal, tax: cartTax, total: cartGrand, status: 'new', notes: notes.trim() || null });
       if (orderErr) throw orderErr;
       const { error: itemsErr } = await supabase.from('order_items').insert(
         cartItems.map(i => ({ order_id: newOrderId, menu_item_id: i.id, quantity: i.qty, unit_price: i.price }))
@@ -228,6 +229,7 @@ export default function ScanPage() {
       setOrderId(newOrderId);
       setOrderPlaced(true);
       setCart({});
+      setNotes('');
     } catch (err) {
       setError(`Order failed: ${err?.message || err?.code || JSON.stringify(err)}`);
     }
@@ -244,7 +246,7 @@ export default function ScanPage() {
       const newOrderId = crypto.randomUUID();
       const { error: orderErr } = await supabase
         .from('orders')
-        .insert({ id: newOrderId, business_id: business?.id ?? bizId, location_id: locationUuid, subtotal: cartTotal, tax: cartTax, total: cartGrand, status: 'new', tab_id: openTab.id });
+        .insert({ id: newOrderId, business_id: business?.id ?? bizId, location_id: locationUuid, subtotal: cartTotal, tax: cartTax, total: cartGrand, status: 'new', tab_id: openTab.id, notes: notes.trim() || null });
       if (orderErr) throw orderErr;
       const { error: itemsErr } = await supabase.from('order_items').insert(
         cartItems.map(i => ({ order_id: newOrderId, menu_item_id: i.id, quantity: i.qty, unit_price: i.price }))
@@ -260,6 +262,7 @@ export default function ScanPage() {
       setOrderId(newOrderId);
       setOrderPlaced(true);
       setCart({});
+      setNotes('');
     } catch (err) {
       setError(`Order failed: ${err?.message || err?.code || JSON.stringify(err)}`);
     }
@@ -549,24 +552,33 @@ export default function ScanPage() {
       {/* Cart Bar */}
       {cartCount > 0 && (
         <div style={S.cartBar}>
-          <div style={S.cartLeft}>
-            <span style={S.cartCount}>{cartCount}</span>
-            <span style={S.cartLabel}>item{cartCount > 1 ? 's' : ''} in cart</span>
-          </div>
-          <div style={S.cartRight}>
-            <div style={{ textAlign: 'right' }}>
-              <span style={S.cartTotal}>${cartGrand.toFixed(2)}</span>
-              {taxRate > 0 && <div style={{ fontSize: 10, color: muted, marginTop: 2 }}>incl. ${cartTax.toFixed(2)} tax</div>}
+          <textarea
+            style={S.noteInput}
+            placeholder="Note for kitchen (allergies, no onions, extra spicy…)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+          />
+          <div style={S.cartRow}>
+            <div style={S.cartLeft}>
+              <span style={S.cartCount}>{cartCount}</span>
+              <span style={S.cartLabel}>item{cartCount > 1 ? 's' : ''} in cart</span>
             </div>
-            {openTab ? (
-              <button style={S.placeBtn} onClick={addToTabOrder} disabled={placing}>
-                {placing ? 'Adding…' : 'Add to Tab'}
-              </button>
-            ) : (
-              <button style={S.placeBtn} onClick={placeOrder} disabled={placing}>
-                {placing ? 'Placing…' : 'Place Order'}
-              </button>
-            )}
+            <div style={S.cartRight}>
+              <div style={{ textAlign: 'right' }}>
+                <span style={S.cartTotal}>${cartGrand.toFixed(2)}</span>
+                {taxRate > 0 && <div style={{ fontSize: 10, color: muted, marginTop: 2 }}>incl. ${cartTax.toFixed(2)} tax</div>}
+              </div>
+              {openTab ? (
+                <button style={S.placeBtn} onClick={addToTabOrder} disabled={placing}>
+                  {placing ? 'Adding…' : 'Add to Tab'}
+                </button>
+              ) : (
+                <button style={S.placeBtn} onClick={placeOrder} disabled={placing}>
+                  {placing ? 'Placing…' : 'Place Order'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -622,7 +634,9 @@ const S = {
   qtyRow:      { display: 'flex', alignItems: 'center', gap: 10 },
   qtyBtn:      { background: border, color: text, border: 'none', borderRadius: 6, width: 30, height: 30, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   qtyNum:      { fontSize: 16, fontWeight: 700, minWidth: 20, textAlign: 'center' },
-  cartBar:     { position: 'fixed', bottom: 0, left: 0, right: 0, background: card, borderTop: `2px solid ${gold}`, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  cartBar:     { position: 'fixed', bottom: 0, left: 0, right: 0, background: card, borderTop: `2px solid ${gold}`, padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 10 },
+  cartRow:     { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  noteInput:   { width: '100%', background: dark, color: text, border: `1px solid ${border}`, borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'none', boxSizing: 'border-box' },
   cartLeft:    { display: 'flex', alignItems: 'center', gap: 10 },
   cartCount:   { background: gold, color: '#000', borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 },
   cartLabel:   { fontSize: 14, color: muted },
