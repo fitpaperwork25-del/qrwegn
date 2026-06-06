@@ -12,6 +12,7 @@ type OrderRow = {
   created_at: string;
   location_id: string;
   table_name: string;
+  notes: string | null;
 };
 
 type OrderItem = {
@@ -156,7 +157,7 @@ export default function StaffDashboardPage() {
       const [ordRes, tabRes] = await Promise.all([
         supabase
           .from("orders")
-          .select("id, status, total, created_at, location_id, locations(name, label)")
+          .select("id, status, total, created_at, location_id, notes, locations(name, label)")
           .eq("business_id", bizId)
           .in("status", ["new", "preparing"])
           .order("created_at", { ascending: true }),
@@ -178,6 +179,7 @@ export default function StaffDashboardPage() {
         created_at:  o.created_at,
         location_id: o.location_id,
         table_name:  o.locations?.label || o.locations?.name || "Unknown table",
+        notes:       o.notes ?? null,
       }));
       setOrders(rows);
 
@@ -444,6 +446,25 @@ export default function StaffDashboardPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* ── Kitchen note ── */}
+                {order.notes && (
+                  <div style={{
+                    margin: "12px 18px 0",
+                    background: "#3a2a00",
+                    border: `1px solid ${ACCENT}66`,
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                    fontSize: 15,
+                    lineHeight: 1.35,
+                    color: ACCENT,
+                    fontWeight: 700,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}>
+                    📝 {order.notes}
+                  </div>
+                )}
 
                 {/* ── Items ── */}
                 <div style={{ padding: "14px 18px 12px", display: "flex", flexDirection: "column", gap: 12 }}>

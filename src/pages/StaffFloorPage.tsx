@@ -33,6 +33,7 @@ export default function StaffFloorPage() {
   const [activeCat, setActiveCat] = useState<string>(POPULAR);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [notes, setNotes] = useState("");
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
   const [msg, setMsg] = useState("");
@@ -143,6 +144,7 @@ export default function StaffFloorPage() {
   function openTable(t: Table) {
     setActiveTable(t);
     setCart({});
+    setNotes("");
     setSearch("");
     setActiveCat(popularIds.length ? POPULAR : (cats[0]?.id ?? POPULAR));
     setMsg("");
@@ -168,6 +170,7 @@ export default function StaffFloorPage() {
       const { error: oErr } = await supabase.from("orders").insert({
         id: orderId, business_id: bizId, location_id: activeTable.id,
         subtotal: cartSubtotal, tax: cartTax, total: cartGrand, status: "new", tab_id: tab.id,
+        notes: notes.trim() || null,
       });
       if (oErr) throw new Error(oErr.message);
 
@@ -180,6 +183,7 @@ export default function StaffFloorPage() {
       await supabase.from("tabs").update({ total: newTotal }).eq("id", tab.id);
 
       setCart({});
+      setNotes("");
       await loadTabs(bizId);
       setMsg("Sent to kitchen \u2713");
     } catch (e: any) {
@@ -239,6 +243,11 @@ export default function StaffFloorPage() {
     width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${BORDER}`,
     background: SURFACE, color: TEXT, fontSize: 15, marginBottom: 12, boxSizing: "border-box",
   };
+  const noteInput: React.CSSProperties = {
+    width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${BORDER}`,
+    background: BG, color: TEXT, fontSize: 14, marginBottom: 10, boxSizing: "border-box",
+    fontFamily: "inherit", resize: "none",
+  };
 
   if (loading) {
     return <div style={{ ...page, display: "grid", placeItems: "center" }}>Loading floor…</div>;
@@ -255,7 +264,6 @@ export default function StaffFloorPage() {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ color: MUTED, fontSize: 13 }}>{openTabs.length} open</span>
-            <button style={ghostBtn} onClick={() => navigate("/dashboard")}>Dashboard</button>
             <button style={ghostBtn} onClick={() => navigate("/staff")}>Kitchen view</button>
             <button style={ghostBtn} onClick={handleSignOut}>Sign out</button>
           </div>
@@ -270,7 +278,7 @@ export default function StaffFloorPage() {
                 key={t.id}
                 onClick={() => openTable(t)}
                 style={{
-                  textAlign: "left", cursor: "pointer", borderRadius: 14, padding: 16, background: SURFACE, color: TEXT,
+                  textAlign: "left", cursor: "pointer", borderRadius: 14, padding: 16, background: SURFACE,
                   border: `1px solid ${isOpen ? GREEN : BORDER}`,
                   minHeight: 96, display: "flex", flexDirection: "column", justifyContent: "space-between",
                 }}
@@ -312,7 +320,7 @@ export default function StaffFloorPage() {
     }
 
     return (
-      <div style={{ ...page, paddingBottom: 200 }}>
+      <div style={{ ...page, paddingBottom: 260 }}>
         {/* prominent table header */}
         <div style={topbar}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -387,6 +395,13 @@ export default function StaffFloorPage() {
           position: "fixed", left: 0, right: 0, bottom: 0, background: SURFACE,
           borderTop: `1px solid ${BORDER}`, padding: 16,
         }}>
+          <textarea
+            style={noteInput}
+            placeholder="Note for kitchen (allergies, no onions, extra spicy…)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+          />
           {msg && <div style={{ marginBottom: 8, fontSize: 13, color: msg.startsWith("Error") ? RED : GREEN }}>{msg}</div>}
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 14 }}>
             <span style={{ color: MUTED }}>{activeTable.name} · {cartLines.reduce((s, l) => s + l.qty, 0)} item(s)</span>
