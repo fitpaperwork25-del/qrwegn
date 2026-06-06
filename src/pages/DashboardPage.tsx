@@ -681,8 +681,9 @@ export default function DashboardPage() {
   }
 
   async function uploadMenuItemImage(itemId: string, file: File): Promise<string | null> {
+    if (!business) return null;
     const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${itemId}.${ext}`;
+    const path = `${business.id}/${itemId}.${ext}`;
     const { error } = await supabase.storage.from("menu-images").upload(path, file, { upsert: true });
     if (error) return null;
     const { data } = supabase.storage.from("menu-images").getPublicUrl(path);
