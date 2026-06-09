@@ -39,6 +39,7 @@ export default function StaffFloorPage() {
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
   const [msg, setMsg] = useState("");
+  const [myTipsToday, setMyTipsToday] = useState(0);
 
   const loadTabs = useCallback(async (id: string) => {
     const { data } = await supabase
@@ -102,6 +103,20 @@ export default function StaffFloorPage() {
     [loadTabs]
   );
 
+  const loadMyTips = useCallback(async (id: string, staffId: string | null) => {
+    if (!staffId) return;
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from("tabs")
+      .select("tip_amount")
+      .eq("business_id", id)
+      .eq("status", "closed")
+      .eq("server_id", staffId)
+      .gte("closed_at", start.toISOString());
+    const total = ((data as { tip_amount: number | null }[]) ?? []).reduce((s, t) => s + Number(t.tip_amount ?? 0), 0);
+    setMyTipsToday(total);
+  }, []);
+
   useEffect(() => {
     (async () => {
       const profile = await getStaffProfile();
@@ -110,6 +125,7 @@ export default function StaffFloorPage() {
       setBizName(profile.bizName || "Floor");
       setServerId(profile.serverId);
       await loadAll(profile.bizId);
+      await loadMyTips(profile.bizId, profile.serverId);
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,9 +133,9 @@ export default function StaffFloorPage() {
 
   useEffect(() => {
     if (!bizId) return;
-    const t = setInterval(() => loadTabs(bizId), 15000);
+    const t = setInterval(() => { loadTabs(bizId); loadMyTips(bizId, serverId); }, 15000);
     return () => clearInterval(t);
-  }, [bizId, loadTabs]);
+  }, [bizId, serverId, loadTabs, loadMyTips]);
 
   const tabForTable = (locId: string) => openTabs.find((t) => t.location_id === locId) || null;
   const withTax = (sub: number) => round2(sub * (1 + taxRate));
@@ -272,6 +288,7 @@ export default function StaffFloorPage() {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ color: MUTED, fontSize: 13 }}>{openTabs.length} open</span>
+            {serverId && <span style={{ color: MUTED, fontSize: 13 }}>My tips: ${myTipsToday.toFixed(2)}</span>}
             <button style={ghostBtn} onClick={() => navigate("/staff")}>Kitchen view</button>
             <button style={ghostBtn} onClick={handleSignOut}>Sign out</button>
           </div>

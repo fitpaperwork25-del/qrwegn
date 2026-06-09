@@ -337,7 +337,7 @@ export default function CashierPage() {
         <span style={{ color: MUTED, fontWeight: 600 }}>Today</span>
         <span><strong>{todayCount}</strong> <span style={{ color: MUTED }}>tabs</span></span>
         <span><strong>${todayRevenue.toFixed(2)}</strong> <span style={{ color: MUTED }}>revenue</span></span>
-        <span><strong>${todayTips.toFixed(2)}</strong> <span style={{ color: MUTED }}>tips</span></span>
+        <span><strong>${todayTips.toFixed(2)}</strong> <span style={{ color: MUTED }}>tips (pass-through)</span></span>
       </div>
 
       {/* location selector (only when multiple) */}

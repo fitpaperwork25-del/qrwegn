@@ -19,6 +19,7 @@ type Expense       = { id: string; amount: number; category: string; description
 type ManualRevenue = { id: string; amount: number; category: string; description: string | null; revenue_date: string };
 type CsvRow    = { category: string; name: string; price: string; description: string; error?: string };
 type StaffPin  = { id: string; name: string; role: string; is_active: boolean; created_at: string };
+type TipTab    = { tip_amount: number | null; server_id: string | null };
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const EMPTY_EXPENSE = { category: "", amount: "", description: "", expense_date: TODAY };
@@ -155,6 +156,7 @@ export default function DashboardPage() {
   const [newStaffRole, setNewStaffRole]   = useState("kitchen");
   const [staffAddError, setStaffAddError] = useState("");
   const [staffAddSaving, setStaffAddSaving] = useState(false);
+  const [tipTabsToday, setTipTabsToday]   = useState<TipTab[]>([]);
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -205,16 +207,19 @@ export default function DashboardPage() {
     if (!business?.id) return;
     const fetchFinancials = async () => {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const [doneRes, expRes, revRes, cancelRes] = await Promise.all([
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+      const [doneRes, expRes, revRes, cancelRes, tipRes] = await Promise.all([
         supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", business.id).neq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
         supabase.from("business_expenses").select("id, amount, category, description, expense_date").eq("business_id", business.id).order("expense_date", { ascending: false }),
         supabase.from("manual_revenue").select("id, amount, category, description, revenue_date").eq("business_id", business.id).order("date", { ascending: false }),
         supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", business.id).eq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("tabs").select("tip_amount, server_id").eq("business_id", business.id).eq("status", "closed").gte("closed_at", todayStart.toISOString()),
       ]);
       setDoneOrders((doneRes.data as Order[]) ?? []);
       setExpenses((expRes.data as Expense[]) ?? []);
       if (revRes.error?.code === "42P01") { setNoRevenueTable(true); } else { setManualRevenue((revRes.data as ManualRevenue[]) ?? []); }
       setCancelledOrders((cancelRes.data as Order[]) ?? []);
+      setTipTabsToday((tipRes.data as TipTab[]) ?? []);
     };
     const timer = setInterval(fetchFinancials, 15000);
     return () => clearInterval(timer);
@@ -264,16 +269,19 @@ export default function DashboardPage() {
         setMenuItems((itemRes.data as MenuItem[]) ?? []);
       }
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const [doneRes, expRes, revRes, cancelRes] = await Promise.all([
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+      const [doneRes, expRes, revRes, cancelRes, tipRes] = await Promise.all([
         supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", biz.id).neq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
         supabase.from("business_expenses").select("id, amount, category, description, expense_date").eq("business_id", biz.id).order("expense_date", { ascending: false }),
         supabase.from("manual_revenue").select("id, amount, category, description, revenue_date").eq("business_id", biz.id).order("date", { ascending: false }),
         supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", biz.id).eq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+        supabase.from("tabs").select("tip_amount, server_id").eq("business_id", biz.id).eq("status", "closed").gte("closed_at", todayStart.toISOString()),
       ]);
       setDoneOrders((doneRes.data as Order[]) ?? []);
       setExpenses((expRes.data as Expense[]) ?? []);
       if (revRes.error?.code === "42P01") { setNoRevenueTable(true); } else { setManualRevenue((revRes.data as ManualRevenue[]) ?? []); }
       setCancelledOrders((cancelRes.data as Order[]) ?? []);
+      setTipTabsToday((tipRes.data as TipTab[]) ?? []);
     }
     setLoading(false);
   }
@@ -1270,6 +1278,7 @@ export default function DashboardPage() {
             completedOrders.forEach((o) => { const day = localDay(new Date(o.created_at)); if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(o.total); });
             manualRevenue.forEach((r) => { const day = r.revenue_date; if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(r.amount); });
             const maxDay = Math.max(...Object.values(revenueByDay), 1);
+            const totalTipsToday = tipTabsToday.reduce((s, t) => s + Number(t.tip_amount ?? 0), 0);
 
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -1285,6 +1294,14 @@ export default function DashboardPage() {
                       <div style={{ fontSize: 26, fontWeight: 900, color: s.color }}>{s.value}</div>
                     </div>
                   ))}
+                </div>
+
+                <div style={{ ...card, padding: "18px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>Tips Collected Today</div>
+                    <div style={{ fontSize: 11, color: MUTED }}>Pass-through — belongs to staff, not business revenue</div>
+                  </div>
+                  <div style={{ fontSize: 26, fontWeight: 900, color: ACCENT }}>${totalTipsToday.toFixed(2)}</div>
                 </div>
 
                 <div style={{ ...card }}>
@@ -1611,6 +1628,44 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
+
+              {/* Tips today by staff */}
+              {(() => {
+                const tipsMap: Record<string, { name: string; tips: number }> = {};
+                tipTabsToday.forEach((t) => {
+                  if (!t.tip_amount || Number(t.tip_amount) === 0) return;
+                  const id = t.server_id ?? "__unattr__";
+                  const pin = staffPins.find((s) => s.id === id);
+                  const name = pin?.name ?? (id === "__unattr__" ? "Unattributed" : "Unknown");
+                  if (!tipsMap[id]) tipsMap[id] = { name, tips: 0 };
+                  tipsMap[id].tips += Number(t.tip_amount);
+                });
+                const tipsByStaff = Object.entries(tipsMap)
+                  .map(([id, v]) => ({ id, ...v }))
+                  .sort((a, b) => b.tips - a.tips);
+                const totalTipsToday = tipTabsToday.reduce((s, t) => s + Number(t.tip_amount ?? 0), 0);
+                return (
+                  <div style={card}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                      <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Tips Today</p>
+                      <span style={{ fontSize: 22, fontWeight: 900, color: ACCENT }}>${totalTipsToday.toFixed(2)}</span>
+                    </div>
+                    <p style={{ color: MUTED, fontSize: 12, margin: "0 0 14px" }}>Pass-through — belongs to staff, not business revenue</p>
+                    {tipsByStaff.length === 0 ? (
+                      <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>No tips recorded today.</p>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {tipsByStaff.map((row) => (
+                          <div key={row.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: BG, borderRadius: 8, border: `1px solid ${BORDER}` }}>
+                            <span style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>{row.name}</span>
+                            <span style={{ fontWeight: 800, fontSize: 15, color: ACCENT }}>${row.tips.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Add staff form */}
               <div style={card}>
