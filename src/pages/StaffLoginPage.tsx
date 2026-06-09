@@ -29,12 +29,14 @@ export default function StaffLoginPage() {
     if (pin.length !== 4) { setError("Enter a 4-digit PIN."); return; }
     setLoading(true);
     setError("");
-    const { error: err } = await staffLogin(slug, pin);
+    const { error: err, role } = await staffLogin(slug, pin);
     if (err) {
       setError(err);
       setLoading(false);
     } else {
-      navigate("/staff");
+      if (role === "cashier") navigate("/cashier");
+      else if (role === "server") navigate("/staff/floor");
+      else navigate("/staff");
     }
   };
 

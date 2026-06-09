@@ -13,6 +13,9 @@ function respond(body: unknown, status: number): Response {
   });
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -24,137 +27,129 @@ Deno.serve(async (req: Request) => {
       return respond({ error: "restaurant and pin are required" }, 400);
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { autoRefreshToken: false, persistSession: false } },
+    );
 
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    // ── 1. Resolve business (slug is the normal path; UUID fallback for tooling) ──
-    const uuidRe =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-    let business: { id: string; name: string } | null = null;
-
-    const slugRes = await admin
+    // ── 1. Resolve business by slug, fall back to UUID ──────────────────────
+    const isUuid = UUID_RE.test(String(restaurant));
+    const { data: business } = await admin
       .from("businesses")
       .select("id, name")
-      .eq("slug", restaurant)
-      .maybeSingle();
-
-    if (slugRes.data) {
-      business = slugRes.data as { id: string; name: string };
-    } else if (uuidRe.test(restaurant)) {
-      const idRes = await admin
-        .from("businesses")
-        .select("id, name")
-        .eq("id", restaurant)
-        .maybeSingle();
-      if (idRes.data) {
-        business = idRes.data as { id: string; name: string };
-      }
-    }
+      .eq(isUuid ? "id" : "slug", String(restaurant))
+      .maybeSingle<{ id: string; name: string }>();
 
     if (!business) {
       return respond({ error: "Invalid credentials" }, 401);
     }
 
-    // ── 2. Verify PIN — SECURITY DEFINER RPC reads pin_hash safely ──
-    const pinRes = await admin.rpc("verify_staff_pin_id", {
-      bid: business.id,
-      pin: String(pin),
-    });
+    // ── 2. Verify PIN — SECURITY DEFINER RPC checks pin_hash safely ─────────
+    const { data: pins, error: pinErr } = await admin.rpc(
+      "verify_staff_pin_id",
+      { bid: business.id, pin: String(pin) },
+    );
 
-    if (pinRes.error || !pinRes.data || (pinRes.data as unknown[]).length === 0) {
+    if (pinErr || !Array.isArray(pins) || pins.length === 0) {
       return respond({ error: "Invalid credentials" }, 401);
     }
 
-    const staffPin = (pinRes.data as { id: string; name: string }[])[0];
+    const staffPin = (pins as { id: string; name: string }[])[0];
 
-    // ── 3. Find or create the synthetic auth user for this business ──
-    const identityRes = await admin
+    // ── 2b. Fetch role from staff_pins (verify_staff_pin_id only returns id/name) ─
+    const { data: pinRow } = await admin
+      .from("staff_pins")
+      .select("role")
+      .eq("id", staffPin.id)
+      .maybeSingle<{ role: string }>();
+    const serverRole = pinRow?.role ?? "kitchen";
+
+    // ── 3. Find or create the synthetic auth user for this business ──────────
+    const { data: identity } = await admin
       .from("staff_identities")
       .select("user_id, auth_email")
       .eq("business_id", business.id)
-      .maybeSingle();
+      .maybeSingle<{ user_id: string; auth_email: string }>();
 
     let userId: string;
     let authEmail: string;
 
-    if (identityRes.data) {
-      userId = (identityRes.data as { user_id: string; auth_email: string })
-        .user_id;
-      authEmail = (
-        identityRes.data as { user_id: string; auth_email: string }
-      ).auth_email;
+    if (identity) {
+      userId    = identity.user_id;
+      authEmail = identity.auth_email;
     } else {
-      // First login for this business — provision a synthetic auth user
+      // First login — provision a synthetic auth user for this business.
       authEmail = `staff-${business.id}@qrwegn.internal`;
       const initialPassword = crypto.randomUUID();
 
-      const createRes = await admin.auth.admin.createUser({
-        email: authEmail,
-        password: initialPassword,
-        email_confirm: true,
-      });
+      const { data: created, error: createErr } =
+        await admin.auth.admin.createUser({
+          email:         authEmail,
+          password:      initialPassword,
+          email_confirm: true,
+        });
 
-      if (createRes.error || !createRes.data.user) {
-        console.error("createUser error:", createRes.error);
+      if (createErr || !created.user) {
+        console.error("createUser:", createErr);
         return respond({ error: "Failed to provision staff session" }, 500);
       }
 
-      userId = createRes.data.user.id;
+      userId = created.user.id;
 
-      const insertRes = await admin.from("staff_identities").insert({
-        business_id: business.id,
-        user_id: userId,
-        auth_email: authEmail,
-        auth_password: initialPassword,
-      });
+      const { error: insertErr } = await admin
+        .from("staff_identities")
+        .insert({
+          business_id:   business.id,
+          user_id:       userId,
+          auth_email:    authEmail,
+          auth_password: initialPassword, // NOT NULL column; value is stale after first login
+        });
 
-      if (insertRes.error) {
-        console.error("staff_identities insert error:", insertRes.error);
+      if (insertErr) {
+        console.error("staff_identities insert:", insertErr);
         return respond({ error: "Failed to provision staff session" }, 500);
       }
     }
 
-    // ── 4. Mint a real session: set one-time password → signInWithPassword ──
-    // Updating the password avoids needing to know or store the current one.
+    // ── 4. Rotate to one-time password and sign in ───────────────────────────
     const sessionPassword = crypto.randomUUID();
 
-    const updateRes = await admin.auth.admin.updateUserById(userId, {
-      password: sessionPassword,
-    });
+    const { error: updateErr } = await admin.auth.admin.updateUserById(
+      userId,
+      { password: sessionPassword },
+    );
 
-    if (updateRes.error) {
-      console.error("updateUserById error:", updateRes.error);
+    if (updateErr) {
+      console.error("updateUserById:", updateErr);
       return respond({ error: "Failed to create staff session" }, 500);
     }
 
-    const signInRes = await admin.auth.signInWithPassword({
-      email: authEmail,
-      password: sessionPassword,
-    });
+    const { data: signInData, error: signInErr } =
+      await admin.auth.signInWithPassword({
+        email:    authEmail,
+        password: sessionPassword,
+      });
 
-    if (signInRes.error || !signInRes.data.session) {
-      console.error("signInWithPassword error:", signInRes.error);
+    if (signInErr || !signInData.session) {
+      console.error("signInWithPassword:", signInErr);
       return respond({ error: "Failed to create staff session" }, 500);
     }
 
-    // ── 5. Return session + business context ──
+    // ── 5. Return session + context ──────────────────────────────────────────
     return respond(
       {
-        access_token: signInRes.data.session.access_token,
-        refresh_token: signInRes.data.session.refresh_token,
-        business_id: business.id,
-        name: business.name,
-        server_id: staffPin.id,
+        access_token:  signInData.session.access_token,
+        refresh_token: signInData.session.refresh_token,
+        business_id:   business.id,
+        name:          business.name,
+        server_id:     staffPin.id,
+        server_role:   serverRole,
       },
-      200
+      200,
     );
   } catch (err) {
-    console.error("staff-login unhandled error:", err);
+    console.error("staff-login unhandled:", err);
     return respond({ error: "Internal server error" }, 500);
   }
 });

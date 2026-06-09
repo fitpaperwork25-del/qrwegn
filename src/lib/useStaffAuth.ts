@@ -6,6 +6,7 @@ export interface StaffProfile {
   bizId: string;
   bizName: string;
   serverId: string | null;
+  role: string;
 }
 
 // Calls the staff-login Edge Function (slug + PIN → real JWT for the
@@ -15,7 +16,7 @@ export interface StaffProfile {
 export async function staffLogin(
   restaurant: string,
   pin: string
-): Promise<{ error: string | null }> {
+): Promise<{ error: string | null; role: string }> {
   const supabaseUrl    = import.meta.env.VITE_SUPABASE_URL as string;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
@@ -30,24 +31,26 @@ export async function staffLogin(
       body: JSON.stringify({ restaurant: restaurant.trim().toLowerCase(), pin: String(pin) }),
     });
     data = await resp.json();
-    if (!resp.ok) return { error: data.error || `Login failed (${resp.status})` };
+    if (!resp.ok) return { error: data.error || `Login failed (${resp.status})`, role: "kitchen" };
   } catch (e: any) {
-    return { error: `Network error: ${e?.message ?? e}` };
+    return { error: `Network error: ${e?.message ?? e}`, role: "kitchen" };
   }
 
   const { error: sessionErr } = await supabase.auth.setSession({
     access_token:  data.access_token,
     refresh_token: data.refresh_token,
   });
-  if (sessionErr) return { error: sessionErr.message };
+  if (sessionErr) return { error: sessionErr.message, role: "kitchen" };
 
+  const role = data.server_role ?? "kitchen";
   sessionStorage.setItem(BIZ_KEY, JSON.stringify({
     bizId:    data.business_id,
     bizName:  data.name || "Staff Dashboard",
     serverId: data.server_id ?? null,
+    role,
   } satisfies StaffProfile));
 
-  return { error: null };
+  return { error: null, role };
 }
 
 // Checks that a real Supabase session is active and returns the
@@ -62,7 +65,7 @@ export async function getStaffProfile(): Promise<StaffProfile | null> {
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      return { bizId: parsed.bizId, bizName: parsed.bizName, serverId: (parsed as any).serverId ?? null };
+      return { bizId: parsed.bizId, bizName: parsed.bizName, serverId: (parsed as any).serverId ?? null, role: (parsed as any).role ?? "kitchen" };
     } catch { /* fall through to owner check */ }
   }
 
@@ -74,7 +77,7 @@ export async function getStaffProfile(): Promise<StaffProfile | null> {
     .limit(1)
     .maybeSingle();
   if (biz) {
-    return { bizId: (biz as any).id, bizName: (biz as any).name ?? "Staff Dashboard", serverId: null };
+    return { bizId: (biz as any).id, bizName: (biz as any).name ?? "Staff Dashboard", serverId: null, role: "kitchen" };
   }
 
   return null;
