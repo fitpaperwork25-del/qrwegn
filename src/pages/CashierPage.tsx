@@ -39,7 +39,9 @@ export default function CashierPage() {
   const [tip,      setTip]      = useState("");
   const [sending,  setSending]  = useState(false);
   const [closing,  setClosing]  = useState(false);
-  const [msg,      setMsg]      = useState("");
+  const [msg,          setMsg]          = useState("");
+  const [pm,           setPm]           = useState<string | null>(null);
+  const [cashTendered, setCashTendered] = useState("");
 
   const loadTodayTabs = useCallback(async (id: string, staffId: string | null) => {
     const start = new Date();
@@ -213,7 +215,7 @@ export default function CashierPage() {
       }).eq("id", tab.id);
       if (error) throw new Error(error.message);
       await Promise.all([loadTabs(bizId), loadTodayTabs(bizId, serverId)]);
-      setCart({}); setTip(""); setMsg(""); setView("menu");
+      setCart({}); setTip(""); setPm(null); setCashTendered(""); setMsg(""); setView("menu");
     } catch (e: any) {
       setMsg(`Error: ${e?.message ?? e}`);
     } finally {
@@ -258,7 +260,7 @@ export default function CashierPage() {
     return (
       <div style={page}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-          <button style={ghostBtn} onClick={() => { setView("menu"); setMsg(""); }}>← Back</button>
+          <button style={ghostBtn} onClick={() => { setView("menu"); setMsg(""); setPm(null); setCashTendered(""); }}>← Back</button>
           <span style={{ fontSize: 18, fontWeight: 900 }}>Payment</span>
         </div>
 
@@ -290,11 +292,47 @@ export default function CashierPage() {
           </div>
 
           <div style={{ color: MUTED, fontSize: 12, marginBottom: 8, fontWeight: 600 }}>RECORD PAYMENT</div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
             {PAYMENT_METHODS.map((m) => (
-              <button key={m} style={primaryBtn(closing)} disabled={closing} onClick={() => closeTab(m)}>{m}</button>
+              <button key={m}
+                style={{ ...primaryBtn(closing), ...(pm === m ? { outline: `2px solid ${ACCENT}`, outlineOffset: 2 } : {}) }}
+                disabled={closing}
+                onClick={() => {
+                  if (m === "Cash") { setPm("Cash"); setCashTendered(""); }
+                  else { setPm(null); setCashTendered(""); closeTab(m); }
+                }}>
+                {m}
+              </button>
             ))}
           </div>
+          {pm === "Cash" && (() => {
+            const totalWithTip = grand + (Number(tip) || 0);
+            const tendered = parseFloat(cashTendered) || 0;
+            const change = round2(tendered - totalWithTip);
+            const insufficient = cashTendered === "" || tendered < totalWithTip;
+            return (
+              <>
+                <input
+                  type="number" inputMode="decimal" placeholder="Cash received $"
+                  value={cashTendered} onChange={(e) => setCashTendered(e.target.value)}
+                  style={{ ...inputStyle, marginBottom: cashTendered !== "" ? 8 : 12 }}
+                  autoFocus
+                />
+                {cashTendered !== "" && (
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontSize: 15, fontWeight: 700 }}>
+                    <span style={{ color: MUTED }}>{change >= 0 ? "Change due" : "Short by"}</span>
+                    <span style={{ color: change >= 0 ? GREEN : RED }}>${Math.abs(change).toFixed(2)}</span>
+                  </div>
+                )}
+                <button
+                  disabled={closing || insufficient}
+                  onClick={() => closeTab("Cash")}
+                  style={{ ...primaryBtn(closing || insufficient), flex: "none" as const, width: "100%" }}>
+                  {closing ? "Processing…" : "Confirm Cash"}
+                </button>
+              </>
+            );
+          })()}
           {msg && <div style={{ marginTop: 12, fontSize: 13, color: RED }}>{msg}</div>}
         </div>
       </div>

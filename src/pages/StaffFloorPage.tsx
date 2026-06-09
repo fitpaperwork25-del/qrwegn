@@ -40,6 +40,8 @@ export default function StaffFloorPage() {
   const [closing, setClosing] = useState(false);
   const [msg, setMsg] = useState("");
   const [myTipsToday, setMyTipsToday] = useState(0);
+  const [pm,           setPm]           = useState<string | null>(null);
+  const [cashTendered, setCashTendered] = useState("");
 
   const loadTabs = useCallback(async (id: string) => {
     const { data } = await supabase
@@ -229,7 +231,7 @@ export default function StaffFloorPage() {
       if (error) throw new Error(error.message);
       await loadTabs(bizId);
       setActiveTable(null);
-      setTip("");
+      setTip(""); setPm(null); setCashTendered("");
       setView("floor");
     } catch (e: any) {
       setMsg(`Error: ${e?.message ?? e}`);
@@ -447,7 +449,7 @@ export default function StaffFloorPage() {
     return (
       <div style={page}>
         <div style={topbar}>
-          <button style={ghostBtn} onClick={() => setView("order")}>← Back</button>
+          <button style={ghostBtn} onClick={() => { setView("order"); setPm(null); setCashTendered(""); }}>← Back</button>
           <div style={{ fontSize: 20, fontWeight: 900 }}>{activeTable.name}</div>
         </div>
 
@@ -482,14 +484,44 @@ export default function StaffFloorPage() {
           </div>
 
           <div style={{ color: MUTED, fontSize: 12, marginBottom: 8, fontWeight: 600 }}>RECORD PAYMENT</div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
             {PAYMENT_METHODS.map((m) => (
-              <button key={m} style={{ ...primaryBtn(closing), width: "auto", flex: 1, minWidth: 100 }}
-                disabled={closing} onClick={() => closeTable(m)}>
+              <button key={m}
+                style={{ ...primaryBtn(closing), width: "auto", flex: 1, minWidth: 100, ...(pm === m ? { outline: `2px solid ${ACCENT}`, outlineOffset: 2 } : {}) }}
+                disabled={closing}
+                onClick={() => {
+                  if (m === "Cash") { setPm("Cash"); setCashTendered(""); }
+                  else { setPm(null); setCashTendered(""); closeTable(m); }
+                }}>
                 {m}
               </button>
             ))}
           </div>
+          {pm === "Cash" && (() => {
+            const totalWithTip = grand + (Number(tip) || 0);
+            const tendered = parseFloat(cashTendered) || 0;
+            const change = round2(tendered - totalWithTip);
+            const insufficient = cashTendered === "" || tendered < totalWithTip;
+            return (
+              <>
+                <input
+                  type="number" inputMode="decimal" placeholder="Cash received $"
+                  value={cashTendered} onChange={(e) => setCashTendered(e.target.value)}
+                  style={{ ...searchInput, marginBottom: cashTendered !== "" ? 8 : 12 }}
+                  autoFocus
+                />
+                {cashTendered !== "" && (
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontSize: 15, fontWeight: 700 }}>
+                    <span style={{ color: MUTED }}>{change >= 0 ? "Change due" : "Short by"}</span>
+                    <span style={{ color: change >= 0 ? GREEN : RED }}>${Math.abs(change).toFixed(2)}</span>
+                  </div>
+                )}
+                <button disabled={closing || insufficient} onClick={() => closeTable("Cash")} style={primaryBtn(closing || insufficient)}>
+                  {closing ? "Processing…" : "Confirm Cash"}
+                </button>
+              </>
+            );
+          })()}
           {msg && <div style={{ marginTop: 12, fontSize: 13, color: RED }}>{msg}</div>}
         </div>
       </div>
