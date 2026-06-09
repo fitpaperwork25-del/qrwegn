@@ -1256,11 +1256,12 @@ export default function DashboardPage() {
             const net           = totalRevenue - totalExpenses;
             const avgOrder      = doneOrders.length > 0 ? orderRevenue / doneOrders.length : 0;
 
+            const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
             const today = new Date();
-            const days7 = Array.from({ length: 7 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() - (6 - i)); return d.toISOString().slice(0, 10); });
+            const days7 = Array.from({ length: 7 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() - (6 - i)); return localDay(d); });
             const revenueByDay: Record<string, number> = {};
             days7.forEach((d) => { revenueByDay[d] = 0; });
-            doneOrders.forEach((o) => { const day = o.created_at.slice(0, 10); if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(o.total); });
+            doneOrders.filter((o) => o.status === "done").forEach((o) => { const day = localDay(new Date(o.created_at)); if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(o.total); });
             manualRevenue.forEach((r) => { const day = r.revenue_date; if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(r.amount); });
             const maxDay = Math.max(...Object.values(revenueByDay), 1);
 
