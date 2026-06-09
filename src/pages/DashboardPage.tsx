@@ -195,8 +195,10 @@ export default function DashboardPage() {
   const [hwSaving,      setHwSaving]      = useState(false);
   const [hwSaved,       setHwSaved]       = useState(false);
   const [hwError,       setHwError]       = useState("");
-  const [hwTestLoading, setHwTestLoading] = useState(false);
-  const [hwTestMsg,     setHwTestMsg]     = useState<{ text: string; ok: boolean } | null>(null);
+  const [hwTestLoading,    setHwTestLoading]    = useState(false);
+  const [hwTestMsg,        setHwTestMsg]        = useState<{ text: string; ok: boolean } | null>(null);
+  const [hwBridgeChecking, setHwBridgeChecking] = useState(false);
+  const [hwBridgeMsg,      setHwBridgeMsg]      = useState<{ text: string; ok: boolean } | null>(null);
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -878,6 +880,21 @@ export default function DashboardPage() {
     if (error) { setHwError(error.message); }
     else { setHwSaved(true); setTimeout(() => setHwSaved(false), 3000); }
     setHwSaving(false);
+  }
+
+  async function checkBridge() {
+    const url = hwSettings.local_bridge_url.trim();
+    if (!url) { setHwBridgeMsg({ text: "Bridge URL required.", ok: false }); return; }
+    setHwBridgeChecking(true);
+    setHwBridgeMsg(null);
+    await new Promise<void>((r) => setTimeout(r, 600));
+    const isLocal = url.includes("localhost") || url.includes("127.0.0.1");
+    setHwBridgeMsg(
+      isLocal
+        ? { text: "Local Bridge reachable (simulation).", ok: true }
+        : { text: "Bridge unreachable (simulation).", ok: false }
+    );
+    setHwBridgeChecking(false);
   }
 
   async function runTestPrint() {
@@ -2344,12 +2361,23 @@ export default function DashboardPage() {
                   {/* Local bridge */}
                   <div style={card}>
                     <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 20px" }}>Local Bridge</p>
-                    <div style={field}>
-                      <label style={lbl}>Bridge URL</label>
-                      <input type="url" placeholder="http://localhost:3001" value={hwSettings.local_bridge_url}
-                        onChange={(e) => setHwSettings((p) => ({ ...p, local_bridge_url: e.target.value }))}
-                        style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 7, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }} />
-                      <p style={{ fontSize: 12, color: MUTED, margin: "4px 0 0" }}>URL of the local print bridge server running on the POS machine. Leave blank if not using a bridge.</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={field}>
+                        <label style={lbl}>Bridge URL</label>
+                        <input type="url" placeholder="http://localhost:3001" value={hwSettings.local_bridge_url}
+                          onChange={(e) => { setHwSettings((p) => ({ ...p, local_bridge_url: e.target.value })); setHwBridgeMsg(null); }}
+                          style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 7, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }} />
+                        <p style={{ fontSize: 12, color: MUTED, margin: "4px 0 0" }}>URL of the local print bridge server running on the POS machine. Leave blank if not using a bridge.</p>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <button type="button" disabled={hwBridgeChecking} onClick={checkBridge}
+                          style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 7, padding: "8px 18px", color: TEXT, fontSize: 13, fontWeight: 700, cursor: hwBridgeChecking ? "not-allowed" : "pointer", alignSelf: "flex-start", opacity: hwBridgeChecking ? 0.5 : 1 }}>
+                          {hwBridgeChecking ? "Checking…" : "Check Bridge"}
+                        </button>
+                        {hwBridgeMsg && (
+                          <p style={{ fontSize: 12, color: hwBridgeMsg.ok ? GREEN : RED, margin: 0 }}>{hwBridgeMsg.text}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
