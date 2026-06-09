@@ -3,6 +3,8 @@ import QRCode from "qrcode";
 import { useAuth } from "../lib/useAuth";
 import { supabase } from "../lib/supabase";
 import { ACCENT, BG, BORDER, MUTED, SURFACE, TEXT, GREEN, RED } from "../constants/theme";
+import { ReceiptModal } from "../components/ReceiptModal";
+import { loadReceiptData, type ReceiptData } from "../utils/receiptData";
 
 type Business = {
   id: string; name: string; type: string; plan: string;
@@ -170,6 +172,8 @@ export default function DashboardPage() {
   const [refundReason,    setRefundReason]    = useState("");
   const [tabActionSaving, setTabActionSaving] = useState(false);
   const [tabActionError,  setTabActionError]  = useState("");
+  const [receiptData,     setReceiptData]     = useState<ReceiptData | null>(null);
+  const [receiptLoading,  setReceiptLoading]  = useState(false);
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -808,6 +812,15 @@ export default function DashboardPage() {
       .eq("business_id", business.id).eq("status", "closed").gte("closed_at", thirtyDaysAgo)
       .order("closed_at", { ascending: false });
     setClosedTabs30d((data as ClosedTab[]) ?? []);
+  }
+
+  async function openReceipt(t: ClosedTab) {
+    if (!business) return;
+    setReceiptLoading(true);
+    setReceiptData(null);
+    const data = await loadReceiptData(business.name, t);
+    setReceiptData(data);
+    setReceiptLoading(false);
   }
 
   async function voidTab(tabId: string) {
@@ -1732,12 +1745,18 @@ export default function DashboardPage() {
                               <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                                 {isVoided && <span style={{ fontSize: 11, fontWeight: 800, color: RED, background: RED + "18", borderRadius: 4, padding: "2px 7px" }}>VOIDED</span>}
                                 {hasRefund && <span style={{ fontSize: 11, fontWeight: 700, color: ACCENT, background: ACCENT + "18", borderRadius: 4, padding: "2px 7px" }}>Refunded ${Number(t.refund_amount).toFixed(2)}</span>}
-                                {!isVoided && !isVoiding && !isRefunding && (
+                                {!isVoiding && !isRefunding && (
                                   <>
-                                    <button onClick={() => { setVoidingTabId(t.id); setRefundingTabId(null); setTabActionError(""); setVoidReason(""); }}
-                                      style={{ background: "none", border: `1px solid ${RED}66`, borderRadius: 6, padding: "4px 10px", color: RED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Void</button>
-                                    <button onClick={() => { setRefundingTabId(t.id); setVoidingTabId(null); setTabActionError(""); setRefundAmount(""); setRefundReason(""); }}
-                                      style={{ background: "none", border: `1px solid ${ACCENT}66`, borderRadius: 6, padding: "4px 10px", color: ACCENT, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Refund</button>
+                                    <button onClick={() => openReceipt(t)} disabled={receiptLoading}
+                                      style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "4px 10px", color: TEXT, fontSize: 11, fontWeight: 700, cursor: receiptLoading ? "not-allowed" : "pointer", opacity: receiptLoading ? 0.5 : 1 }}>Receipt</button>
+                                    {!isVoided && (
+                                      <>
+                                        <button onClick={() => { setVoidingTabId(t.id); setRefundingTabId(null); setTabActionError(""); setVoidReason(""); }}
+                                          style={{ background: "none", border: `1px solid ${RED}66`, borderRadius: 6, padding: "4px 10px", color: RED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Void</button>
+                                        <button onClick={() => { setRefundingTabId(t.id); setVoidingTabId(null); setTabActionError(""); setRefundAmount(""); setRefundReason(""); }}
+                                          style={{ background: "none", border: `1px solid ${ACCENT}66`, borderRadius: 6, padding: "4px 10px", color: ACCENT, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Refund</button>
+                                      </>
+                                    )}
                                   </>
                                 )}
                               </div>
@@ -2140,6 +2159,7 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+      {receiptData && <ReceiptModal data={receiptData} onClose={() => setReceiptData(null)} />}
     </div>
   );
 }
