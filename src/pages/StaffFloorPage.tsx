@@ -163,7 +163,7 @@ export default function StaffFloorPage() {
       if (!tab) {
         const { data: newTab, error: tErr } = await supabase
           .from("tabs")
-          .insert({ business_id: bizId, location_id: activeTable.id, status: "open", total: 0 })
+          .insert({ business_id: bizId, location_id: activeTable.id, status: "open", total: 0, opened_by_staff_id: serverId || null })
           .select("id, location_id, total")
           .single();
         if (tErr || !newTab) throw new Error(tErr?.message || "Could not open tab");

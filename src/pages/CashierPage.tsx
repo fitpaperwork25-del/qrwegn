@@ -41,15 +41,17 @@ export default function CashierPage() {
   const [closing,  setClosing]  = useState(false);
   const [msg,      setMsg]      = useState("");
 
-  const loadTodayTabs = useCallback(async (id: string) => {
+  const loadTodayTabs = useCallback(async (id: string, staffId: string | null) => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
-    const { data } = await supabase
+    let query = supabase
       .from("tabs")
       .select("total, tip_amount")
       .eq("business_id", id)
       .eq("status", "closed")
       .gte("closed_at", start.toISOString());
+    if (staffId) query = query.eq("server_id", staffId);
+    const { data } = await query;
     setTodayTabs((data as TodayTab[]) || []);
   }, []);
 
@@ -60,7 +62,7 @@ export default function CashierPage() {
     setOpenTabs((data as Tab[]) || []);
   }, []);
 
-  const loadAll = useCallback(async (id: string) => {
+  const loadAll = useCallback(async (id: string, staffId: string | null = null) => {
     const { data: bp } = await supabase
       .from("business_public").select("tax_rate").eq("id", id).maybeSingle();
     setTaxRate(Number(bp?.tax_rate ?? 0));
@@ -105,7 +107,7 @@ export default function CashierPage() {
       setPopularIds(top);
     } catch { setPopularIds([]); }
 
-    await Promise.all([loadTabs(id), loadTodayTabs(id)]);
+    await Promise.all([loadTabs(id), loadTodayTabs(id, staffId)]);
   }, [loadTabs, loadTodayTabs]);
 
   useEffect(() => {
@@ -115,7 +117,7 @@ export default function CashierPage() {
       setBizId(profile.bizId);
       setBizName(profile.bizName || "Cashier");
       setServerId(profile.serverId);
-      await loadAll(profile.bizId);
+      await loadAll(profile.bizId, profile.serverId);
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,9 +125,9 @@ export default function CashierPage() {
 
   useEffect(() => {
     if (!bizId) return;
-    const t = setInterval(() => { loadTabs(bizId); loadTodayTabs(bizId); }, 15000);
+    const t = setInterval(() => { loadTabs(bizId); loadTodayTabs(bizId, serverId); }, 15000);
     return () => clearInterval(t);
-  }, [bizId, loadTabs, loadTodayTabs]);
+  }, [bizId, serverId, loadTabs, loadTodayTabs]);
 
   const currentTab = activeLocation
     ? openTabs.find((t) => t.location_id === activeLocation.id) || null
@@ -158,7 +160,7 @@ export default function CashierPage() {
       if (!tab) {
         const { data: newTab, error: tErr } = await supabase
           .from("tabs")
-          .insert({ business_id: bizId, location_id: activeLocation.id, status: "open", total: 0 })
+          .insert({ business_id: bizId, location_id: activeLocation.id, status: "open", total: 0, opened_by_staff_id: serverId || null })
           .select("id, location_id, total").single();
         if (tErr || !newTab) throw new Error(tErr?.message || "Could not open tab");
         tab = newTab as Tab;
@@ -208,7 +210,7 @@ export default function CashierPage() {
         tip_amount: Number(tip) || 0, server_id: serverId,
       }).eq("id", tab.id);
       if (error) throw new Error(error.message);
-      await Promise.all([loadTabs(bizId), loadTodayTabs(bizId)]);
+      await Promise.all([loadTabs(bizId), loadTodayTabs(bizId, serverId)]);
       setCart({}); setTip(""); setMsg(""); setView("menu");
     } catch (e: any) {
       setMsg(`Error: ${e?.message ?? e}`);
