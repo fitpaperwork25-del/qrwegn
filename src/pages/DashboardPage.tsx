@@ -157,6 +157,7 @@ export default function DashboardPage() {
   const [staffAddError, setStaffAddError] = useState("");
   const [staffAddSaving, setStaffAddSaving] = useState(false);
   const [closedTabs30d, setClosedTabs30d] = useState<ClosedTab[]>([]);
+  const [drawerActual, setDrawerActual]   = useState("");
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -1705,6 +1706,10 @@ export default function DashboardPage() {
                   .map(([id, v]) => ({ id, ...v }))
                   .sort((a, b) => b.sales - a.sales);
 
+                const expectedCash = tabsTodayS
+                  .filter((t) => t.payment_method === "Cash")
+                  .reduce((s, t) => s + Number(t.total) + Number(t.tip_amount ?? 0), 0);
+
                 return (
                   <>
                     <div style={card}>
@@ -1789,6 +1794,40 @@ export default function DashboardPage() {
                           ))}
                         </div>
                       )}
+                    </div>
+
+                    <div style={card}>
+                      <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 4px" }}>Drawer Reconciliation — Today</p>
+                      <p style={{ color: MUTED, fontSize: 12, margin: "0 0 16px" }}>Cash tabs only · Expected includes tips (physically in drawer)</p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: BG, borderRadius: 8, border: `1px solid ${BORDER}` }}>
+                          <span style={{ fontSize: 13, color: MUTED, fontWeight: 700 }}>Expected cash</span>
+                          <span style={{ fontSize: 18, fontWeight: 900, color: TEXT }}>${expectedCash.toFixed(2)}</span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Actual cash counted</label>
+                          <input
+                            type="number" inputMode="decimal" placeholder="0.00"
+                            value={drawerActual}
+                            onChange={(e) => setDrawerActual(e.target.value)}
+                            style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 16, fontWeight: 700, outline: "none", width: "100%", boxSizing: "border-box" as const }}
+                          />
+                        </div>
+                        {drawerActual !== "" && (() => {
+                          const actual = parseFloat(drawerActual) || 0;
+                          const diff = actual - expectedCash;
+                          const balanced = Math.abs(diff) < 0.005;
+                          const over = diff > 0;
+                          const color = balanced ? GREEN : over ? ACCENT : RED;
+                          const label = balanced ? "Balanced" : over ? `Over by $${diff.toFixed(2)}` : `Short by $${Math.abs(diff).toFixed(2)}`;
+                          return (
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: BG, borderRadius: 8, border: `1px solid ${color}44` }}>
+                              <span style={{ fontSize: 13, color: MUTED, fontWeight: 700 }}>Status</span>
+                              <span style={{ fontSize: 15, fontWeight: 900, color }}>{label}</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </>
                 );
