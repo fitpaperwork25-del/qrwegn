@@ -279,7 +279,7 @@ export default function ScanPage() {
       const grand = withTax(subtotal).grand;     // amount actually due
       const { error: tabErr } = await supabase
         .from('tabs')
-        .update({ status: 'closed', closed_at: new Date().toISOString(), total: subtotal })
+        .update({ status: 'closed', closed_at: new Date().toISOString(), total: subtotal, payment_method: 'Other' })
         .eq('id', openTab.id);
       if (tabErr) throw tabErr;
       localStorage.removeItem(`tab_${locationUuid}`);

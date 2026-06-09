@@ -230,10 +230,10 @@ export default function StaffDashboardPage() {
     return () => { clearInterval(id); supabase.removeChannel(channel); };
   }, [bizId]);
 
-  async function closeTab(tabId: string) {
+  async function closeTab(tabId: string, method: "Cash" | "Card" | "Other") {
     const { error } = await supabase
       .from("tabs")
-      .update({ status: "closed", closed_at: new Date().toISOString() })
+      .update({ status: "closed", closed_at: new Date().toISOString(), payment_method: method })
       .eq("id", tabId);
     if (!error) setOpenTabs((prev) => prev.filter((t) => t.id !== tabId));
   }
@@ -361,12 +361,12 @@ export default function StaffDashboardPage() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ fontWeight: 900, fontSize: 18, color: ACCENT }}>${Number(tab.total).toFixed(2)}</span>
-                    <button
-                      onClick={() => closeTab(tab.id)}
-                      style={{ background: "none", border: "1px solid #E8C54766", borderRadius: 8, padding: "5px 12px", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                    >
-                      Close Tab
-                    </button>
+                    {(["Cash", "Card", "Other"] as const).map((m) => (
+                      <button key={m} onClick={() => closeTab(tab.id, m)}
+                        style={{ background: "none", border: "1px solid #E8C54766", borderRadius: 8, padding: "5px 10px", color: ACCENT, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                        {m}
+                      </button>
+                    ))}
                   </div>
                 </div>
               );

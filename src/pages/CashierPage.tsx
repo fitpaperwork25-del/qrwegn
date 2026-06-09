@@ -203,6 +203,7 @@ export default function CashierPage() {
   }
 
   async function closeTab(method: string) {
+    if (!["Cash", "Card", "Other"].includes(method)) { setMsg("Select a payment method."); return; }
     if (!activeLocation || !bizId) return;
     const tab = currentTab;
     if (!tab) { setView("menu"); return; }

@@ -218,6 +218,7 @@ export default function StaffFloorPage() {
   }
 
   async function closeTable(method: string) {
+    if (!["Cash", "Card", "Other"].includes(method)) { setMsg("Select a payment method."); return; }
     if (!activeTable || !bizId) return;
     const tab = tabForTable(activeTable.id);
     if (!tab) { setView("floor"); return; }
