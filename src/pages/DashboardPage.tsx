@@ -1665,7 +1665,7 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Tips today by staff + Sales today by staff */}
+              {/* Tips today by staff + Sales today by staff + End of shift summary */}
               {(() => {
                 const todayISOS = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); })();
                 const tabsTodayS = closedTabs30d.filter((t) => t.closed_at >= todayISOS);
@@ -1685,17 +1685,21 @@ export default function DashboardPage() {
                   .sort((a, b) => b.tips - a.tips);
                 const totalTipsToday = tabsTodayS.reduce((s, t) => s + Number(t.tip_amount ?? 0), 0);
 
-                // Sales breakdown
-                const salesMap: Record<string, { name: string; role: string; sales: number; tips: number; count: number }> = {};
+                // Sales + shift breakdown (single pass)
+                const salesMap: Record<string, { name: string; role: string; sales: number; tips: number; count: number; cash: number; card: number; other: number }> = {};
                 tabsTodayS.forEach((t) => {
                   const id = t.server_id ?? "__unattr__";
                   const pin = staffPins.find((s) => s.id === id);
                   const name = pin?.name ?? (id === "__unattr__" ? "Unattributed" : "Unknown");
                   const role = pin?.role ?? "";
-                  if (!salesMap[id]) salesMap[id] = { name, role, sales: 0, tips: 0, count: 0 };
+                  if (!salesMap[id]) salesMap[id] = { name, role, sales: 0, tips: 0, count: 0, cash: 0, card: 0, other: 0 };
                   salesMap[id].sales += Number(t.total) - Number(t.tip_amount ?? 0);
                   salesMap[id].tips  += Number(t.tip_amount ?? 0);
                   salesMap[id].count += 1;
+                  const tot = Number(t.total);
+                  if (t.payment_method === "Cash") salesMap[id].cash += tot;
+                  else if (t.payment_method === "Card") salesMap[id].card += tot;
+                  else salesMap[id].other += tot;
                 });
                 const salesByStaff = Object.entries(salesMap)
                   .map(([id, v]) => ({ id, ...v }))
@@ -1745,6 +1749,42 @@ export default function DashboardPage() {
                               <span style={{ fontWeight: 600, fontSize: 14, color: MUTED, textAlign: "right" }}>{row.count}</span>
                               <span style={{ fontWeight: 800, fontSize: 14, color: GREEN, textAlign: "right" }}>${row.sales.toFixed(2)}</span>
                               <span style={{ fontWeight: 600, fontSize: 13, color: MUTED, textAlign: "right" }}>${row.tips.toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={card}>
+                      <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 4px" }}>End of Shift Summary</p>
+                      <p style={{ color: MUTED, fontSize: 12, margin: "0 0 14px" }}>Today · Closed tabs only · Revenue excludes tips · Collected includes tips per payment method</p>
+                      {salesByStaff.length === 0 ? (
+                        <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>No closed tabs today.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                          {salesByStaff.map((row) => (
+                            <div key={row.id} style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "12px 14px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                                <div>
+                                  <span style={{ fontWeight: 800, fontSize: 15, color: TEXT }}>{row.name}</span>
+                                  {row.role && <span style={{ fontSize: 11, color: MUTED, textTransform: "capitalize", marginLeft: 8 }}>{row.role}</span>}
+                                </div>
+                                <span style={{ fontSize: 12, color: MUTED }}>{row.count} tab{row.count !== 1 ? "s" : ""}</span>
+                              </div>
+                              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 8 }}>
+                                {[
+                                  { label: "Revenue", value: row.sales, color: GREEN },
+                                  { label: "Tips (pass-thru)", value: row.tips, color: MUTED },
+                                  { label: "Cash collected", value: row.cash, color: TEXT },
+                                  { label: "Card collected", value: row.card, color: TEXT },
+                                  { label: "Other collected", value: row.other, color: TEXT },
+                                ].map((stat) => (
+                                  <div key={stat.label} style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 10px" }}>
+                                    <div style={{ fontSize: 10, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>{stat.label}</div>
+                                    <div style={{ fontSize: 15, fontWeight: 800, color: stat.color }}>${stat.value.toFixed(2)}</div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           ))}
                         </div>
