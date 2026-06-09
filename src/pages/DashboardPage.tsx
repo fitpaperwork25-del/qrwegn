@@ -35,7 +35,23 @@ const ORDER_STATUS_COLOR: Record<string, string> = {
 const ORDER_STATUSES = ["new", "preparing", "ready", "done"] as const;
 const CANCEL_REASONS = ["Wrong order", "Customer refused", "Item unavailable", "Other"] as const;
 
-type Tab = "tables" | "menu" | "orders" | "financials" | "branding" | "staff";
+type Tab = "tables" | "menu" | "orders" | "financials" | "branding" | "staff" | "hardware";
+type HardwareSettings = {
+  receipt_printer_mode: string;
+  kitchen_printer_mode: string;
+  cash_drawer_enabled:  boolean;
+  print_strategy:       string;
+  local_bridge_url:     string;
+  escpos_enabled:       boolean;
+};
+const HW_DEFAULTS: HardwareSettings = {
+  receipt_printer_mode: "browser",
+  kitchen_printer_mode: "none",
+  cash_drawer_enabled:  false,
+  print_strategy:       "browser",
+  local_bridge_url:     "",
+  escpos_enabled:       false,
+};
 const EMPTY_ITEM = { name: "", price: "", description: "", category_id: "" };
 
 const card: React.CSSProperties = {
@@ -174,6 +190,11 @@ export default function DashboardPage() {
   const [tabActionError,  setTabActionError]  = useState("");
   const [receiptData,     setReceiptData]     = useState<ReceiptData | null>(null);
   const [receiptLoading,  setReceiptLoading]  = useState(false);
+  const [hwSettings,  setHwSettings]  = useState<HardwareSettings>(HW_DEFAULTS);
+  const [hwLoaded,    setHwLoaded]    = useState(false);
+  const [hwSaving,    setHwSaving]    = useState(false);
+  const [hwSaved,     setHwSaved]     = useState(false);
+  const [hwError,     setHwError]     = useState("");
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -189,6 +210,10 @@ export default function DashboardPage() {
   useEffect(() => {
     if (tab === "staff" && business?.id && !staffLoaded) void loadStaffPins();
     if (tab === "staff" && business?.id) void loadShiftCloses();
+  }, [tab, business?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (tab === "hardware" && business?.id && !hwLoaded) void loadHardwareSettings();
   }, [tab, business?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -814,6 +839,45 @@ export default function DashboardPage() {
     setClosedTabs30d((data as ClosedTab[]) ?? []);
   }
 
+  async function loadHardwareSettings() {
+    if (!business) return;
+    const { data } = await supabase
+      .from("hardware_settings")
+      .select("receipt_printer_mode, kitchen_printer_mode, cash_drawer_enabled, print_strategy, local_bridge_url, escpos_enabled")
+      .eq("business_id", business.id)
+      .maybeSingle();
+    if (data) {
+      setHwSettings({
+        receipt_printer_mode: data.receipt_printer_mode ?? "browser",
+        kitchen_printer_mode: data.kitchen_printer_mode ?? "none",
+        cash_drawer_enabled:  data.cash_drawer_enabled  ?? false,
+        print_strategy:       data.print_strategy       ?? "browser",
+        local_bridge_url:     data.local_bridge_url     ?? "",
+        escpos_enabled:       data.escpos_enabled        ?? false,
+      });
+    }
+    setHwLoaded(true);
+  }
+
+  async function saveHardwareSettings(e: React.FormEvent) {
+    e.preventDefault();
+    if (!business) return;
+    setHwSaving(true); setHwError(""); setHwSaved(false);
+    const { error } = await supabase.from("hardware_settings").upsert({
+      business_id:          business.id,
+      receipt_printer_mode: hwSettings.receipt_printer_mode,
+      kitchen_printer_mode: hwSettings.kitchen_printer_mode,
+      cash_drawer_enabled:  hwSettings.cash_drawer_enabled,
+      print_strategy:       hwSettings.print_strategy,
+      local_bridge_url:     hwSettings.local_bridge_url.trim() || null,
+      escpos_enabled:       hwSettings.escpos_enabled,
+      updated_at:           new Date().toISOString(),
+    }, { onConflict: "business_id" });
+    if (error) { setHwError(error.message); }
+    else { setHwSaved(true); setTimeout(() => setHwSaved(false), 3000); }
+    setHwSaving(false);
+  }
+
   async function openReceipt(t: ClosedTab) {
     if (!business) return;
     setReceiptLoading(true);
@@ -951,7 +1015,7 @@ export default function DashboardPage() {
         {/* Tabs */}
         <div>
           <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${BORDER}`, marginBottom: 24, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
-            {(["tables", "menu", "orders", "financials", "branding", "staff"] as Tab[]).map((t) => (
+            {(["tables", "menu", "orders", "financials", "branding", "staff", "hardware"] as Tab[]).map((t) => (
               <button key={t} onClick={() => setTab(t)}
                 style={{ background: "none", border: "none", borderBottom: tab === t ? `2px solid ${ACCENT}` : "2px solid transparent", color: tab === t ? ACCENT : MUTED, padding: isMobile ? "10px 14px" : "12px 24px", fontWeight: 700, fontSize: isMobile ? 13 : 14, cursor: "pointer", textTransform: "capitalize", letterSpacing: 0.5, transition: "color 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}>
                 {t}
@@ -2157,6 +2221,95 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
+          {/* Hardware tab */}
+          {tab === "hardware" && (() => {
+            const sel: React.CSSProperties = { background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 7, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none", width: "100%" };
+            const lbl: React.CSSProperties = { fontSize: 13, color: MUTED, marginBottom: 4 };
+            const field: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 4 };
+            const toggleRow: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, padding: "10px 0" };
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {hwError && <p style={{ color: RED, fontSize: 13, margin: 0 }}>{hwError}</p>}
+                <form onSubmit={saveHardwareSettings} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+                  {/* Receipt printing */}
+                  <div style={card}>
+                    <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 20px" }}>Receipt Printing</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      <div style={field}>
+                        <label style={lbl}>Receipt Printer Mode</label>
+                        <select style={sel} value={hwSettings.receipt_printer_mode}
+                          onChange={(e) => setHwSettings((p) => ({ ...p, receipt_printer_mode: e.target.value }))}>
+                          <option value="browser">Browser (window.print)</option>
+                          <option value="local_bridge">Local Bridge</option>
+                          <option value="escpos">ESC/POS</option>
+                          <option value="none">None</option>
+                        </select>
+                      </div>
+                      <div style={field}>
+                        <label style={lbl}>Print Strategy</label>
+                        <select style={sel} value={hwSettings.print_strategy}
+                          onChange={(e) => setHwSettings((p) => ({ ...p, print_strategy: e.target.value }))}>
+                          <option value="browser">Browser</option>
+                          <option value="local_bridge">Local Bridge</option>
+                          <option value="escpos">ESC/POS</option>
+                        </select>
+                      </div>
+                      <div style={toggleRow}>
+                        <input type="checkbox" id="hw-escpos" checked={hwSettings.escpos_enabled}
+                          onChange={(e) => setHwSettings((p) => ({ ...p, escpos_enabled: e.target.checked }))} />
+                        <label htmlFor="hw-escpos" style={{ fontSize: 13, color: TEXT, cursor: "pointer" }}>ESC/POS Enabled</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Kitchen printing */}
+                  <div style={card}>
+                    <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 20px" }}>Kitchen Printing</p>
+                    <div style={field}>
+                      <label style={lbl}>Kitchen Printer Mode</label>
+                      <select style={sel} value={hwSettings.kitchen_printer_mode}
+                        onChange={(e) => setHwSettings((p) => ({ ...p, kitchen_printer_mode: e.target.value }))}>
+                        <option value="none">None</option>
+                        <option value="browser">Browser</option>
+                        <option value="local_bridge">Local Bridge</option>
+                        <option value="escpos">ESC/POS</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Cash drawer */}
+                  <div style={card}>
+                    <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 16px" }}>Cash Drawer</p>
+                    <div style={toggleRow}>
+                      <input type="checkbox" id="hw-drawer" checked={hwSettings.cash_drawer_enabled}
+                        onChange={(e) => setHwSettings((p) => ({ ...p, cash_drawer_enabled: e.target.checked }))} />
+                      <label htmlFor="hw-drawer" style={{ fontSize: 13, color: TEXT, cursor: "pointer" }}>Cash Drawer Enabled</label>
+                    </div>
+                    <p style={{ fontSize: 12, color: MUTED, margin: "8px 0 0" }}>Triggers drawer-open command when a Cash tab is closed. Requires Local Bridge or ESC/POS.</p>
+                  </div>
+
+                  {/* Local bridge */}
+                  <div style={card}>
+                    <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 20px" }}>Local Bridge</p>
+                    <div style={field}>
+                      <label style={lbl}>Bridge URL</label>
+                      <input type="url" placeholder="http://localhost:3001" value={hwSettings.local_bridge_url}
+                        onChange={(e) => setHwSettings((p) => ({ ...p, local_bridge_url: e.target.value }))}
+                        style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 7, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }} />
+                      <p style={{ fontSize: 12, color: MUTED, margin: "4px 0 0" }}>URL of the local print bridge server running on the POS machine. Leave blank if not using a bridge.</p>
+                    </div>
+                  </div>
+
+                  <button type="submit" disabled={hwSaving}
+                    style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "12px 24px", fontWeight: 800, fontSize: 14, cursor: hwSaving ? "not-allowed" : "pointer", alignSelf: "flex-start", opacity: hwSaving ? 0.7 : 1 }}>
+                    {hwSaving ? "Saving…" : hwSaved ? "Saved!" : "Save Hardware Settings"}
+                  </button>
+                </form>
+              </div>
+            );
+          })()}
         </div>
       </div>
       {receiptData && <ReceiptModal data={receiptData} onClose={() => setReceiptData(null)} />}
