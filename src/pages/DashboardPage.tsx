@@ -19,7 +19,8 @@ type Expense       = { id: string; amount: number; category: string; description
 type ManualRevenue = { id: string; amount: number; category: string; description: string | null; revenue_date: string };
 type CsvRow    = { category: string; name: string; price: string; description: string; error?: string };
 type StaffPin  = { id: string; name: string; role: string; is_active: boolean; created_at: string };
-type ClosedTab = { total: number; tip_amount: number | null; payment_method: string | null; closed_at: string; server_id: string | null };
+type ClosedTab  = { total: number; tip_amount: number | null; payment_method: string | null; closed_at: string; server_id: string | null };
+type ShiftClose = { id: string; shift_date: string; expected_cash: number; actual_cash: number; difference: number; tab_count: number; total_revenue: number; total_tips: number; note: string | null; created_at: string };
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const EMPTY_EXPENSE = { category: "", amount: "", description: "", expense_date: TODAY };
@@ -156,8 +157,12 @@ export default function DashboardPage() {
   const [newStaffRole, setNewStaffRole]   = useState("kitchen");
   const [staffAddError, setStaffAddError] = useState("");
   const [staffAddSaving, setStaffAddSaving] = useState(false);
-  const [closedTabs30d, setClosedTabs30d] = useState<ClosedTab[]>([]);
-  const [drawerActual, setDrawerActual]   = useState("");
+  const [closedTabs30d, setClosedTabs30d]     = useState<ClosedTab[]>([]);
+  const [drawerActual, setDrawerActual]       = useState("");
+  const [drawerNote, setDrawerNote]           = useState("");
+  const [shiftCloses, setShiftCloses]         = useState<ShiftClose[]>([]);
+  const [shiftCloseSaving, setShiftCloseSaving] = useState(false);
+  const [shiftCloseError, setShiftCloseError] = useState("");
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -172,6 +177,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (tab === "staff" && business?.id && !staffLoaded) void loadStaffPins();
+    if (tab === "staff" && business?.id) void loadShiftCloses();
   }, [tab, business?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -745,6 +751,45 @@ export default function DashboardPage() {
     setStaffPins((data as StaffPin[]) ?? []);
     setStaffLoaded(true);
     setStaffLoading(false);
+  }
+
+  async function loadShiftCloses() {
+    if (!business) return;
+    const { data } = await supabase
+      .from("shift_closes")
+      .select("id, shift_date, expected_cash, actual_cash, difference, tab_count, total_revenue, total_tips, note, created_at")
+      .eq("business_id", business.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    setShiftCloses((data as ShiftClose[]) ?? []);
+  }
+
+  async function saveShiftClose(expectedCash: number, cashTabCount: number, todayRevenue: number, totalTips: number) {
+    if (!business) return;
+    const actual = parseFloat(drawerActual);
+    if (isNaN(actual)) return;
+    setShiftCloseSaving(true);
+    setShiftCloseError("");
+    const { error } = await supabase.from("shift_closes").insert({
+      business_id:  business.id,
+      shift_date:   new Date().toISOString().slice(0, 10),
+      expected_cash: expectedCash,
+      actual_cash:  actual,
+      difference:   parseFloat((actual - expectedCash).toFixed(2)),
+      tab_count:    cashTabCount,
+      total_revenue: todayRevenue,
+      total_tips:   totalTips,
+      note:         drawerNote.trim() || null,
+      closed_by:    null,
+    });
+    if (error) {
+      setShiftCloseError(error.message);
+    } else {
+      setDrawerActual("");
+      setDrawerNote("");
+      void loadShiftCloses();
+    }
+    setShiftCloseSaving(false);
   }
 
   async function deleteStaffPin(staffId: string) {
@@ -1706,9 +1751,10 @@ export default function DashboardPage() {
                   .map(([id, v]) => ({ id, ...v }))
                   .sort((a, b) => b.sales - a.sales);
 
-                const expectedCash = tabsTodayS
-                  .filter((t) => t.payment_method === "Cash")
-                  .reduce((s, t) => s + Number(t.total) + Number(t.tip_amount ?? 0), 0);
+                const cashTabsToday = tabsTodayS.filter((t) => t.payment_method === "Cash");
+                const expectedCash  = cashTabsToday.reduce((s, t) => s + Number(t.total) + Number(t.tip_amount ?? 0), 0);
+                const cashTabCount  = cashTabsToday.length;
+                const todayRevenue  = tabsTodayS.reduce((s, t) => s + Number(t.total) - Number(t.tip_amount ?? 0), 0);
 
                 return (
                   <>
@@ -1809,7 +1855,7 @@ export default function DashboardPage() {
                           <input
                             type="number" inputMode="decimal" placeholder="0.00"
                             value={drawerActual}
-                            onChange={(e) => setDrawerActual(e.target.value)}
+                            onChange={(e) => { setDrawerActual(e.target.value); setShiftCloseError(""); }}
                             style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 16, fontWeight: 700, outline: "none", width: "100%", boxSizing: "border-box" as const }}
                           />
                         </div>
@@ -1821,13 +1867,61 @@ export default function DashboardPage() {
                           const color = balanced ? GREEN : over ? ACCENT : RED;
                           const label = balanced ? "Balanced" : over ? `Over by $${diff.toFixed(2)}` : `Short by $${Math.abs(diff).toFixed(2)}`;
                           return (
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: BG, borderRadius: 8, border: `1px solid ${color}44` }}>
-                              <span style={{ fontSize: 13, color: MUTED, fontWeight: 700 }}>Status</span>
-                              <span style={{ fontSize: 15, fontWeight: 900, color }}>{label}</span>
-                            </div>
+                            <>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: BG, borderRadius: 8, border: `1px solid ${color}44` }}>
+                                <span style={{ fontSize: 13, color: MUTED, fontWeight: 700 }}>Status</span>
+                                <span style={{ fontSize: 15, fontWeight: 900, color }}>{label}</span>
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                <label style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Note (optional)</label>
+                                <input
+                                  type="text" placeholder="e.g. counted by John, safe verified"
+                                  value={drawerNote}
+                                  onChange={(e) => setDrawerNote(e.target.value)}
+                                  style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 14px", color: TEXT, fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box" as const }}
+                                />
+                              </div>
+                              {shiftCloseError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{shiftCloseError}</p>}
+                              <button
+                                disabled={shiftCloseSaving}
+                                onClick={() => saveShiftClose(expectedCash, cashTabCount, todayRevenue, totalTipsToday)}
+                                style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "12px 20px", fontWeight: 800, fontSize: 14, cursor: shiftCloseSaving ? "not-allowed" : "pointer", opacity: shiftCloseSaving ? 0.6 : 1 }}>
+                                {shiftCloseSaving ? "Saving…" : "Save Shift Close"}
+                              </button>
+                            </>
                           );
                         })()}
                       </div>
+
+                      {shiftCloses.length > 0 && (
+                        <div style={{ marginTop: 20, borderTop: `1px solid ${BORDER}`, paddingTop: 16 }}>
+                          <p style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", margin: "0 0 10px" }}>Recent Records</p>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {shiftCloses.map((sc) => {
+                              const balanced = Math.abs(sc.difference) < 0.005;
+                              const over = sc.difference > 0;
+                              const statusColor = balanced ? GREEN : over ? ACCENT : RED;
+                              const statusLabel = balanced ? "Balanced" : over ? `Over $${sc.difference.toFixed(2)}` : `Short $${Math.abs(sc.difference).toFixed(2)}`;
+                              return (
+                                <div key={sc.id} style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 14px" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                                    <span style={{ fontWeight: 700, fontSize: 13 }}>{sc.shift_date}</span>
+                                    <span style={{ fontSize: 13, fontWeight: 800, color: statusColor }}>{statusLabel}</span>
+                                  </div>
+                                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: MUTED }}>
+                                    <span>Expected <strong style={{ color: TEXT }}>${Number(sc.expected_cash).toFixed(2)}</strong></span>
+                                    <span>Actual <strong style={{ color: TEXT }}>${Number(sc.actual_cash).toFixed(2)}</strong></span>
+                                    <span>Revenue <strong style={{ color: TEXT }}>${Number(sc.total_revenue).toFixed(2)}</strong></span>
+                                    <span>Tips <strong style={{ color: TEXT }}>${Number(sc.total_tips).toFixed(2)}</strong></span>
+                                    {sc.tab_count > 0 && <span>{sc.tab_count} cash tab{sc.tab_count !== 1 ? "s" : ""}</span>}
+                                  </div>
+                                  {sc.note && <p style={{ fontSize: 12, color: MUTED, margin: "6px 0 0", fontStyle: "italic" }}>{sc.note}</p>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </>
                 );
