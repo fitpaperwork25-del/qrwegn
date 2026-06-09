@@ -7,7 +7,7 @@ import { ACCENT, BG, BORDER, MUTED, SURFACE, TEXT, GREEN, RED } from "../constan
 type Location  = { id: string; name: string };
 type Cat       = { id: string; name: string };
 type Item      = { id: string; category_id: string; name: string; price: number };
-type Tab       = { id: string; location_id: string; total: number };
+type Tab       = { id: string; location_id: string; total: number; opened_by_staff_id?: string | null };
 type TodayTab  = { total: number; tip_amount: number | null };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -57,7 +57,7 @@ export default function CashierPage() {
 
   const loadTabs = useCallback(async (id: string) => {
     const { data } = await supabase
-      .from("tabs").select("id, location_id, total, status")
+      .from("tabs").select("id, location_id, total, status, opened_by_staff_id")
       .eq("business_id", id).eq("status", "open");
     setOpenTabs((data as Tab[]) || []);
   }, []);
@@ -164,6 +164,8 @@ export default function CashierPage() {
           .select("id, location_id, total").single();
         if (tErr || !newTab) throw new Error(tErr?.message || "Could not open tab");
         tab = newTab as Tab;
+      } else if (!tab.opened_by_staff_id && serverId) {
+        await supabase.from("tabs").update({ opened_by_staff_id: serverId }).eq("id", tab.id);
       }
       const orderId = crypto.randomUUID();
       const { error: oErr } = await supabase.from("orders").insert({
