@@ -1665,10 +1665,12 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Tips today by staff */}
+              {/* Tips today by staff + Sales today by staff */}
               {(() => {
                 const todayISOS = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); })();
                 const tabsTodayS = closedTabs30d.filter((t) => t.closed_at >= todayISOS);
+
+                // Tips breakdown
                 const tipsMap: Record<string, { name: string; tips: number }> = {};
                 tabsTodayS.forEach((t) => {
                   if (!t.tip_amount || Number(t.tip_amount) === 0) return;
@@ -1682,26 +1684,73 @@ export default function DashboardPage() {
                   .map(([id, v]) => ({ id, ...v }))
                   .sort((a, b) => b.tips - a.tips);
                 const totalTipsToday = tabsTodayS.reduce((s, t) => s + Number(t.tip_amount ?? 0), 0);
+
+                // Sales breakdown
+                const salesMap: Record<string, { name: string; role: string; sales: number; tips: number; count: number }> = {};
+                tabsTodayS.forEach((t) => {
+                  const id = t.server_id ?? "__unattr__";
+                  const pin = staffPins.find((s) => s.id === id);
+                  const name = pin?.name ?? (id === "__unattr__" ? "Unattributed" : "Unknown");
+                  const role = pin?.role ?? "";
+                  if (!salesMap[id]) salesMap[id] = { name, role, sales: 0, tips: 0, count: 0 };
+                  salesMap[id].sales += Number(t.total) - Number(t.tip_amount ?? 0);
+                  salesMap[id].tips  += Number(t.tip_amount ?? 0);
+                  salesMap[id].count += 1;
+                });
+                const salesByStaff = Object.entries(salesMap)
+                  .map(([id, v]) => ({ id, ...v }))
+                  .sort((a, b) => b.sales - a.sales);
+
                 return (
-                  <div style={card}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                      <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Tips Today</p>
-                      <span style={{ fontSize: 22, fontWeight: 900, color: ACCENT }}>${totalTipsToday.toFixed(2)}</span>
-                    </div>
-                    <p style={{ color: MUTED, fontSize: 12, margin: "0 0 14px" }}>Pass-through — belongs to staff, not business revenue</p>
-                    {tipsByStaff.length === 0 ? (
-                      <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>No tips recorded today.</p>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {tipsByStaff.map((row) => (
-                          <div key={row.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: BG, borderRadius: 8, border: `1px solid ${BORDER}` }}>
-                            <span style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>{row.name}</span>
-                            <span style={{ fontWeight: 800, fontSize: 15, color: ACCENT }}>${row.tips.toFixed(2)}</span>
-                          </div>
-                        ))}
+                  <>
+                    <div style={card}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                        <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Tips Today</p>
+                        <span style={{ fontSize: 22, fontWeight: 900, color: ACCENT }}>${totalTipsToday.toFixed(2)}</span>
                       </div>
-                    )}
-                  </div>
+                      <p style={{ color: MUTED, fontSize: 12, margin: "0 0 14px" }}>Pass-through — belongs to staff, not business revenue</p>
+                      {tipsByStaff.length === 0 ? (
+                        <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>No tips recorded today.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {tipsByStaff.map((row) => (
+                            <div key={row.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: BG, borderRadius: 8, border: `1px solid ${BORDER}` }}>
+                              <span style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>{row.name}</span>
+                              <span style={{ fontWeight: 800, fontSize: 15, color: ACCENT }}>${row.tips.toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={card}>
+                      <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 4px" }}>Sales Today by Staff</p>
+                      <p style={{ color: MUTED, fontSize: 12, margin: "0 0 14px" }}>Closed tabs only · Revenue excludes tips</p>
+                      {salesByStaff.length === 0 ? (
+                        <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>No closed tabs today.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 40px 90px 72px", gap: 8, padding: "0 4px", fontSize: 11, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+                            <span>Staff</span>
+                            <span style={{ textAlign: "right" }}>Tabs</span>
+                            <span style={{ textAlign: "right" }}>Sales</span>
+                            <span style={{ textAlign: "right" }}>Tips</span>
+                          </div>
+                          {salesByStaff.map((row) => (
+                            <div key={row.id} style={{ display: "grid", gridTemplateColumns: "1fr 40px 90px 72px", gap: 8, alignItems: "center", padding: "8px 12px", background: BG, borderRadius: 8, border: `1px solid ${BORDER}` }}>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>{row.name}</div>
+                                {row.role && <div style={{ fontSize: 11, color: MUTED, textTransform: "capitalize", letterSpacing: 0.5 }}>{row.role}</div>}
+                              </div>
+                              <span style={{ fontWeight: 600, fontSize: 14, color: MUTED, textAlign: "right" }}>{row.count}</span>
+                              <span style={{ fontWeight: 800, fontSize: 14, color: GREEN, textAlign: "right" }}>${row.sales.toFixed(2)}</span>
+                              <span style={{ fontWeight: 600, fontSize: 13, color: MUTED, textAlign: "right" }}>${row.tips.toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
                 );
               })()}
 
