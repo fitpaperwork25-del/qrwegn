@@ -1260,21 +1260,19 @@ export default function DashboardPage() {
 
           {/* Financials tab */}
           {tab === "financials" && (() => {
-            const completedOrders = doneOrders.filter((o) => o.status === "done");
-            const orderRevenue  = completedOrders.reduce((s, o) => s + Number(o.total), 0);
+            const tabRev30d     = closedTabs30d.reduce((s, t) => s + Number(t.total) - Number(t.tip_amount ?? 0), 0);
+            const tabCount30d   = closedTabs30d.length;
+            const avgTabValue   = tabCount30d > 0 ? tabRev30d / tabCount30d : 0;
             const manualTotal   = manualRevenue.reduce((s, r) => s + Number(r.amount), 0);
-            const totalRevenue  = orderRevenue + manualTotal;
             const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
-            const net           = totalRevenue - totalExpenses;
-            const avgOrder      = completedOrders.length > 0 ? orderRevenue / completedOrders.length : 0;
+            const net30d        = tabRev30d + manualTotal - totalExpenses;
 
             const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
             const today = new Date();
             const days7 = Array.from({ length: 7 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() - (6 - i)); return localDay(d); });
             const revenueByDay: Record<string, number> = {};
             days7.forEach((d) => { revenueByDay[d] = 0; });
-            completedOrders.forEach((o) => { const day = localDay(new Date(o.created_at)); if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(o.total); });
-            manualRevenue.forEach((r) => { const day = r.revenue_date; if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(r.amount); });
+            closedTabs30d.forEach((t) => { const day = localDay(new Date(t.closed_at)); if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(t.total) - Number(t.tip_amount ?? 0); });
             const maxDay = Math.max(...Object.values(revenueByDay), 1);
 
             const todayISO = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); })();
@@ -1304,10 +1302,10 @@ export default function DashboardPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
                   {[
-                    { label: "Revenue (30d)",  value: `$${totalRevenue.toFixed(2)}`, color: GREEN },
-                    { label: "Orders (billed)", value: completedOrders.length.toString(),  color: ACCENT },
-                    { label: "Avg order value", value: `$${avgOrder.toFixed(2)}`,     color: ACCENT },
-                    { label: "Net (30d)",       value: `$${net.toFixed(2)}`,          color: net >= 0 ? GREEN : RED },
+                    { label: "Revenue (30d)",  value: `$${tabRev30d.toFixed(2)}`,   color: GREEN },
+                    { label: "Tabs (closed)",  value: tabCount30d.toString(),         color: ACCENT },
+                    { label: "Avg tab value",  value: `$${avgTabValue.toFixed(2)}`,   color: ACCENT },
+                    { label: "Net (30d)",      value: `$${net30d.toFixed(2)}`,        color: net30d >= 0 ? GREEN : RED },
                   ].map((s) => (
                     <div key={s.label} style={{ ...card, padding: "18px 20px" }}>
                       <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>{s.label}</div>
@@ -1454,10 +1452,10 @@ export default function DashboardPage() {
                   <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 20 }}>Income Statement — Last 30 Days</p>
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: MUTED, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Revenue</div>
-                    <StmtRow label="Orders (completed)" value={orderRevenue} color={GREEN} />
+                    <StmtRow label="POS — closed tabs (ex. tips)" value={tabRev30d} color={GREEN} />
                     <StmtRow label="Manual entries" value={manualTotal} color={GREEN} />
                     <StmtDivider />
-                    <StmtRow label="Total Revenue" value={totalRevenue} color={GREEN} bold />
+                    <StmtRow label="Total Revenue" value={tabRev30d + manualTotal} color={GREEN} bold />
                   </div>
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: MUTED, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Expenses</div>
@@ -1472,7 +1470,7 @@ export default function DashboardPage() {
                     <StmtRow label="Total Expenses" value={totalExpenses} color={RED} bold negate />
                   </div>
                   <div style={{ borderTop: `2px solid ${BORDER}`, paddingTop: 14 }}>
-                    <StmtRow label="Net Profit / (Loss)" value={Math.abs(net)} color={net >= 0 ? GREEN : RED} bold prefix={net < 0 ? "(" : ""} suffix={net < 0 ? ")" : ""} />
+                    <StmtRow label="Net Profit / (Loss)" value={Math.abs(net30d)} color={net30d >= 0 ? GREEN : RED} bold prefix={net30d < 0 ? "(" : ""} suffix={net30d < 0 ? ")" : ""} />
                   </div>
                 </div>
 
