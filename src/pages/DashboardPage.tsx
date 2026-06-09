@@ -4,7 +4,7 @@ import { useAuth } from "../lib/useAuth";
 import { supabase } from "../lib/supabase";
 import { ACCENT, BG, BORDER, MUTED, SURFACE, TEXT, GREEN, RED } from "../constants/theme";
 import { ReceiptModal } from "../components/ReceiptModal";
-import { loadReceiptData, type ReceiptData } from "../utils/receiptData";
+import { loadReceiptData, buildReceiptHtml, type ReceiptData } from "../utils/receiptData";
 
 type Business = {
   id: string; name: string; type: string; plan: string;
@@ -190,11 +190,13 @@ export default function DashboardPage() {
   const [tabActionError,  setTabActionError]  = useState("");
   const [receiptData,     setReceiptData]     = useState<ReceiptData | null>(null);
   const [receiptLoading,  setReceiptLoading]  = useState(false);
-  const [hwSettings,  setHwSettings]  = useState<HardwareSettings>(HW_DEFAULTS);
-  const [hwLoaded,    setHwLoaded]    = useState(false);
-  const [hwSaving,    setHwSaving]    = useState(false);
-  const [hwSaved,     setHwSaved]     = useState(false);
-  const [hwError,     setHwError]     = useState("");
+  const [hwSettings,    setHwSettings]    = useState<HardwareSettings>(HW_DEFAULTS);
+  const [hwLoaded,      setHwLoaded]      = useState(false);
+  const [hwSaving,      setHwSaving]      = useState(false);
+  const [hwSaved,       setHwSaved]       = useState(false);
+  const [hwError,       setHwError]       = useState("");
+  const [hwTestLoading, setHwTestLoading] = useState(false);
+  const [hwTestMsg,     setHwTestMsg]     = useState<{ text: string; ok: boolean } | null>(null);
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -876,6 +878,46 @@ export default function DashboardPage() {
     if (error) { setHwError(error.message); }
     else { setHwSaved(true); setTimeout(() => setHwSaved(false), 3000); }
     setHwSaving(false);
+  }
+
+  async function runTestPrint() {
+    if (!business) return;
+    setHwTestLoading(true);
+    setHwTestMsg(null);
+    const testReceipt: ReceiptData = {
+      tabId: "test",
+      businessName: business.name,
+      tableName: "Table 1 (Test)",
+      closedAt: new Date().toISOString(),
+      paymentMethod: "Cash",
+      serverName: null,
+      orders: [{ id: "test", subtotal: 28.00, tax: 2.50, items: [{ name: "Test Item A", quantity: 2, unit_price: 10.00 }, { name: "Test Item B", quantity: 1, unit_price: 8.00 }] }],
+      total: 30.50,
+      tipAmount: 5.00,
+      refundAmount: 0,
+      voidedAt: null,
+      voidReason: null,
+    };
+    const strategy = hwSettings.print_strategy;
+    if (strategy === "browser") {
+      const html = buildReceiptHtml(testReceipt);
+      const w = window.open("", "_blank", "width=420,height=700");
+      if (w) {
+        w.document.write(html); w.document.close(); w.focus(); w.print();
+        setHwTestMsg({ text: "Print window opened.", ok: true });
+      } else {
+        setHwTestMsg({ text: "Could not open print window — check popup blocker.", ok: false });
+      }
+    } else if (strategy === "local_bridge") {
+      await new Promise<void>((r) => setTimeout(r, 600));
+      setHwTestMsg({ text: "Local Bridge test queued. (No bridge connected yet — simulation only.)", ok: true });
+    } else if (strategy === "escpos") {
+      await new Promise<void>((r) => setTimeout(r, 600));
+      setHwTestMsg({ text: "ESC/POS test queued. (No printer connected yet — simulation only.)", ok: true });
+    } else {
+      setHwTestMsg({ text: "No print strategy selected.", ok: false });
+    }
+    setHwTestLoading(false);
   }
 
   async function openReceipt(t: ClosedTab) {
@@ -2260,6 +2302,15 @@ export default function DashboardPage() {
                         <input type="checkbox" id="hw-escpos" checked={hwSettings.escpos_enabled}
                           onChange={(e) => setHwSettings((p) => ({ ...p, escpos_enabled: e.target.checked }))} />
                         <label htmlFor="hw-escpos" style={{ fontSize: 13, color: TEXT, cursor: "pointer" }}>ESC/POS Enabled</label>
+                      </div>
+                      <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <button type="button" disabled={hwTestLoading} onClick={runTestPrint}
+                          style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 7, padding: "8px 18px", color: TEXT, fontSize: 13, fontWeight: 700, cursor: hwTestLoading ? "not-allowed" : "pointer", alignSelf: "flex-start", opacity: hwTestLoading ? 0.5 : 1 }}>
+                          {hwTestLoading ? "Testing…" : "Test Print"}
+                        </button>
+                        {hwTestMsg && (
+                          <p style={{ fontSize: 12, color: hwTestMsg.ok ? GREEN : RED, margin: 0 }}>{hwTestMsg.text}</p>
+                        )}
                       </div>
                     </div>
                   </div>
