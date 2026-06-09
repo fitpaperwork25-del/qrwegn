@@ -1249,19 +1249,20 @@ export default function DashboardPage() {
 
           {/* Financials tab */}
           {tab === "financials" && (() => {
-            const orderRevenue  = doneOrders.reduce((s, o) => s + Number(o.total), 0);
+            const completedOrders = doneOrders.filter((o) => o.status === "done");
+            const orderRevenue  = completedOrders.reduce((s, o) => s + Number(o.total), 0);
             const manualTotal   = manualRevenue.reduce((s, r) => s + Number(r.amount), 0);
             const totalRevenue  = orderRevenue + manualTotal;
             const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
             const net           = totalRevenue - totalExpenses;
-            const avgOrder      = doneOrders.length > 0 ? orderRevenue / doneOrders.length : 0;
+            const avgOrder      = completedOrders.length > 0 ? orderRevenue / completedOrders.length : 0;
 
             const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
             const today = new Date();
             const days7 = Array.from({ length: 7 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() - (6 - i)); return localDay(d); });
             const revenueByDay: Record<string, number> = {};
             days7.forEach((d) => { revenueByDay[d] = 0; });
-            doneOrders.filter((o) => o.status === "done").forEach((o) => { const day = localDay(new Date(o.created_at)); if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(o.total); });
+            completedOrders.forEach((o) => { const day = localDay(new Date(o.created_at)); if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(o.total); });
             manualRevenue.forEach((r) => { const day = r.revenue_date; if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(r.amount); });
             const maxDay = Math.max(...Object.values(revenueByDay), 1);
 
@@ -1270,7 +1271,7 @@ export default function DashboardPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
                   {[
                     { label: "Revenue (30d)",  value: `$${totalRevenue.toFixed(2)}`, color: GREEN },
-                    { label: "Orders (billed)", value: doneOrders.length.toString(),  color: ACCENT },
+                    { label: "Orders (billed)", value: completedOrders.length.toString(),  color: ACCENT },
                     { label: "Avg order value", value: `$${avgOrder.toFixed(2)}`,     color: ACCENT },
                     { label: "Net (30d)",       value: `$${net.toFixed(2)}`,          color: net >= 0 ? GREEN : RED },
                   ].map((s) => (
