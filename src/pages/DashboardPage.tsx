@@ -18,7 +18,7 @@ type MenuItem  = { id: string; category_id: string; name: string; price: number;
 type Expense       = { id: string; amount: number; category: string; description: string | null; expense_date: string };
 type ManualRevenue = { id: string; amount: number; category: string; description: string | null; revenue_date: string };
 type CsvRow    = { category: string; name: string; price: string; description: string; error?: string };
-type StaffPin  = { id: string; name: string; is_active: boolean; created_at: string };
+type StaffPin  = { id: string; name: string; role: string; is_active: boolean; created_at: string };
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const EMPTY_EXPENSE = { category: "", amount: "", description: "", expense_date: TODAY };
@@ -152,6 +152,7 @@ export default function DashboardPage() {
   const [staffLoading, setStaffLoading]   = useState(false);
   const [newStaffName, setNewStaffName]   = useState("");
   const [newStaffPin, setNewStaffPin]     = useState("");
+  const [newStaffRole, setNewStaffRole]   = useState("kitchen");
   const [staffAddError, setStaffAddError] = useState("");
   const [staffAddSaving, setStaffAddSaving] = useState(false);
 
@@ -731,7 +732,7 @@ export default function DashboardPage() {
     setStaffLoading(true);
     const { data } = await supabase
       .from("staff_pins")
-      .select("id, name, is_active, created_at")
+      .select("id, name, role, is_active, created_at")
       .eq("business_id", business.id)
       .order("created_at");
     setStaffPins((data as StaffPin[]) ?? []);
@@ -755,7 +756,11 @@ export default function DashboardPage() {
       new_pin:    newStaffPin,
     });
     if (error) { setStaffAddError(error.message); setStaffAddSaving(false); return; }
-    setNewStaffName(""); setNewStaffPin(""); setStaffAddSaving(false);
+    await supabase.from("staff_pins")
+      .update({ role: newStaffRole })
+      .eq("business_id", business.id)
+      .eq("name", newStaffName.trim());
+    setNewStaffName(""); setNewStaffPin(""); setNewStaffRole("kitchen"); setStaffAddSaving(false);
     void loadStaffPins();
   }
 
@@ -1590,9 +1595,10 @@ export default function DashboardPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {staffPins.map((s) => (
                       <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: BG, borderRadius: 8, border: `1px solid ${BORDER}` }}>
-                        <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                           <span style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>{s.name}</span>
-                          {!s.is_active && <span style={{ marginLeft: 10, fontSize: 11, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>inactive</span>}
+                          <span style={{ fontSize: 11, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, border: `1px solid ${BORDER}`, borderRadius: 4, padding: "2px 7px" }}>{s.role ?? "kitchen"}</span>
+                          {!s.is_active && <span style={{ fontSize: 11, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>inactive</span>}
                         </div>
                         <button
                           onClick={() => deleteStaffPin(s.id)}
@@ -1630,6 +1636,15 @@ export default function DashboardPage() {
                       style={{ flex: 1, minWidth: 100, background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 20, letterSpacing: 8, textAlign: "center", fontFamily: "monospace", outline: "none" }}
                     />
                   </div>
+                  <select
+                    value={newStaffRole}
+                    onChange={(e) => setNewStaffRole(e.target.value)}
+                    style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "11px 14px", color: TEXT, fontSize: 14, outline: "none", width: "100%" }}
+                  >
+                    <option value="kitchen">Kitchen</option>
+                    <option value="server">Server</option>
+                    <option value="cashier">Cashier</option>
+                  </select>
                   {staffAddError && <p style={{ color: RED, fontSize: 12, margin: 0 }}>{staffAddError}</p>}
                   <div>
                     <button
