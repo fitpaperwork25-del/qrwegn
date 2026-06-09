@@ -19,7 +19,7 @@ type Expense       = { id: string; amount: number; category: string; description
 type ManualRevenue = { id: string; amount: number; category: string; description: string | null; revenue_date: string };
 type CsvRow    = { category: string; name: string; price: string; description: string; error?: string };
 type StaffPin  = { id: string; name: string; role: string; is_active: boolean; created_at: string };
-type ClosedTab  = { total: number; tip_amount: number | null; payment_method: string | null; closed_at: string; server_id: string | null };
+type ClosedTab  = { id: string; total: number; tip_amount: number | null; payment_method: string | null; closed_at: string; server_id: string | null; voided_at: string | null; void_reason: string | null; refund_amount: number };
 type ShiftClose = { id: string; shift_date: string; expected_cash: number; actual_cash: number; difference: number; tab_count: number; total_revenue: number; total_tips: number; note: string | null; created_at: string };
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -163,6 +163,13 @@ export default function DashboardPage() {
   const [shiftCloses, setShiftCloses]         = useState<ShiftClose[]>([]);
   const [shiftCloseSaving, setShiftCloseSaving] = useState(false);
   const [shiftCloseError, setShiftCloseError] = useState("");
+  const [voidingTabId,    setVoidingTabId]    = useState<string | null>(null);
+  const [voidReason,      setVoidReason]      = useState("");
+  const [refundingTabId,  setRefundingTabId]  = useState<string | null>(null);
+  const [refundAmount,    setRefundAmount]    = useState("");
+  const [refundReason,    setRefundReason]    = useState("");
+  const [tabActionSaving, setTabActionSaving] = useState(false);
+  const [tabActionError,  setTabActionError]  = useState("");
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -219,7 +226,7 @@ export default function DashboardPage() {
         supabase.from("business_expenses").select("id, amount, category, description, expense_date").eq("business_id", business.id).order("expense_date", { ascending: false }),
         supabase.from("manual_revenue").select("id, amount, category, description, revenue_date").eq("business_id", business.id).order("date", { ascending: false }),
         supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", business.id).eq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
-        supabase.from("tabs").select("total, tip_amount, payment_method, closed_at, server_id").eq("business_id", business.id).eq("status", "closed").gte("closed_at", thirtyDaysAgo),
+        supabase.from("tabs").select("id, total, tip_amount, payment_method, closed_at, server_id, voided_at, void_reason, refund_amount").eq("business_id", business.id).eq("status", "closed").gte("closed_at", thirtyDaysAgo).order("closed_at", { ascending: false }),
       ]);
       setDoneOrders((doneRes.data as Order[]) ?? []);
       setExpenses((expRes.data as Expense[]) ?? []);
@@ -280,7 +287,7 @@ export default function DashboardPage() {
         supabase.from("business_expenses").select("id, amount, category, description, expense_date").eq("business_id", biz.id).order("expense_date", { ascending: false }),
         supabase.from("manual_revenue").select("id, amount, category, description, revenue_date").eq("business_id", biz.id).order("date", { ascending: false }),
         supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", biz.id).eq("status", "cancelled").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
-        supabase.from("tabs").select("total, tip_amount, payment_method, closed_at, server_id").eq("business_id", biz.id).eq("status", "closed").gte("closed_at", thirtyDaysAgo),
+        supabase.from("tabs").select("id, total, tip_amount, payment_method, closed_at, server_id, voided_at, void_reason, refund_amount").eq("business_id", biz.id).eq("status", "closed").gte("closed_at", thirtyDaysAgo).order("closed_at", { ascending: false }),
       ]);
       setDoneOrders((doneRes.data as Order[]) ?? []);
       setExpenses((expRes.data as Expense[]) ?? []);
@@ -790,6 +797,43 @@ export default function DashboardPage() {
       void loadShiftCloses();
     }
     setShiftCloseSaving(false);
+  }
+
+  async function reloadClosedTabs() {
+    if (!business) return;
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data } = await supabase
+      .from("tabs")
+      .select("id, total, tip_amount, payment_method, closed_at, server_id, voided_at, void_reason, refund_amount")
+      .eq("business_id", business.id).eq("status", "closed").gte("closed_at", thirtyDaysAgo)
+      .order("closed_at", { ascending: false });
+    setClosedTabs30d((data as ClosedTab[]) ?? []);
+  }
+
+  async function voidTab(tabId: string) {
+    if (!voidReason.trim()) { setTabActionError("Reason is required to void a tab."); return; }
+    if (!business) return;
+    setTabActionSaving(true); setTabActionError("");
+    const { error } = await supabase.from("tabs")
+      .update({ voided_at: new Date().toISOString(), void_reason: voidReason.trim(), voided_by: session?.user.id ?? null })
+      .eq("id", tabId).eq("status", "closed");
+    if (error) { setTabActionError(error.message); }
+    else { setVoidingTabId(null); setVoidReason(""); void reloadClosedTabs(); }
+    setTabActionSaving(false);
+  }
+
+  async function saveRefund(tabId: string, tabTotal: number) {
+    if (!business) return;
+    const amount = parseFloat(refundAmount);
+    if (isNaN(amount) || amount <= 0) { setTabActionError("Enter a valid refund amount."); return; }
+    if (amount > tabTotal) { setTabActionError("Refund cannot exceed tab total."); return; }
+    setTabActionSaving(true); setTabActionError("");
+    const { error } = await supabase.from("tabs")
+      .update({ refund_amount: amount, void_reason: refundReason.trim() || null })
+      .eq("id", tabId).eq("status", "closed");
+    if (error) { setTabActionError(error.message); }
+    else { setRefundingTabId(null); setRefundAmount(""); setRefundReason(""); void reloadClosedTabs(); }
+    setTabActionSaving(false);
   }
 
   async function deleteStaffPin(staffId: string) {
@@ -1308,8 +1352,9 @@ export default function DashboardPage() {
 
           {/* Financials tab */}
           {tab === "financials" && (() => {
-            const tabRev30d     = closedTabs30d.reduce((s, t) => s + Number(t.total) - Number(t.tip_amount ?? 0), 0);
-            const tabCount30d   = closedTabs30d.length;
+            const activeTabs30d = closedTabs30d.filter((t) => !t.voided_at);
+            const tabRev30d     = activeTabs30d.reduce((s, t) => s + Number(t.total) - Number(t.tip_amount ?? 0) - Number(t.refund_amount ?? 0), 0);
+            const tabCount30d   = activeTabs30d.length;
             const avgTabValue   = tabCount30d > 0 ? tabRev30d / tabCount30d : 0;
             const manualTotal   = manualRevenue.reduce((s, r) => s + Number(r.amount), 0);
             const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
@@ -1320,15 +1365,15 @@ export default function DashboardPage() {
             const days7 = Array.from({ length: 7 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() - (6 - i)); return localDay(d); });
             const revenueByDay: Record<string, number> = {};
             days7.forEach((d) => { revenueByDay[d] = 0; });
-            closedTabs30d.forEach((t) => { const day = localDay(new Date(t.closed_at)); if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(t.total) - Number(t.tip_amount ?? 0); });
+            activeTabs30d.forEach((t) => { const day = localDay(new Date(t.closed_at)); if (revenueByDay[day] !== undefined) revenueByDay[day] += Number(t.total) - Number(t.tip_amount ?? 0) - Number(t.refund_amount ?? 0); });
             const maxDay = Math.max(...Object.values(revenueByDay), 1);
 
             const todayISO = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); })();
-            const tabsToday = closedTabs30d.filter((t) => t.closed_at >= todayISO);
+            const tabsToday = activeTabs30d.filter((t) => t.closed_at >= todayISO);
             const tabRev = (tabs: ClosedTab[], pm: "Cash" | "Card" | "other") =>
               tabs
                 .filter((t) => pm === "other" ? !["Cash", "Card"].includes(t.payment_method ?? "") : t.payment_method === pm)
-                .reduce((s, t) => s + Number(t.total) - Number(t.tip_amount ?? 0), 0);
+                .reduce((s, t) => s + Number(t.total) - Number(t.tip_amount ?? 0) - Number(t.refund_amount ?? 0), 0);
             const tabTips = (tabs: ClosedTab[]) => tabs.reduce((s, t) => s + Number(t.tip_amount ?? 0), 0);
 
             const sections = [
@@ -1662,6 +1707,78 @@ export default function DashboardPage() {
                     </div>
                   );
                 })()}
+
+                <div style={card}>
+                  <p style={{ fontSize: 11, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 4px" }}>Closed Tabs — Last 30 Days</p>
+                  <p style={{ color: MUTED, fontSize: 12, margin: "0 0 16px" }}>Owner only · Void excludes from revenue · Refund reduces net revenue</p>
+                  {tabActionError && <p style={{ color: RED, fontSize: 12, margin: "0 0 10px" }}>{tabActionError}</p>}
+                  {closedTabs30d.length === 0 ? (
+                    <p style={{ color: MUTED, fontSize: 13 }}>No closed tabs in the last 30 days.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {closedTabs30d.map((t) => {
+                        const rev = Number(t.total) - Number(t.tip_amount ?? 0);
+                        const isVoided = !!t.voided_at;
+                        const hasRefund = Number(t.refund_amount ?? 0) > 0;
+                        const isVoiding = voidingTabId === t.id;
+                        const isRefunding = refundingTabId === t.id;
+                        return (
+                          <div key={t.id} style={{ background: BG, border: `1px solid ${isVoided ? RED + "44" : BORDER}`, borderRadius: 10, padding: "12px 14px", opacity: isVoided ? 0.7 : 1 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: isVoided || hasRefund || isVoiding || isRefunding ? 8 : 0 }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700 }}>{new Date(t.closed_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                                <span style={{ fontSize: 12, color: MUTED }}>{t.payment_method ?? "—"} · ${rev.toFixed(2)} rev · ${Number(t.tip_amount ?? 0).toFixed(2)} tip</span>
+                              </div>
+                              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                                {isVoided && <span style={{ fontSize: 11, fontWeight: 800, color: RED, background: RED + "18", borderRadius: 4, padding: "2px 7px" }}>VOIDED</span>}
+                                {hasRefund && <span style={{ fontSize: 11, fontWeight: 700, color: ACCENT, background: ACCENT + "18", borderRadius: 4, padding: "2px 7px" }}>Refunded ${Number(t.refund_amount).toFixed(2)}</span>}
+                                {!isVoided && !isVoiding && !isRefunding && (
+                                  <>
+                                    <button onClick={() => { setVoidingTabId(t.id); setRefundingTabId(null); setTabActionError(""); setVoidReason(""); }}
+                                      style={{ background: "none", border: `1px solid ${RED}66`, borderRadius: 6, padding: "4px 10px", color: RED, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Void</button>
+                                    <button onClick={() => { setRefundingTabId(t.id); setVoidingTabId(null); setTabActionError(""); setRefundAmount(""); setRefundReason(""); }}
+                                      style={{ background: "none", border: `1px solid ${ACCENT}66`, borderRadius: 6, padding: "4px 10px", color: ACCENT, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Refund</button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {isVoiding && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: `1px solid ${BORDER}`, paddingTop: 10 }}>
+                                <input placeholder="Reason (required)" value={voidReason} onChange={(e) => { setVoidReason(e.target.value); setTabActionError(""); }}
+                                  style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 7, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }} />
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <button disabled={tabActionSaving} onClick={() => voidTab(t.id)}
+                                    style={{ background: RED, color: BG, border: "none", borderRadius: 7, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: tabActionSaving ? "not-allowed" : "pointer", opacity: tabActionSaving ? 0.6 : 1 }}>
+                                    {tabActionSaving ? "Voiding…" : "Confirm Void"}
+                                  </button>
+                                  <button onClick={() => { setVoidingTabId(null); setTabActionError(""); }}
+                                    style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 7, padding: "8px 14px", color: MUTED, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                                </div>
+                              </div>
+                            )}
+                            {isRefunding && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: `1px solid ${BORDER}`, paddingTop: 10 }}>
+                                <input type="number" inputMode="decimal" placeholder={`Refund amount (max $${rev.toFixed(2)})`} value={refundAmount} onChange={(e) => { setRefundAmount(e.target.value); setTabActionError(""); }}
+                                  style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 7, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }} />
+                                <input placeholder="Reason (optional)" value={refundReason} onChange={(e) => setRefundReason(e.target.value)}
+                                  style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 7, padding: "9px 12px", color: TEXT, fontSize: 13, outline: "none" }} />
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <button disabled={tabActionSaving} onClick={() => saveRefund(t.id, rev)}
+                                    style={{ background: ACCENT, color: BG, border: "none", borderRadius: 7, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: tabActionSaving ? "not-allowed" : "pointer", opacity: tabActionSaving ? 0.6 : 1 }}>
+                                    {tabActionSaving ? "Saving…" : "Confirm Refund"}
+                                  </button>
+                                  <button onClick={() => { setRefundingTabId(null); setTabActionError(""); }}
+                                    style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 7, padding: "8px 14px", color: MUTED, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                                </div>
+                              </div>
+                            )}
+                            {isVoided && t.void_reason && <p style={{ fontSize: 12, color: MUTED, margin: "4px 0 0", fontStyle: "italic" }}>Reason: {t.void_reason}</p>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })()}
@@ -1714,7 +1831,7 @@ export default function DashboardPage() {
               {/* Tips today by staff + Sales today by staff + End of shift summary */}
               {(() => {
                 const todayISOS = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); })();
-                const tabsTodayS = closedTabs30d.filter((t) => t.closed_at >= todayISOS);
+                const tabsTodayS = closedTabs30d.filter((t) => t.closed_at >= todayISOS && !t.voided_at);
 
                 // Tips breakdown
                 const tipsMap: Record<string, { name: string; tips: number }> = {};
