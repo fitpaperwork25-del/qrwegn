@@ -1727,7 +1727,7 @@ export default function DashboardPage() {
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: isVoided || hasRefund || isVoiding || isRefunding ? 8 : 0 }}>
                               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                                 <span style={{ fontSize: 13, fontWeight: 700 }}>{new Date(t.closed_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                                <span style={{ fontSize: 12, color: MUTED }}>{t.payment_method ?? "—"} · ${rev.toFixed(2)} rev · ${Number(t.tip_amount ?? 0).toFixed(2)} tip</span>
+                                <span style={{ fontSize: 12, color: MUTED }}>{t.payment_method || "Other / legacy"} · ${rev.toFixed(2)} rev · ${Number(t.tip_amount ?? 0).toFixed(2)} tip</span>
                               </div>
                               <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                                 {isVoided && <span style={{ fontSize: 11, fontWeight: 800, color: RED, background: RED + "18", borderRadius: 4, padding: "2px 7px" }}>VOIDED</span>}
