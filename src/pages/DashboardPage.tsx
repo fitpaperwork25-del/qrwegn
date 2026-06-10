@@ -92,6 +92,7 @@ export default function DashboardPage() {
   const [menuItems, setMenuItems]   = useState<MenuItem[]>([]);
   const [tab, setTab]               = useState<Tab>("tables");
   const [loading, setLoading]       = useState(true);
+  const [loadError, setLoadError]   = useState("");
   const [isMobile, setIsMobile]     = useState(() => window.innerWidth < 640);
 
   const [addingTable, setAddingTable]   = useState(false);
@@ -273,6 +274,8 @@ export default function DashboardPage() {
 
   async function load(userId: string) {
     setLoading(true);
+    setLoadError("");
+    try {
     const bizRes = await supabase.from("businesses").select("*").eq("owner_id", userId).maybeSingle();
     let biz = bizRes.data as Business | null;
 
@@ -328,7 +331,11 @@ export default function DashboardPage() {
       setCancelledOrders((cancelRes.data as Order[]) ?? []);
       setClosedTabs30d((tabRes.data as ClosedTab[]) ?? []);
     }
-    setLoading(false);
+    } catch (e: any) {
+      setLoadError(e?.message || "Failed to load your dashboard. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function addTable(e: React.FormEvent) {
@@ -998,6 +1005,20 @@ export default function DashboardPage() {
 
   if (loading) {
     return <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontFamily: "sans-serif" }}>Loading…</div>;
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontFamily: "sans-serif", flexDirection: "column", gap: 16, padding: 24, textAlign: "center" }}>
+        <p style={{ color: RED }}>{loadError}</p>
+        <button
+          onClick={() => session?.user.id && void load(session.user.id)}
+          style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "12px 24px", fontWeight: 800, cursor: "pointer" }}
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   if (!business) {

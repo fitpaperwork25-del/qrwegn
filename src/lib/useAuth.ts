@@ -52,6 +52,14 @@ export function useAuth() {
   );
 
   useEffect(() => {
+    // Safety net: if getSession() never settles (e.g. the network request
+    // hangs with no error), don't leave the UI stuck on "loading" forever.
+    const timeout = setTimeout(() => {
+      setStatus((s) =>
+        s === "loading" ? (hasStaleTokens() ? "expired" : "unauthenticated") : s
+      );
+    }, 8000);
+
     // Validate / refresh the session with Supabase's server.
     // This may trigger a token refresh (network call) — which is why we
     // don't block the initial render on it.
@@ -71,7 +79,8 @@ export function useAuth() {
         // user isn't stuck on a blank screen; redirect to login if needed.
         setSession(null);
         setStatus(hasStaleTokens() ? "expired" : "unauthenticated");
-      });
+      })
+      .finally(() => clearTimeout(timeout));
 
     const {
       data: { subscription },
@@ -88,7 +97,10 @@ export function useAuth() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (

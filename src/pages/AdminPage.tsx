@@ -168,6 +168,8 @@ export default function AdminPage() {
   // ── Load ──────────────────────────────────────────────────────────────────
   async function load() {
     setLoading(true);
+    setError("");
+    try {
     const [bizRes, notesRes, notifsRes] = await Promise.all([
       supabase.rpc("get_admin_businesses"),
       supabase.from("admin_notes").select("id, business_id, note, created_at")
@@ -208,6 +210,10 @@ export default function AdminPage() {
     setQrCodes(Object.fromEntries(entries));
     setLoading(false);
     void seedNotifications(bizList, existingNotifs);
+    } catch (e: any) {
+      setError(e?.message || "Failed to load admin data. Please check your connection and try again.");
+      setLoading(false);
+    }
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -730,8 +736,14 @@ export default function AdminPage() {
   );
 
   if (error) return (
-    <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif" }}>
+    <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif", flexDirection: "column", gap: 16, padding: 24, textAlign: "center" }}>
       <p style={{ color: RED }}>{error}</p>
+      <button
+        onClick={() => void load()}
+        style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "12px 24px", fontWeight: 800, cursor: "pointer" }}
+      >
+        Retry
+      </button>
     </div>
   );
 

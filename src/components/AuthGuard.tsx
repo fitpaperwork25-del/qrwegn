@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/useAuth";
 import SessionExpired from "./SessionExpired";
@@ -21,6 +22,18 @@ function hasStoredSession(): boolean {
 export default function AuthGuard({ children }: Props) {
   const location = useLocation();
   const { status } = useAuth();
+
+  // Safety net: if we're somehow still "loading" after a long delay,
+  // stop showing a bare spinner and offer the user a way out.
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    if (status !== "loading") {
+      setStuck(false);
+      return;
+    }
+    const timer = setTimeout(() => setStuck(true), 10000);
+    return () => clearTimeout(timer);
+  }, [status]);
 
   // Scan pages are always public.
   if (location.pathname.startsWith("/scan")) {
@@ -52,17 +65,38 @@ export default function AuthGuard({ children }: Props) {
           fontFamily: "sans-serif",
         }}
       >
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            border: `3px solid rgba(255,255,255,0.08)`,
-            borderTop: `3px solid ${ACCENT}`,
-            borderRadius: "50%",
-            animation: "spin 0.8s linear infinite",
-          }}
-        />
-        <span style={{ color: MUTED, fontSize: 14 }}>Loading…</span>
+        {!stuck && (
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              border: `3px solid rgba(255,255,255,0.08)`,
+              borderTop: `3px solid ${ACCENT}`,
+              borderRadius: "50%",
+              animation: "spin 0.8s linear infinite",
+            }}
+          />
+        )}
+        <span style={{ color: MUTED, fontSize: 14 }}>
+          {stuck ? "Still checking your session…" : "Loading…"}
+        </span>
+        {stuck && (
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              background: ACCENT,
+              color: BG,
+              border: "none",
+              borderRadius: 8,
+              padding: "10px 20px",
+              fontWeight: 700,
+              cursor: "pointer",
+              fontSize: 14,
+            }}
+          >
+            Reload
+          </button>
+        )}
       </div>
     );
   }
