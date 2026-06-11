@@ -94,7 +94,7 @@ export default function LoginPage() {
           style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
           onClick={() => navigate("/")}
         >
-          <img src="/logo.png" alt="QR-Wegn" style={{ height: 32, width: "auto" }} />
+          <img src="/logo-dark.png" alt="QR-Wegn" style={{ height: 32, width: "auto" }} />
           <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: 1 }}>QR-Wegn</span>
         </div>
         <button

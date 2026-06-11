@@ -172,7 +172,7 @@ export default function LandingPage() {
       {/* Nav */}
       <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 32px", borderBottom: `1px solid ${BORDER}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/logo.png" alt="QR-Wegn" style={{ height: 32, width: "auto" }} />
+          <img src="/logo-dark.png" alt="QR-Wegn" style={{ height: 32, width: "auto" }} />
           <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: 1, color: TEXT }}>QR-Wegn</span>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
