@@ -1046,15 +1046,14 @@ export default function DashboardPage() {
     <div style={{ background: BG, minHeight: "100vh", color: TEXT, fontFamily: "sans-serif" }}>
 
       {/* Nav */}
-      <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: isMobile ? "14px 16px" : "18px 32px", borderBottom: `1px solid ${BORDER}`, gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, overflow: "hidden" }}>
-          <img src="/logo-dark.png" alt="" style={{ height: isMobile ? 22 : 28, width: "auto", flexShrink: 0 }} />
-          <div style={{ minWidth: 0, overflow: "hidden" }}>
-          <span style={{ fontWeight: 900, fontSize: isMobile ? 15 : 18, letterSpacing: -0.5, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{business.name}</span>
-          <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+      <nav style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", padding: isMobile ? "14px 16px" : "18px 32px", borderBottom: `1px solid ${BORDER}`, gap: 12 }}>
+        <img src="/logo-dark.png" alt="" style={{ height: isMobile ? 22 : 28, width: "auto", flexShrink: 0 }} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 0, overflow: "hidden" }}>
+          <span style={{ fontWeight: 900, fontSize: isMobile ? 18 : 24, letterSpacing: -0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{business.name}</span>
+          <span style={{ fontSize: 11, color: MUTED, marginTop: 2, letterSpacing: 1, textTransform: "uppercase" }}>Owner Dashboard</span>
+          <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap", justifyContent: "center" }}>
             <span style={{ ...badge(planColor(business.plan)) }}>{business.plan}</span>
             <span style={{ ...badge(statusColor(business.subscription_status)) }}>{business.subscription_status}</span>
-          </div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -1069,6 +1068,10 @@ export default function DashboardPage() {
           <button onClick={() => window.open("/staff/floor", "_blank")}
             style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
             Floor
+          </button>
+          <button onClick={() => window.open("/cashier", "_blank")}
+            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
+            Cashier
           </button>
           <button onClick={signOut}
             style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
