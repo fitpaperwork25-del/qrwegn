@@ -95,6 +95,8 @@ export default function DashboardPage() {
   const [loading, setLoading]       = useState(true);
   const [loadError, setLoadError]   = useState("");
   const [isMobile, setIsMobile]     = useState(() => window.innerWidth < 640);
+  const [staffAccessOpen, setStaffAccessOpen] = useState(false);
+  const [staffInfoCopied, setStaffInfoCopied] = useState(false);
 
   const [addingTable, setAddingTable]   = useState(false);
   const [newTableName, setNewTableName] = useState("");
@@ -533,6 +535,18 @@ export default function DashboardPage() {
     if (error) { setExpenseError(error.message); setExpenseSaving(false); return; }
     setExpenses((prev) => [data as Expense, ...prev]);
     setExpenseForm(EMPTY_EXPENSE); setAddingExpense(false); setExpenseSaving(false);
+  }
+
+  async function copyStaffInstructions() {
+    if (!business) return;
+    const text = `${business.name} — Staff Access\nStaff login: ${window.location.origin}/staff-login\nRestaurant ID: ${business.slug}\nAsk your manager for your staff PIN.`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setStaffInfoCopied(true);
+      setTimeout(() => setStaffInfoCopied(false), 1500);
+    } catch {
+      // clipboard unavailable — ignore, link/text is still visible to copy manually
+    }
   }
 
   async function downloadQR(loc: Location) {
@@ -1056,27 +1070,56 @@ export default function DashboardPage() {
             <span style={{ ...badge(statusColor(business.subscription_status)) }}>{business.subscription_status}</span>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-          <button onClick={() => window.open("/staff-login", "_blank")}
+        <div style={{ display: "flex", gap: 8, flexShrink: 0, position: "relative" }}>
+          <button onClick={() => setStaffAccessOpen((v) => !v)}
             style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
-            Staff login
-          </button>
-          <button onClick={() => window.open("/staff", "_blank")}
-            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
-            Kitchen
-          </button>
-          <button onClick={() => window.open("/staff/floor", "_blank")}
-            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
-            Floor
-          </button>
-          <button onClick={() => window.open("/cashier", "_blank")}
-            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
-            Cashier
+            Staff Access
           </button>
           <button onClick={signOut}
             style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 14px", color: MUTED, cursor: "pointer", fontSize: 13 }}>
             Sign out
           </button>
+
+          {staffAccessOpen && (
+            <>
+              <div onClick={() => setStaffAccessOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 50,
+                background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 12,
+                padding: 16, width: isMobile ? "calc(100vw - 32px)" : 280,
+                display: "flex", flexDirection: "column", gap: 8,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+              }}>
+                <p style={{ fontSize: 11, letterSpacing: 2, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 4px" }}>Staff Access</p>
+
+                <button onClick={() => window.open("/staff-login", "_blank")}
+                  style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 14px", color: TEXT, cursor: "pointer", fontSize: 13, textAlign: "left" }}>
+                  Staff login
+                </button>
+                <button onClick={() => window.open("/staff", "_blank")}
+                  style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 14px", color: TEXT, cursor: "pointer", fontSize: 13, textAlign: "left" }}>
+                  Kitchen
+                </button>
+                <button onClick={() => window.open("/staff/floor", "_blank")}
+                  style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 14px", color: TEXT, cursor: "pointer", fontSize: 13, textAlign: "left" }}>
+                  Floor
+                </button>
+                <button onClick={() => window.open("/cashier", "_blank")}
+                  style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 14px", color: TEXT, cursor: "pointer", fontSize: 13, textAlign: "left" }}>
+                  Cashier
+                </button>
+
+                <div style={{ borderTop: `1px solid ${BORDER}`, marginTop: 4, paddingTop: 10 }}>
+                  <p style={{ fontSize: 11, color: MUTED, margin: "0 0 4px" }}>Restaurant ID</p>
+                  <p style={{ fontSize: 13, color: TEXT, fontFamily: "monospace", margin: "0 0 10px", wordBreak: "break-all" }}>{business.slug}</p>
+                  <button onClick={copyStaffInstructions}
+                    style={{ background: staffInfoCopied ? GREEN : ACCENT, color: BG, border: "none", borderRadius: 8, padding: "9px 14px", fontWeight: 800, fontSize: 13, cursor: "pointer", width: "100%" }}>
+                    {staffInfoCopied ? "Copied ✓" : "Copy staff instructions"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </nav>
 
