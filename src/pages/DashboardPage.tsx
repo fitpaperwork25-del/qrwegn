@@ -55,7 +55,8 @@ const HW_DEFAULTS: HardwareSettings = {
 const EMPTY_ITEM = { name: "", price: "", description: "", category_id: "" };
 
 const card: React.CSSProperties = {
-  background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "24px 28px",
+  background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "24px 28px",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
 };
 
 const badge = (color: string): React.CSSProperties => ({
@@ -1046,11 +1047,14 @@ export default function DashboardPage() {
 
       {/* Nav */}
       <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: isMobile ? "14px 16px" : "18px 32px", borderBottom: `1px solid ${BORDER}`, gap: 12 }}>
-        <div style={{ minWidth: 0, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, overflow: "hidden" }}>
+          <img src="/logo-dark.png" alt="" style={{ height: isMobile ? 22 : 28, width: "auto", flexShrink: 0 }} />
+          <div style={{ minWidth: 0, overflow: "hidden" }}>
           <span style={{ fontWeight: 900, fontSize: isMobile ? 15 : 18, letterSpacing: -0.5, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{business.name}</span>
           <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
             <span style={{ ...badge(planColor(business.plan)) }}>{business.plan}</span>
             <span style={{ ...badge(statusColor(business.subscription_status)) }}>{business.subscription_status}</span>
+          </div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -1097,7 +1101,7 @@ export default function DashboardPage() {
           <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${BORDER}`, marginBottom: 24, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
             {(["tables", "menu", "orders", "financials", "branding", "staff", "hardware"] as Tab[]).map((t) => (
               <button key={t} onClick={() => setTab(t)}
-                style={{ background: "none", border: "none", borderBottom: tab === t ? `2px solid ${ACCENT}` : "2px solid transparent", color: tab === t ? ACCENT : MUTED, padding: isMobile ? "10px 14px" : "12px 24px", fontWeight: 700, fontSize: isMobile ? 13 : 14, cursor: "pointer", textTransform: "capitalize", letterSpacing: 0.5, transition: "color 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}>
+                style={{ background: "none", border: "none", borderBottom: tab === t ? `2px solid ${GREEN}` : "2px solid transparent", color: tab === t ? GREEN : MUTED, padding: isMobile ? "10px 14px" : "12px 24px", fontWeight: 700, fontSize: isMobile ? 13 : 14, cursor: "pointer", textTransform: "capitalize", letterSpacing: 0.5, transition: "color 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}>
                 {t}
                 {t === "tables" && locations.length > 0 && <span style={{ marginLeft: 8, background: BORDER, borderRadius: 12, padding: "2px 8px", fontSize: 11, color: MUTED }}>{locations.length}</span>}
                 {t === "menu" && menuItems.length > 0 && <span style={{ marginLeft: 8, background: BORDER, borderRadius: 12, padding: "2px 8px", fontSize: 11, color: MUTED }}>{menuItems.length}</span>}
@@ -1121,7 +1125,7 @@ export default function DashboardPage() {
                   </div>
                 </form>
               ) : (
-                <div><button onClick={() => setAddingTable(true)} style={{ background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "11px 22px", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>+ Add table</button></div>
+                <div><button onClick={() => setAddingTable(true)} style={{ background: GREEN, color: BG, border: "none", borderRadius: 8, padding: "11px 22px", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>+ Add table</button></div>
               )}
               {locations.length === 0 ? (
                 <Empty message="No tables yet." sub="Add your first table to generate a QR code." />
