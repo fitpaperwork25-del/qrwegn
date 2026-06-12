@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 const ACCENT  = "#E8C547";
+const GREEN   = "#4CAF50";
 const BG      = "#080808";
 const BORDER  = "rgba(255,255,255,0.08)";
 const TEXT    = "#F0EDE8";
@@ -233,33 +234,120 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 24px", textAlign: "center" }}>
-        <p style={{ fontSize: 11, letterSpacing: 4, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 24 }}>
-          QR-powered hospitality
-        </p>
-        <h1 style={{ fontSize: "clamp(40px, 8vw, 72px)", fontWeight: 900, lineHeight: 1.05, letterSpacing: -2, maxWidth: 800, margin: "0 0 24px", color: TEXT }}>
-          Your menu. Your orders.{" "}
-          <span style={{ color: ACCENT }}>Zero friction.</span>
-        </h1>
-        <p style={{ fontSize: 17, color: MUTED, maxWidth: 500, lineHeight: 1.7, margin: "0 0 48px" }}>
-          Give every table a QR code. Customers scan, order, and pay — no app needed.
-          Built for restaurants, cafes, barbershops, salons, and hotels.
-        </p>
-        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
-          <button
-            onClick={() => navigate("/register")}
-            style={{ background: ACCENT, border: "none", borderRadius: 10, padding: "16px 36px", color: BG, cursor: "pointer", fontSize: 16, fontWeight: 800 }}
-          >
-            Get started free →
-          </button>
-          <button
-            onClick={() => setDemoOpen((o) => !o)}
-            style={{ background: "none", border: `1px solid ${ACCENT}66`, borderRadius: 10, padding: "16px 36px", color: ACCENT, cursor: "pointer", fontSize: 16, fontWeight: 700 }}
-          >
-            Try Demo
-          </button>
+      <main style={{ flex: 1, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: 40, padding: "64px 24px 80px", maxWidth: 1180, margin: "0 auto", width: "100%" }}>
+        {/* Hero copy */}
+        <div style={{ flex: "1 1 480px", maxWidth: 560 }}>
+          <p style={{ fontSize: 11, letterSpacing: 4, color: ACCENT, fontWeight: 700, textTransform: "uppercase", marginBottom: 18 }}>
+            Restaurant Operations Platform
+          </p>
+          <h1 style={{ fontSize: "clamp(36px, 5.5vw, 58px)", fontWeight: 900, lineHeight: 1.08, letterSpacing: -2, margin: "0 0 20px", color: TEXT }}>
+            Put your restaurant in order.
+          </h1>
+          <p style={{ fontSize: 17, color: MUTED, maxWidth: 500, lineHeight: 1.7, margin: "0 0 36px" }}>
+            From QR ordering to kitchen flow, floor service, cashier checkout, staff roles,
+            tabs, payments, and reports — QR-Wegn keeps every shift organized.
+          </p>
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+            <button
+              onClick={() => navigate("/register")}
+              style={{ background: ACCENT, border: "none", borderRadius: 10, padding: "16px 36px", color: BG, cursor: "pointer", fontSize: 16, fontWeight: 800 }}
+            >
+              Get started free →
+            </button>
+            <button
+              onClick={() => setDemoOpen((o) => !o)}
+              style={{ background: "none", border: `1px solid ${ACCENT}66`, borderRadius: 10, padding: "16px 36px", color: ACCENT, cursor: "pointer", fontSize: 16, fontWeight: 700 }}
+            >
+              See how it works
+            </button>
+          </div>
+        </div>
+
+        {/* Hero visual — operations mockup */}
+        <div style={{ flex: "1 1 400px", maxWidth: 460, width: "100%" }}>
+          <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 28, boxShadow: "0 24px 60px rgba(0,0,0,0.5)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 16px" }}>
+              <p style={{ fontSize: 11, letterSpacing: 3, color: MUTED, fontWeight: 700, textTransform: "uppercase", margin: 0 }}>
+                Today's Flow
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: GREEN, boxShadow: `0 0 0 3px ${GREEN}22` }} />
+                <span style={{ fontSize: 10, color: GREEN, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Live</span>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+              <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 11, color: MUTED, marginBottom: 6 }}>Table 4</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: GREEN }}>Ready</div>
+              </div>
+              <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 11, color: MUTED, marginBottom: 6 }}>Kitchen</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: GREEN }}>3 new orders</div>
+              </div>
+              <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 11, color: MUTED, marginBottom: 6 }}>Cashier</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: ACCENT }}>$29.98</div>
+              </div>
+              <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 11, color: MUTED, marginBottom: 6 }}>Revenue today</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: ACCENT }}>$145.84</div>
+              </div>
+            </div>
+            <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {["Scan", "Kitchen", "Floor", "Cashier"].map((step, i, arr) => (
+                  <div key={step} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ background: GREEN + "18", color: GREEN, border: `1px solid ${GREEN}44`, borderRadius: 6, padding: "4px 9px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                      {step}
+                    </span>
+                    {i < arr.length - 1 && <span style={{ color: MUTED, fontSize: 12 }}>→</span>}
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex" }}>
+                <span style={{ background: GREEN + "18", color: GREEN, border: `1px solid ${GREEN}44`, borderRadius: 6, padding: "4px 9px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                  Owner Reports
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
+
+      {/* How QR-Wegn works */}
+      <section style={{ background: SURFACE, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "72px 24px" }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto" }}>
+          <p style={{ fontSize: 11, letterSpacing: 4, color: ACCENT, fontWeight: 700, textTransform: "uppercase", textAlign: "center", margin: "0 0 40px" }}>
+            How QR-Wegn works
+          </p>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", flexWrap: "wrap" }}>
+            {[
+              { n: "1", label: "Customer scans" },
+              { n: "2", label: "Kitchen receives" },
+              { n: "3", label: "Server manages floor" },
+              { n: "4", label: "Cashier closes out" },
+              { n: "5", label: "Owner sees the money" },
+            ].map((s, i, arr) => (
+              <div key={s.n} style={{ display: "flex", alignItems: "flex-start" }}>
+                <div style={{ textAlign: "center", width: 150 }}>
+                  <div style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    width: 40, height: 40, borderRadius: "50%",
+                    background: GREEN + "18", border: `1.5px solid ${GREEN}55`,
+                    marginBottom: 12,
+                  }}>
+                    <span style={{ fontWeight: 900, fontSize: 14, color: GREEN, fontFamily: "monospace" }}>{s.n}</span>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, lineHeight: 1.4 }}>{s.label}</div>
+                </div>
+                {i < arr.length - 1 && (
+                  <div style={{ width: 32, height: 1.5, background: `${GREEN}33`, marginTop: 20, flexShrink: 0 }} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Feature strip */}
       <div style={{ borderTop: `1px solid ${BORDER}`, display: "flex", justifyContent: "center", flexWrap: "wrap" }}>
