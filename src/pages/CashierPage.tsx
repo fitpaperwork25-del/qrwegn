@@ -9,6 +9,7 @@ type Cat       = { id: string; name: string };
 type Item      = { id: string; category_id: string; name: string; price: number };
 type Tab       = { id: string; location_id: string; total: number; opened_by_staff_id?: string | null };
 type TodayTab  = { total: number; tip_amount: number | null };
+type TabLineItem = { name: string; quantity: number; unit_price: number };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const PAYMENT_METHODS = ["Cash", "Card", "Other"] as const;
@@ -29,6 +30,7 @@ export default function CashierPage() {
   const [openTabs,        setOpenTabs]        = useState<Tab[]>([]);
   const [popularIds,      setPopularIds]      = useState<string[]>([]);
   const [todayTabs,       setTodayTabs]       = useState<TodayTab[]>([]);
+  const [tabLineItems,    setTabLineItems]    = useState<TabLineItem[]>([]);
 
   const [loading,  setLoading]  = useState(true);
   const [view,     setView]     = useState<"menu" | "payment">("menu");
@@ -134,6 +136,36 @@ export default function CashierPage() {
   const currentTab = activeLocation
     ? openTabs.find((t) => t.location_id === activeLocation.id) || null
     : null;
+
+  const fetchTabLineItems = useCallback(async (tabId: string) => {
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("tab_id", tabId)
+      .neq("status", "cancelled");
+    if (!orders?.length) { setTabLineItems([]); return; }
+
+    const { data: ois } = await supabase
+      .from("order_items")
+      .select("quantity, unit_price, menu_items(name)")
+      .in("order_id", orders.map((o) => o.id));
+
+    const map: Record<string, TabLineItem> = {};
+    (ois as any[] | null)?.forEach(({ quantity, unit_price, menu_items }) => {
+      const name = menu_items?.name ?? "Item";
+      if (!map[name]) map[name] = { name, quantity: 0, unit_price };
+      map[name].quantity += quantity;
+    });
+    setTabLineItems(Object.values(map));
+  }, []);
+
+  useEffect(() => {
+    if (view === "payment" && currentTab) {
+      fetchTabLineItems(currentTab.id);
+    } else {
+      setTabLineItems([]);
+    }
+  }, [view, currentTab, fetchTabLineItems]);
 
   const withTax = (sub: number) => round2(sub * (1 + taxRate));
   const addToCart = (id: string) => setCart((c) => ({ ...c, [id]: (c[id] || 0) + 1 }));
@@ -268,6 +300,15 @@ export default function CashierPage() {
         </div>
 
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 24, maxWidth: 420, margin: "0 auto" }}>
+          {tabLineItems.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              {tabLineItems.map((li, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: MUTED, marginBottom: 4 }}>
+                  <span>{li.quantity}× {li.name}</span><span>${round2(li.quantity * li.unit_price).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {taxRate > 0 && (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: MUTED, marginBottom: 4 }}>
