@@ -258,6 +258,8 @@ export default function CashierPage() {
   if (view === "payment") {
     const tab   = currentTab;
     const grand = withTax(Number(tab?.total ?? 0));
+    const subDue = round2(Number(tab?.total ?? 0));
+    const taxDue = round2(subDue * taxRate);
     return (
       <div style={page}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
@@ -266,6 +268,16 @@ export default function CashierPage() {
         </div>
 
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 24, maxWidth: 420, margin: "0 auto" }}>
+          {taxRate > 0 && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: MUTED, marginBottom: 4 }}>
+                <span>Subtotal</span><span>${subDue.toFixed(2)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: MUTED, marginBottom: 8 }}>
+                <span>{`Tax (${(taxRate * 100).toFixed(3).replace(/\.?0+$/, '')}%)`}</span><span>${taxDue.toFixed(2)}</span>
+              </div>
+            </>
+          )}
           <div style={{ color: MUTED, fontSize: 13 }}>Amount due</div>
           <div style={{ fontSize: 44, fontWeight: 900, color: ACCENT, marginBottom: 20 }}>${grand.toFixed(2)}</div>
 
