@@ -9,6 +9,7 @@ type Table = { id: string; name: string };
 type Cat = { id: string; name: string };
 type Item = { id: string; category_id: string; name: string; price: number };
 type Tab = { id: string; location_id: string; total: number; opened_by_staff_id?: string | null };
+type TabLineItem = { name: string; quantity: number; unit_price: number };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const PAYMENT_METHODS = ["Cash", "Card", "Other"] as const;
@@ -27,6 +28,7 @@ export default function StaffFloorPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [openTabs, setOpenTabs] = useState<Tab[]>([]);
   const [popularIds, setPopularIds] = useState<string[]>([]);
+  const [tabLineItems, setTabLineItems] = useState<TabLineItem[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"floor" | "order" | "closeout">("floor");
@@ -141,6 +143,38 @@ export default function StaffFloorPage() {
 
   const tabForTable = (locId: string) => openTabs.find((t) => t.location_id === locId) || null;
   const withTax = (sub: number) => round2(sub * (1 + taxRate));
+
+  const fetchTabLineItems = useCallback(async (tabId: string) => {
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("tab_id", tabId)
+      .neq("status", "cancelled");
+    if (!orders?.length) { setTabLineItems([]); return; }
+
+    const { data: ois } = await supabase
+      .from("order_items")
+      .select("quantity, unit_price, menu_items(name)")
+      .in("order_id", orders.map((o) => o.id));
+
+    const map: Record<string, TabLineItem> = {};
+    (ois as any[] | null)?.forEach(({ quantity, unit_price, menu_items }) => {
+      const name = menu_items?.name ?? "Item";
+      if (!map[name]) map[name] = { name, quantity: 0, unit_price };
+      map[name].quantity += quantity;
+    });
+    setTabLineItems(Object.values(map));
+  }, []);
+
+  useEffect(() => {
+    const tab = view === "closeout" && activeTable ? tabForTable(activeTable.id) : null;
+    if (tab) {
+      fetchTabLineItems(tab.id);
+    } else {
+      setTabLineItems([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, activeTable, openTabs, fetchTabLineItems]);
 
   const addToCart = (id: string) => setCart((c) => ({ ...c, [id]: (c[id] || 0) + 1 }));
   const decFromCart = (id: string) =>
@@ -447,6 +481,8 @@ export default function StaffFloorPage() {
   if (view === "closeout" && activeTable) {
     const tab = tabForTable(activeTable.id);
     const grand = withTax(Number(tab?.total ?? 0));
+    const subDue = round2(Number(tab?.total ?? 0));
+    const taxDue = round2(subDue * taxRate);
     return (
       <div style={page}>
         <div style={topbar}>
@@ -455,6 +491,25 @@ export default function StaffFloorPage() {
         </div>
 
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 24, maxWidth: 420 }}>
+          {tabLineItems.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              {tabLineItems.map((li, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: TEXT, marginBottom: 4 }}>
+                  <span>{li.quantity}× {li.name}</span><span>${round2(li.quantity * li.unit_price).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {taxRate > 0 && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: TEXT, marginBottom: 4 }}>
+                <span>Subtotal</span><span>${subDue.toFixed(2)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: TEXT, marginBottom: 8 }}>
+                <span>{`Tax (${(taxRate * 100).toFixed(3).replace(/\.?0+$/, '')}%)`}</span><span>${taxDue.toFixed(2)}</span>
+              </div>
+            </>
+          )}
           <div style={{ color: MUTED, fontSize: 13 }}>Amount due</div>
           <div style={{ fontSize: 40, fontWeight: 900, color: ACCENT, marginBottom: 20 }}>${grand.toFixed(2)}</div>
 
