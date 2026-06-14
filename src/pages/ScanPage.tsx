@@ -566,8 +566,24 @@ export default function ScanPage() {
             </div>
             <div style={S.cartRight}>
               <div style={{ textAlign: 'right' }}>
-                <span style={S.cartTotal}>${cartGrand.toFixed(2)}</span>
-                {taxRate > 0 && <div style={{ fontSize: 10, color: muted, marginTop: 2 }}>incl. ${cartTax.toFixed(2)} tax</div>}
+                {taxRate > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, color: muted }}>
+                    <span>Subtotal</span><span>${cartTotal.toFixed(2)}</span>
+                  </div>
+                )}
+                {taxRate > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, color: muted }}>
+                    <span>{`Tax (${(taxRate * 100).toFixed(3).replace(/\.?0+$/, '')}%)`}</span><span>${cartTax.toFixed(2)}</span>
+                  </div>
+                )}
+                {taxRate > 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 2 }}>
+                    <span style={{ ...S.cartTotal, fontSize: 12 }}>Total</span>
+                    <span style={S.cartTotal}>${cartGrand.toFixed(2)}</span>
+                  </div>
+                ) : (
+                  <span style={S.cartTotal}>${cartGrand.toFixed(2)}</span>
+                )}
               </div>
               {openTab ? (
                 <button style={S.placeBtn} onClick={addToTabOrder} disabled={placing}>
