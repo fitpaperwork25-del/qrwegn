@@ -303,7 +303,7 @@ export default function CashierPage() {
           {tabLineItems.length > 0 && (
             <div style={{ marginBottom: 8 }}>
               {tabLineItems.map((li, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: MUTED, marginBottom: 4 }}>
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: TEXT, marginBottom: 4 }}>
                   <span>{li.quantity}× {li.name}</span><span>${round2(li.quantity * li.unit_price).toFixed(2)}</span>
                 </div>
               ))}
@@ -311,10 +311,10 @@ export default function CashierPage() {
           )}
           {taxRate > 0 && (
             <>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: MUTED, marginBottom: 4 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: TEXT, marginBottom: 4 }}>
                 <span>Subtotal</span><span>${subDue.toFixed(2)}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: MUTED, marginBottom: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: TEXT, marginBottom: 8 }}>
                 <span>{`Tax (${(taxRate * 100).toFixed(3).replace(/\.?0+$/, '')}%)`}</span><span>${taxDue.toFixed(2)}</span>
               </div>
             </>
