@@ -8,7 +8,12 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 // version mirrors package.json's declared "0.0.1" (no git tags exist
 // in this repo, per the Platform Admin manifest's own notes) — keep in
 // sync if package.json's version changes.
+//
+// environment/`ENVIRONMENT` added so this response shares the exact
+// same contract as qrbooker's api/health.ts, letting Platform Admin
+// consume both products uniformly.
 const VERSION = "0.0.1";
+const ENVIRONMENT = process.env.VERCEL_ENV ?? "production";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -61,6 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.status(healthy ? 200 : 503).json({
     status: healthy ? "healthy" : "degraded",
     version: VERSION,
+    environment: ENVIRONMENT,
     runtime: { status: "ok", checkDurationMs: Date.now() - startedAt },
     api,
     database,
