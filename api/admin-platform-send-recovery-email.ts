@@ -155,7 +155,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { error: sendErr } = await resend.emails.send({
-      from: "QR-Wegn <onboarding@resend.dev>",
+      from: "QR-Wegn <support@qrwegn.com>",
       to: email,
       subject: "Regain access to your QR-Wegn dashboard",
       html: html(email, link),
