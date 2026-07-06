@@ -20,16 +20,31 @@ const platformAdminSecret = process.env.PLATFORM_ADMIN_SHARED_SECRET;
 // Requests" list. Uses the same service-role client and shared-secret
 // gate as the magic-link path above — reads bypass RLS here since this
 // runs server-side only, never in a browser. Bounded to 50 rows; no
-// pagination needed yet for a v1.1 support inbox.
+// pagination needed yet for a v1.1 support inbox. Only unresolved
+// ('new') requests are returned — resolved ones stay in the table for
+// history/audit but drop out of the active list.
 async function listRecentSupportRequests() {
   const { data, error } = await supabaseAdmin
     .from("support_requests")
     .select("id, email, business_name, problem_type, message, status, created_at")
+    .eq("status", "new")
     .order("created_at", { ascending: false })
     .limit(50);
 
   if (error) throw new Error(error.message);
   return data ?? [];
+}
+
+// Marks a request resolved — never deletes it. No RLS/grant change
+// needed: this runs through the same service-role client as the list
+// above, which already bypasses RLS entirely.
+async function resolveSupportRequest(requestId: string) {
+  const { error } = await supabaseAdmin
+    .from("support_requests")
+    .update({ status: "resolved" })
+    .eq("id", requestId);
+
+  if (error) throw new Error(error.message);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -44,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: "Invalid or missing credentials." });
   }
 
-  const { email, action } = req.body as { email?: string; action?: string };
+  const { email, action, requestId } = req.body as { email?: string; action?: string; requestId?: string };
 
   if (action === "list-requests") {
     try {
@@ -53,6 +68,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ requests });
     } catch (err: any) {
       return res.status(500).json({ error: err.message ?? "Failed to list support requests." });
+    }
+  }
+
+  if (action === "resolve") {
+    if (typeof requestId !== "string" || requestId.trim().length === 0) {
+      return res.status(400).json({ error: "requestId required" });
+    }
+    try {
+      await resolveSupportRequest(requestId);
+      res.setHeader("Cache-Control", "no-store");
+      return res.json({ ok: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message ?? "Failed to resolve support request." });
     }
   }
 
