@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { getStaffProfile, signOutStaff } from "../lib/useStaffAuth";
 import { ACCENT, BG, BORDER, MUTED, SURFACE, TEXT, GREEN, RED } from "../constants/theme";
+import { ReceiptModal } from "../components/ReceiptModal";
+import { loadReceiptData, type ReceiptData } from "../utils/receiptData";
 
 type Location  = { id: string; name: string };
 type Cat       = { id: string; name: string };
@@ -44,6 +46,7 @@ export default function CashierPage() {
   const [msg,          setMsg]          = useState("");
   const [pm,           setPm]           = useState<string | null>(null);
   const [cashTendered, setCashTendered] = useState("");
+  const [receiptData,  setReceiptData]  = useState<ReceiptData | null>(null);
 
   const loadTodayTabs = useCallback(async (id: string, staffId: string | null) => {
     const start = new Date();
@@ -240,15 +243,33 @@ export default function CashierPage() {
     const tab = currentTab;
     if (!tab) { setView("menu"); return; }
     setClosing(true); setMsg("");
+    const closedAt = new Date().toISOString();
+    const tipAmt = Number(tip) || 0;
     try {
       const { error } = await supabase.from("tabs").update({
-        status: "closed", closed_at: new Date().toISOString(),
+        status: "closed", closed_at: closedAt,
         total: Number(tab.total), payment_method: method,
-        tip_amount: Number(tip) || 0, server_id: serverId,
+        tip_amount: tipAmt, server_id: serverId,
       }).eq("id", tab.id);
       if (error) throw new Error(error.message);
       await Promise.all([loadTabs(bizId), loadTodayTabs(bizId, serverId)]);
       setCart({}); setTip(""); setPm(null); setCashTendered(""); setMsg(""); setView("menu");
+      // Best-effort: payment already succeeded above, so a receipt-data
+      // fetch failure here should never surface as a payment error.
+      try {
+        const receipt = await loadReceiptData(bizName, {
+          id:             tab.id,
+          total:          Number(tab.total),
+          tip_amount:     tipAmt,
+          refund_amount:  0,
+          payment_method: method,
+          closed_at:      closedAt,
+          server_id:      serverId,
+          voided_at:      null,
+          void_reason:    null,
+        });
+        setReceiptData(receipt);
+      } catch { /* receipt is optional; skip silently */ }
     } catch (e: any) {
       setMsg(`Error: ${e?.message ?? e}`);
     } finally {
@@ -264,22 +285,22 @@ export default function CashierPage() {
   // ── Shared styles ────────────────────────────────────────────────
   const page: React.CSSProperties = { minHeight: "100vh", background: BG, color: TEXT, padding: 16 };
   const pill = (active: boolean): React.CSSProperties => ({
-    padding: "8px 14px", borderRadius: 20, fontWeight: 700, fontSize: 13, cursor: "pointer",
+    padding: "10px 16px", borderRadius: 20, fontWeight: 700, fontSize: 13, cursor: "pointer",
     border: `1px solid ${active ? ACCENT : BORDER}`, background: active ? ACCENT : "transparent",
-    color: active ? BG : TEXT, whiteSpace: "nowrap",
+    color: active ? BG : TEXT, whiteSpace: "nowrap", minHeight: 40, display: "inline-flex", alignItems: "center",
   });
   const ghostBtn: React.CSSProperties = {
-    padding: "8px 14px", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer",
-    border: `1px solid ${BORDER}`, background: "transparent", color: TEXT,
+    padding: "10px 16px", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer",
+    border: `1px solid ${BORDER}`, background: "transparent", color: TEXT, minHeight: 40,
   };
   const primaryBtn = (disabled = false): React.CSSProperties => ({
-    padding: "14px 20px", borderRadius: 10, fontWeight: 800, fontSize: 15, border: "none",
+    padding: "14px 20px", borderRadius: 12, fontWeight: 800, fontSize: 15, border: "none",
     background: ACCENT, color: BG, cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.5 : 1, flex: 1,
+    opacity: disabled ? 0.5 : 1, flex: 1, minHeight: 50,
   });
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${BORDER}`,
-    background: SURFACE, color: TEXT, fontSize: 15, marginBottom: 12, boxSizing: "border-box",
+    background: SURFACE, color: TEXT, fontSize: 15, marginBottom: 12, boxSizing: "border-box", minHeight: 48,
   };
 
   if (loading) {
@@ -299,7 +320,7 @@ export default function CashierPage() {
           <span style={{ fontSize: 18, fontWeight: 900 }}>Payment</span>
         </div>
 
-        <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 24, maxWidth: 420, margin: "0 auto" }}>
+        <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 18, padding: 24, maxWidth: 420, margin: "0 auto", boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>
           {tabLineItems.length > 0 && (
             <div style={{ marginBottom: 8 }}>
               {tabLineItems.map((li, i) => (
@@ -319,8 +340,12 @@ export default function CashierPage() {
               </div>
             </>
           )}
-          <div style={{ color: MUTED, fontSize: 13 }}>Amount due</div>
-          <div style={{ fontSize: 44, fontWeight: 900, color: ACCENT, marginBottom: 20 }}>${grand.toFixed(2)}</div>
+          <div style={{
+            ...((tabLineItems.length > 0 || taxRate > 0) ? { borderTop: `1px solid ${BORDER}`, paddingTop: 16, marginTop: 6 } : {}),
+          }}>
+            <div style={{ color: MUTED, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", fontWeight: 700 }}>💵 Amount due</div>
+            <div style={{ fontSize: 44, fontWeight: 900, color: ACCENT, marginBottom: 24, letterSpacing: -0.5 }}>${grand.toFixed(2)}</div>
+          </div>
 
           <div style={{ color: MUTED, fontSize: 12, marginBottom: 8, fontWeight: 600 }}>TIP</div>
           <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
@@ -340,9 +365,9 @@ export default function CashierPage() {
             style={inputStyle}
           />
 
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20, fontSize: 15 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 24, marginTop: 14, fontSize: 15 }}>
             <span style={{ color: MUTED }}>Total with tip</span>
-            <span style={{ fontWeight: 800 }}>${(grand + (Number(tip) || 0)).toFixed(2)}</span>
+            <span style={{ fontWeight: 900, fontSize: 18, color: ACCENT }}>${(grand + (Number(tip) || 0)).toFixed(2)}</span>
           </div>
 
           <div style={{ color: MUTED, fontSize: 12, marginBottom: 8, fontWeight: 600 }}>RECORD PAYMENT</div>
@@ -423,8 +448,8 @@ export default function CashierPage() {
 
       {/* today strip */}
       <div style={{
-        background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10,
-        padding: "10px 14px", marginBottom: 14, display: "flex", gap: 20, flexWrap: "wrap", fontSize: 13,
+        background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 12,
+        padding: "12px 16px", marginBottom: 16, display: "flex", gap: 20, flexWrap: "wrap", fontSize: 13,
       }}>
         <span style={{ color: MUTED, fontWeight: 600 }}>Today</span>
         <span><strong>{todayCount}</strong> <span style={{ color: MUTED }}>tabs</span></span>
@@ -469,7 +494,8 @@ export default function CashierPage() {
           return (
             <div key={it.id} style={{
               background: SURFACE, border: `1px solid ${qty ? ACCENT : BORDER}`,
-              borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 8,
+              borderRadius: 14, padding: 14, display: "flex", flexDirection: "column", gap: 8,
+              boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
             }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{it.name}</div>
               <div style={{ color: MUTED, fontSize: 13 }}>${Number(it.price).toFixed(2)}</div>
@@ -495,6 +521,7 @@ export default function CashierPage() {
         <div style={{
           position: "fixed", left: 0, right: 0, bottom: 0,
           background: SURFACE, borderTop: `1px solid ${BORDER}`, padding: 16,
+          boxShadow: "0 -4px 16px rgba(0,0,0,0.4)",
         }}>
           {msg && (
             <div style={{ marginBottom: 8, fontSize: 13, color: msg.startsWith("Error") ? RED : GREEN }}>{msg}</div>
@@ -509,9 +536,9 @@ export default function CashierPage() {
                   <span>${(l.price * l.qty).toFixed(2)}</span>
                 </div>
               ))}
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 800, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${BORDER}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 800, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${BORDER}` }}>
                 <span>Subtotal</span>
-                <span>${cartGrand.toFixed(2)}</span>
+                <span style={{ color: ACCENT }}>${cartGrand.toFixed(2)}</span>
               </div>
             </div>
           )}
@@ -552,6 +579,8 @@ export default function CashierPage() {
           </div>
         </div>
       )}
+
+      {receiptData && <ReceiptModal data={receiptData} onClose={() => setReceiptData(null)} />}
     </div>
   );
 }

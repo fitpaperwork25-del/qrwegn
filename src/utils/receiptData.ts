@@ -120,19 +120,25 @@ export function buildReceiptHtml(data: ReceiptData): string {
   <meta charset="utf-8">
   <title>Receipt</title>
   <style>
+    /* Browser print only. Sized for 80mm thermal roll paper; degrades
+       gracefully on 58mm rolls since no column uses a fixed pixel width. */
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:monospace;font-size:13px;max-width:320px;margin:0 auto;padding:20px;color:#000;background:#fff}
+    html,body{width:100%}
+    body{font-family:monospace;font-size:12px;max-width:76mm;margin:0 auto;padding:3mm;color:#000;background:#fff;word-break:break-word}
     .c{text-align:center}
-    .biz{font-size:17px;font-weight:bold;margin-bottom:4px}
-    .meta{font-size:12px;color:#555;margin-bottom:2px}
-    hr{border:none;border-top:1px dashed #000;margin:10px 0}
-    table{width:100%;border-collapse:collapse}
+    .biz{font-size:15px;font-weight:bold;margin-bottom:4px}
+    .meta{font-size:11px;color:#555;margin-bottom:2px}
+    hr{border:none;border-top:1px dashed #000;margin:8px 0}
+    table{width:100%;border-collapse:collapse;table-layout:auto}
     td{padding:3px 0;vertical-align:top}
     .bold td{font-weight:bold;padding-top:8px}
     .voided{background:#fdd;padding:6px;text-align:center;font-weight:bold;letter-spacing:3px;margin-bottom:10px;border:1px solid #f00}
     .red{color:#c00}
-    .thank{font-size:11px;color:#555;text-align:center;margin-top:14px}
-    @media print{body{padding:8px}}
+    .thank{font-size:10px;color:#555;text-align:center;margin-top:14px}
+    @media print{
+      @page{size:80mm auto;margin:2mm}
+      body{padding:1mm}
+    }
   </style>
 </head>
 <body>

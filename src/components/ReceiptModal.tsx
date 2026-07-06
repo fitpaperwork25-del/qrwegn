@@ -113,19 +113,24 @@ export function ReceiptModal({ data, onClose }: Props) {
         </div>
 
         {/* Footer actions */}
-        <div style={{ display: "flex", gap: 10, padding: "14px 20px", borderTop: `1px solid ${BORDER}` }}>
-          <button
-            onClick={handlePrint}
-            style={{ flex: 1, background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 0", fontWeight: 800, fontSize: 13, cursor: "pointer" }}
-          >
-            Print Receipt
-          </button>
-          <button
-            onClick={onClose}
-            style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 18px", color: MUTED, fontSize: 13, cursor: "pointer" }}
-          >
-            Close
-          </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 20px", borderTop: `1px solid ${BORDER}` }}>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={handlePrint}
+              style={{ flex: 1, background: ACCENT, color: BG, border: "none", borderRadius: 8, padding: "10px 0", fontWeight: 800, fontSize: 13, cursor: "pointer" }}
+            >
+              Print Receipt (Browser)
+            </button>
+            <button
+              onClick={onClose}
+              style={{ background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 18px", color: MUTED, fontSize: 13, cursor: "pointer" }}
+            >
+              Close
+            </button>
+          </div>
+          <p style={{ fontSize: 11, color: MUTED, margin: 0, textAlign: "center" }}>
+            Opens your browser's print dialog — pick your receipt printer there. No direct printer connection is used.
+          </p>
         </div>
       </div>
     </div>
