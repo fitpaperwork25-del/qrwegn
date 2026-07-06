@@ -10,7 +10,7 @@ export function ReceiptModal({ data, onClose }: Props) {
   const allItems  = data.orders.flatMap((o) => o.items);
   const subtotal  = data.orders.reduce((s, o) => s + o.subtotal, 0);
   const tax       = data.orders.reduce((s, o) => s + o.tax, 0);
-  const totalPaid = data.total + data.tipAmount;
+  const totalPaid = data.total + tax + data.tipAmount;
   const isVoided  = !!data.voidedAt;
 
   const closedDate = new Date(data.closedAt).toLocaleString(undefined, {

@@ -100,7 +100,7 @@ export function buildReceiptHtml(data: ReceiptData): string {
   const allItems = data.orders.flatMap((o) => o.items);
   const subtotal = data.orders.reduce((s, o) => s + o.subtotal, 0);
   const tax      = data.orders.reduce((s, o) => s + o.tax, 0);
-  const totalPaid = data.total + data.tipAmount;
+  const totalPaid = data.total + tax + data.tipAmount;
 
   const closedDate = new Date(data.closedAt).toLocaleString(undefined, {
     year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
