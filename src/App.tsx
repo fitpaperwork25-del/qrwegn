@@ -16,6 +16,7 @@ import StaffFloorPage from "./pages/StaffFloorPage";
 import CashierPage from "./pages/CashierPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import SupportRequestPage from "./pages/SupportRequestPage";
 import DemoDashboardPage from "./pages/DemoDashboardPage";
 
 // Placeholders — replace with real pages as they are built
@@ -35,6 +36,7 @@ export default function App() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/support-request" element={<SupportRequestPage />} />
       <Route path="/onboarding" element={<Placeholder name="OnboardingPage" />} />
       <Route path="/onboarding-complete" element={<Placeholder name="OnboardingComplete" />} />
       <Route path="/pricing" element={<Placeholder name="PricingPage" />} />

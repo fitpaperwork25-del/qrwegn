@@ -250,6 +250,22 @@ export default function LoginPage() {
               Forgot password?
             </button>
           </div>
+
+          <div style={{ textAlign: "center", marginTop: 16 }}>
+            <button
+              onClick={() => navigate("/support-request")}
+              style={{
+                background: "none",
+                border: "none",
+                color: MUTED,
+                fontSize: 13,
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              Can&rsquo;t access your account?
+            </button>
+          </div>
         </div>
       </div>
     </div>
