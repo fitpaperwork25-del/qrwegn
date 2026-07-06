@@ -20,14 +20,15 @@ const platformAdminSecret = process.env.PLATFORM_ADMIN_SHARED_SECRET;
 // Requests" list. Uses the same service-role client and shared-secret
 // gate as the magic-link path above — reads bypass RLS here since this
 // runs server-side only, never in a browser. Bounded to 50 rows; no
-// pagination needed yet for a v1.1 support inbox. Only unresolved
-// ('new') requests are returned — resolved ones stay in the table for
-// history/audit but drop out of the active list.
-async function listRecentSupportRequests() {
+// pagination needed yet for a v1.1 support inbox. Defaults to 'new' so
+// any caller not yet updated to pass a status keeps today's exact
+// behavior — resolved requests stay in the table for history/audit but
+// only surface when explicitly requested.
+async function listRecentSupportRequests(status: "new" | "resolved" = "new") {
   const { data, error } = await supabaseAdmin
     .from("support_requests")
     .select("id, email, business_name, problem_type, message, status, created_at")
-    .eq("status", "new")
+    .eq("status", status)
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -59,11 +60,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: "Invalid or missing credentials." });
   }
 
-  const { email, action, requestId } = req.body as { email?: string; action?: string; requestId?: string };
+  const { email, action, requestId, status } = req.body as {
+    email?: string; action?: string; requestId?: string; status?: string;
+  };
 
   if (action === "list-requests") {
+    const requestedStatus = status === "resolved" ? "resolved" : "new";
     try {
-      const requests = await listRecentSupportRequests();
+      const requests = await listRecentSupportRequests(requestedStatus);
       res.setHeader("Cache-Control", "no-store");
       return res.json({ requests });
     } catch (err: any) {
