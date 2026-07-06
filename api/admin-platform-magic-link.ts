@@ -16,6 +16,22 @@ const supabaseAdmin = createClient(
 const APP_URL = "https://qrwegn.com";
 const platformAdminSecret = process.env.PLATFORM_ADMIN_SHARED_SECRET;
 
+// Recent support requests for Platform Admin's "Incoming QRWegn Support
+// Requests" list. Uses the same service-role client and shared-secret
+// gate as the magic-link path above — reads bypass RLS here since this
+// runs server-side only, never in a browser. Bounded to 50 rows; no
+// pagination needed yet for a v1.1 support inbox.
+async function listRecentSupportRequests() {
+  const { data, error } = await supabaseAdmin
+    .from("support_requests")
+    .select("id, email, business_name, problem_type, message, status, created_at")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed." });
 
@@ -28,7 +44,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: "Invalid or missing credentials." });
   }
 
-  const { email } = req.body as { email?: string };
+  const { email, action } = req.body as { email?: string; action?: string };
+
+  if (action === "list-requests") {
+    try {
+      const requests = await listRecentSupportRequests();
+      res.setHeader("Cache-Control", "no-store");
+      return res.json({ requests });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message ?? "Failed to list support requests." });
+    }
+  }
+
   if (!email || typeof email !== "string") return res.status(400).json({ error: "email required" });
 
   const { data, error } = await supabaseAdmin.auth.admin.generateLink({
