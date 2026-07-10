@@ -16,17 +16,25 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 //
 // Business Lookup (added for Platform Admin's AI Command Center Live
 // Data Tools): an optional ?businessName= query param switches this same
-// endpoint to a single-business, name-and-email-only lookup instead of
-// the aggregate summary — kept in this file rather than a new endpoint
-// to avoid consuming another Vercel function slot for what is
-// structurally the same "shared-secret-authenticated, read-only,
-// service-role" operation as the branch above. Deliberately does NOT
-// reuse or call get_admin_businesses() (which also returns staff_pin,
-// stripe ids, subscription status, etc.) — this only ever selects
-// `name, owner_id` from businesses (never any other column) and looks
-// the owner's email up via the Auth Admin API, so it is structurally
-// incapable of returning anything beyond name + email, not just
-// filtered down to it after the fact.
+// endpoint to a name-and-email-only lookup instead of the aggregate
+// summary — kept in this file rather than a new endpoint to avoid
+// consuming another Vercel function slot for what is structurally the
+// same "shared-secret-authenticated, read-only, service-role"
+// operation as the branch above. Deliberately does NOT reuse or call
+// get_admin_businesses() (which also returns staff_pin, stripe ids,
+// subscription status, etc.) — this only ever selects `name, owner_id`
+// from businesses (never any other column) and looks the owner's
+// email up via the Auth Admin API, so it is structurally incapable of
+// returning anything beyond name + email, not just filtered down to it
+// after the fact.
+//
+// Matching is case-insensitive and partial (ilike with wildcards) —
+// production testing found the original exact-match query silently
+// reported "no match" for a real business (searching "dilla" found
+// nothing for "Dilla Market"). Capped at MATCH_LIMIT rows: 0 means no
+// match, exactly 1 means a confident unique match, more than 1 means
+// the name was ambiguous — Platform Admin's own orchestrator decides
+// what to do with each case; this endpoint never guesses on its own.
 //
 // No CORS header is set (unlike api/health.ts, which intentionally
 // allows any browser origin): this endpoint is meant to be called
@@ -36,6 +44,8 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const platformAdminSecret = process.env.PLATFORM_ADMIN_SHARED_SECRET;
+
+const MATCH_LIMIT = 5;
 
 interface BusinessNameRow {
   name: string;
@@ -48,26 +58,22 @@ async function handleBusinessLookup(supabase: SupabaseClient, businessName: stri
       .from("businesses")
       .select("name, owner_id")
       .neq("type", "platform")
-      .ilike("name", businessName)
-      .limit(1)
-      .maybeSingle();
+      .ilike("name", `%${businessName}%`)
+      .limit(MATCH_LIMIT);
 
     if (error) throw error;
 
+    const rows = (data ?? []) as BusinessNameRow[];
+    const matches = await Promise.all(
+      rows.map(async (row) => {
+        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(row.owner_id);
+        if (userError) throw userError;
+        return { name: row.name, email: userData.user?.email ?? null };
+      })
+    );
+
     res.setHeader("Cache-Control", "no-store");
-
-    if (!data) {
-      return res.status(200).json({ business: null, generatedAt: new Date().toISOString() });
-    }
-
-    const row = data as BusinessNameRow;
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(row.owner_id);
-    if (userError) throw userError;
-
-    return res.status(200).json({
-      business: { name: row.name, email: userData.user?.email ?? null },
-      generatedAt: new Date().toISOString(),
-    });
+    return res.status(200).json({ matches, generatedAt: new Date().toISOString() });
   } catch (err) {
     return res.status(500).json({ error: err instanceof Error ? err.message : "Internal error" });
   }
