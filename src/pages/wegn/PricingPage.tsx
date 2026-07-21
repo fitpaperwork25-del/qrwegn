@@ -56,6 +56,15 @@ export default function PricingPage() {
 
           {isLoading && <div className="pricing-state">Loading pricing…</div>}
           {isError && <div className="pricing-state">Couldn&rsquo;t load pricing right now. Please try again shortly.</div>}
+          {!isLoading && !isError && !data && (
+            <div className="coming-soon">
+              <h3>Pricing unavailable right now</h3>
+              <p>We couldn&rsquo;t load pricing for this market. Please try again shortly, or contact us and we&rsquo;ll share pricing directly.</p>
+              <Link className="btn primary" to="/contact">
+                Contact WEGN
+              </Link>
+            </div>
+          )}
 
           {data && (
             <>
