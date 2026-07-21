@@ -23,10 +23,32 @@ export default function WegnStoreProductPage() {
             Wegn Store
           </div>
           <h1>Commerce for operators who sell more than a service.</h1>
-          <p className="hero-copy" style={{ margin: "0 auto 32px" }}>
+          <p className="hero-copy" style={{ margin: "0 auto 20px" }}>
             Wegn Store is in development — a product catalog and checkout built on the same WEGN foundation as
             QRWegn and QRBooker, for operators who need retail alongside ordering or booking.
           </p>
+
+          <div className="for" style={{ textAlign: "center" }}>
+            Built for
+          </div>
+          <div className="chips" style={{ justifyContent: "center", marginBottom: 20 }}>
+            {["Grocery stores", "Mini markets", "Retail shops", "Pharmacies", "Hardware stores", "Wholesalers"].map((c) => (
+              <span key={c} className="chip">
+                {c}
+              </span>
+            ))}
+          </div>
+
+          <div className="for" style={{ textAlign: "center" }}>
+            Key features
+          </div>
+          <div className="chips" style={{ justifyContent: "center", marginBottom: 32 }}>
+            {["POS", "Inventory", "Purchasing", "Customers", "Staff", "Reporting"].map((c) => (
+              <span key={c} className="chip">
+                {c}
+              </span>
+            ))}
+          </div>
 
           {submitted ? (
             <div style={{ display: "inline-block", border: "1px solid var(--green)", borderRadius: 10, padding: "16px 32px", color: "var(--green-dark)", fontWeight: 700 }}>

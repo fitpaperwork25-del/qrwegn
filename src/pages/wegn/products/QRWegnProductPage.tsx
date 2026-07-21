@@ -155,6 +155,14 @@ export default function QRWegnProductPage() {
               From QR ordering to kitchen flow, floor service, cashier checkout, staff roles, tabs, payments, and
               reports — QRWegn keeps every shift organized.
             </p>
+            <div className="for">Built for</div>
+            <div className="chips" style={{ marginBottom: 24 }}>
+              {["Restaurants", "Coffee shops", "Hotels", "Cafés", "Lounges", "Resorts"].map((c) => (
+                <span key={c} className="chip">
+                  {c}
+                </span>
+              ))}
+            </div>
             <div className="actions">
               <button className="btn primary" onClick={() => navigate("/register")}>
                 Get started free →
@@ -334,6 +342,14 @@ export default function QRWegnProductPage() {
             )}
           </div>
           <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 16, fontFamily: "monospace" }}>qrwegn.com</p>
+        </div>
+      </section>
+
+      <section>
+        <div className="wrap" style={{ textAlign: "center" }}>
+          <Link to="/products" style={{ color: "var(--green-dark)", fontWeight: 700, fontSize: 14 }}>
+            ← See all WEGN products
+          </Link>
         </div>
       </section>
     </WegnLayout>

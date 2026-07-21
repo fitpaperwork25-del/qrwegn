@@ -17,11 +17,21 @@ export default function QRBookerProductPage() {
             QRBooker
           </div>
           <h1>Appointments and reservations, on the same WEGN foundation.</h1>
-          <p className="hero-copy" style={{ margin: "0 auto 32px" }}>
+          <p className="hero-copy" style={{ margin: "0 auto 20px" }}>
             QRBooker handles booking for service-based operators — clients reserve a slot, staff manage the
             schedule, and owners see the calendar fill up. It runs as its own product, built and operated
             independently alongside QRWegn and Wegn Store under WEGN.
           </p>
+          <div className="for" style={{ textAlign: "center" }}>
+            Built for
+          </div>
+          <div className="chips" style={{ justifyContent: "center", marginBottom: 32 }}>
+            {["Salons", "Barbershops", "Clinics", "Spas", "Consultants", "Professionals"].map((c) => (
+              <span key={c} className="chip">
+                {c}
+              </span>
+            ))}
+          </div>
           <div className="actions" style={{ justifyContent: "center" }}>
             <Link className="btn primary" to="/contact">
               Ask about QRBooker →
