@@ -8,8 +8,8 @@ export default function ContactPage() {
           <div className="contact">
             <div>
               <div className="eyebrow">Contact WEGN</div>
-              <h2>Talk to us directly.</h2>
-              <p>Reach us by email, phone, or WhatsApp.</p>
+              <h2>Talk to us — or request a demo.</h2>
+              <p>Reach us by email, phone, or WhatsApp. Tell us about your business and we'll set up a demo of the right WEGN product for you.</p>
             </div>
             <div className="contact-list">
               <a className="contact-item" href="mailto:info@qrwegn.com">
