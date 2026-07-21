@@ -2,7 +2,16 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import AuthGuard from "./components/AuthGuard";
 import StaffGuard from "./components/StaffGuard";
 import ErrorBoundary from "./components/ErrorBoundary";
-import LandingPage from "./pages/LandingPage";
+import HomePage from "./pages/wegn/HomePage";
+import ProductsPage from "./pages/wegn/ProductsPage";
+import QRWegnProductPage from "./pages/wegn/products/QRWegnProductPage";
+import WegnStoreProductPage from "./pages/wegn/products/WegnStoreProductPage";
+import QRBookerProductPage from "./pages/wegn/products/QRBookerProductPage";
+import IndustriesPage from "./pages/wegn/IndustriesPage";
+import WegnPricingPage from "./pages/wegn/PricingPage";
+import PartnersPage from "./pages/wegn/PartnersPage";
+import ContactPage from "./pages/wegn/ContactPage";
+import AboutPage from "./pages/wegn/AboutPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -29,8 +38,19 @@ const Placeholder = ({ name }: { name: string }) => (
 export default function App() {
   return (
     <Routes>
-      {/* Public */}
-      <Route path="/" element={<LandingPage />} />
+      {/* Public — WEGN marketing site */}
+      <Route path="/" element={<HomePage />} />
+      <Route path="/products" element={<ProductsPage />} />
+      <Route path="/products/qrwegn" element={<QRWegnProductPage />} />
+      <Route path="/products/wegn-store" element={<WegnStoreProductPage />} />
+      <Route path="/products/qrbooker" element={<QRBookerProductPage />} />
+      <Route path="/industries" element={<IndustriesPage />} />
+      <Route path="/pricing" element={<WegnPricingPage />} />
+      <Route path="/partners" element={<PartnersPage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/contact" element={<ContactPage />} />
+
+      {/* Public — QRWegn product */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/staff-login" element={<StaffLoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -39,11 +59,13 @@ export default function App() {
       <Route path="/support-request" element={<SupportRequestPage />} />
       <Route path="/onboarding" element={<Placeholder name="OnboardingPage" />} />
       <Route path="/onboarding-complete" element={<Placeholder name="OnboardingComplete" />} />
-      <Route path="/pricing" element={<Placeholder name="PricingPage" />} />
       <Route path="/success" element={<SuccessPage />} />
       <Route path="/help" element={<Placeholder name="HelpPage" />} />
       <Route path="/terms" element={<Placeholder name="TermsPage" />} />
       <Route path="/privacy" element={<Placeholder name="PrivacyPage" />} />
+      <Route path="/cookies" element={<Placeholder name="CookiePolicyPage" />} />
+      <Route path="/acceptable-use" element={<Placeholder name="AcceptableUsePage" />} />
+      <Route path="/accessibility" element={<Placeholder name="AccessibilityPage" />} />
       <Route path="/scan/:bizSlug" element={<ScanLandingPage />} />
       <Route path="/scan/:bizId/:locationId" element={<ScanPage />} />
       <Route path="/book/:slug" element={<Placeholder name="BookingPage" />} />

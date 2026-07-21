@@ -1,0 +1,526 @@
+/*
+ * Ported near-verbatim from the approved reference
+ * (wegn-shell-pricing-ai-v3.html) rather than hand-translated to inline
+ * style objects, to preserve exact hover states, gradients, and media
+ * queries. Selectors are scoped under .wegn-scope so this stylesheet
+ * cannot leak onto the rest of the app (dashboard, staff, cashier, etc).
+ */
+.wegn-scope {
+  --ink:#0d140e;
+  --muted:#667067;
+  --green:#6bc72c;
+  --green-bright:#8ee23a;
+  --green-dark:#133b19;
+  --line:#dfe7dc;
+  --soft:#f6f9f4;
+  --white:#ffffff;
+  --shadow:0 28px 70px rgba(17,55,20,.13);
+
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--ink);
+  background:var(--soft);
+}
+.wegn-scope *{box-sizing:border-box}
+.wegn-scope a{color:inherit;text-decoration:none}
+.wegn-scope .wrap{width:min(1240px,92%);margin:auto}
+
+.wegn-scope header{
+  position:sticky;
+  top:0;
+  z-index:50;
+  background:rgba(255,255,255,.96);
+  backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--line);
+}
+.wegn-scope .nav{
+  min-height:106px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:28px;
+}
+.wegn-scope .brand{
+  display:flex;
+  align-items:center;
+  flex:0 0 auto;
+}
+.wegn-scope .brand img{
+  display:block;
+  width:350px;
+  max-height:88px;
+  object-fit:contain;
+  object-position:left center;
+}
+.wegn-scope .links{
+  display:flex;
+  align-items:center;
+  gap:24px;
+  color:#4c564d;
+  font-weight:760;
+  font-size:.96rem;
+}
+.wegn-scope .btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:48px;
+  padding:0 22px;
+  border-radius:999px;
+  border:1px solid rgba(13,20,14,.22);
+  background:#fff;
+  font-weight:850;
+  transition:.2s ease;
+  cursor:pointer;
+  font:inherit;
+}
+.wegn-scope .btn:hover{transform:translateY(-2px)}
+.wegn-scope .btn.primary{
+  background:var(--green-dark);
+  border-color:var(--green-dark);
+  color:#fff;
+}
+
+.wegn-scope .hero{
+  padding:70px 0 34px;
+  background:
+    radial-gradient(circle at 78% 18%,rgba(107,199,44,.14),transparent 26%),
+    linear-gradient(180deg,#fbfcfa,#f5f8f3);
+}
+.wegn-scope .hero-grid{
+  display:grid;
+  grid-template-columns:.88fr 1.12fr;
+  gap:58px;
+  align-items:center;
+}
+.wegn-scope .eyebrow{
+  color:#58a921;
+  text-transform:uppercase;
+  letter-spacing:.17em;
+  font-size:.82rem;
+  font-weight:900;
+  margin-bottom:17px;
+}
+.wegn-scope h1{
+  margin:0 0 20px;
+  font-size:clamp(3.35rem,6.4vw,6.4rem);
+  line-height:.96;
+  letter-spacing:-.065em;
+}
+.wegn-scope h1 span{color:var(--green)}
+.wegn-scope .hero-copy{
+  max-width:620px;
+  color:var(--muted);
+  font-size:1.14rem;
+  line-height:1.6;
+  margin:0 0 28px;
+}
+.wegn-scope .hero-note{
+  margin-top:20px;
+  color:#456047;
+  font-weight:760;
+  font-size:.96rem;
+}
+.wegn-scope .actions{display:flex;gap:12px;flex-wrap:wrap}
+
+.wegn-scope .hero-visual{
+  position:relative;
+  min-height:540px;
+  border-radius:34px;
+  overflow:hidden;
+  background:#050806;
+  border:1px solid #213723;
+  box-shadow:var(--shadow);
+}
+.wegn-scope .hero-visual img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center;
+  display:block;
+  opacity:.93;
+}
+.wegn-scope .hero-overlay{
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(180deg,rgba(3,8,4,.02),rgba(3,8,4,.35)),
+    radial-gradient(circle at 68% 18%,rgba(134,224,62,.12),transparent 30%);
+}
+.wegn-scope .hero-badge{
+  position:absolute;
+  left:26px;
+  bottom:24px;
+  padding:14px 17px;
+  border-radius:16px;
+  color:#fff;
+  background:rgba(10,24,12,.78);
+  border:1px solid rgba(255,255,255,.16);
+  backdrop-filter:blur(12px);
+  font-weight:800;
+}
+.wegn-scope .hero-badge span{
+  display:block;
+  margin-top:3px;
+  color:#cce8c4;
+  font-size:.86rem;
+  font-weight:650;
+}
+
+.wegn-scope .ecosystem-bar{
+  padding:0 0 24px;
+}
+.wegn-scope .ecosystem{
+  display:grid;
+  grid-template-columns:1.2fr repeat(3,1fr);
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:24px;
+  overflow:hidden;
+  box-shadow:0 12px 32px rgba(18,42,18,.05);
+}
+.wegn-scope .eco-intro,.wegn-scope .eco-item{
+  padding:24px 26px;
+  display:block;
+  transition:background .15s ease;
+}
+.wegn-scope .eco-intro{
+  background:#163d1a;
+  color:#fff;
+}
+.wegn-scope .eco-intro:hover{background:#1d4d22}
+.wegn-scope .eco-intro strong{
+  display:block;
+  font-size:1.15rem;
+  margin-bottom:4px;
+}
+.wegn-scope .eco-intro span{color:#c6d9c3;font-size:.93rem}
+.wegn-scope .eco-item{
+  border-left:1px solid var(--line);
+}
+.wegn-scope .eco-item:hover{background:var(--mist,#f3f8f1)}
+.wegn-scope .eco-item strong{display:block;margin-bottom:4px}
+.wegn-scope .eco-item span{color:var(--muted);font-size:.9rem}
+
+.wegn-scope section{padding:82px 0}
+.wegn-scope .section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:30px;
+  margin-bottom:30px;
+}
+.wegn-scope .section-head h2{
+  margin:0;
+  font-size:clamp(2.25rem,4vw,3.8rem);
+  letter-spacing:-.05em;
+}
+.wegn-scope .section-head p{margin:0;color:var(--muted);max-width:520px}
+
+.wegn-scope .cards{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:20px;
+}
+.wegn-scope .card{
+  min-height:420px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:28px;
+  padding:30px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  box-shadow:0 12px 32px rgba(18,42,18,.05);
+  transition:.2s ease;
+}
+.wegn-scope .card:hover{transform:translateY(-5px);box-shadow:var(--shadow)}
+.wegn-scope .icon{
+  width:58px;height:58px;
+  border-radius:18px;
+  display:grid;
+  place-items:center;
+  background:#edf6e8;
+  font-size:1.5rem;
+  margin-bottom:18px;
+}
+.wegn-scope .card h3{font-size:1.82rem;margin:0 0 9px}
+.wegn-scope .card .purpose{color:var(--muted);margin:0 0 22px;line-height:1.55}
+.wegn-scope .for{
+  margin-bottom:10px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  font-size:.82rem;
+  font-weight:900;
+  color:#4d812d;
+}
+.wegn-scope .chips{display:flex;gap:8px;flex-wrap:wrap}
+.wegn-scope .chip{
+  padding:8px 10px;
+  border-radius:999px;
+  background:#f0f4ee;
+  border:1px solid #e0e7dd;
+  color:#475047;
+  font-size:.86rem;
+  font-weight:700;
+}
+.wegn-scope .card-link{margin-top:25px;font-weight:900;color:var(--green-dark);display:inline-block}
+
+.wegn-scope .industries{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:12px;
+}
+.wegn-scope .industry{
+  padding:18px 14px;
+  border-radius:18px;
+  background:#fff;
+  border:1px solid var(--line);
+  text-align:center;
+  font-weight:800;
+  color:#344735;
+}
+
+.wegn-scope .why{
+  background:var(--green-dark);
+  color:#fff;
+  border-radius:34px;
+  padding:50px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:38px;
+  align-items:center;
+}
+.wegn-scope .why h2{
+  margin:0;
+  font-size:clamp(2.5rem,5vw,4.6rem);
+  line-height:1;
+  letter-spacing:-.055em;
+}
+.wegn-scope .why-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.wegn-scope .why-item{
+  padding:18px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+}
+.wegn-scope .why-item strong{display:block;margin-bottom:5px}
+.wegn-scope .why-item span{color:#cbd7c8;font-size:.94rem}
+
+.wegn-scope .contact{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:30px;
+  padding:42px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:28px;
+  align-items:center;
+}
+.wegn-scope .contact h2{
+  margin:0 0 12px;
+  font-size:clamp(2.2rem,4vw,3.8rem);
+  letter-spacing:-.05em;
+}
+.wegn-scope .contact p{margin:0;color:var(--muted)}
+.wegn-scope .contact-list{display:grid;gap:12px}
+.wegn-scope .contact-item{
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  padding:15px 18px;
+  border-radius:16px;
+  background:#f5f8f3;
+  border:1px solid var(--line);
+  font-weight:750;
+}
+
+.wegn-scope footer{
+  margin-top:76px;
+  background:#102310;
+  color:#dfe8dc;
+}
+.wegn-scope .footer-main{
+  padding:52px 0 34px;
+  display:grid;
+  grid-template-columns:1.35fr repeat(3,1fr);
+  gap:34px;
+}
+.wegn-scope .footer-brand img{
+  width:300px;
+  max-height:88px;
+  object-fit:contain;
+  object-position:left center;
+  display:block;
+  margin-bottom:16px;
+  background:#fff;
+  border-radius:12px;
+  padding:7px 10px;
+}
+.wegn-scope .footer-brand p{color:#b8c7b5;max-width:340px;line-height:1.55}
+.wegn-scope .footer-col h4{margin:0 0 14px;color:#fff}
+.wegn-scope .footer-col a{display:block;margin:8px 0;color:#c1cdc0}
+.wegn-scope .footer-bottom{
+  padding:22px 0 12px;
+  border-top:1px solid rgba(255,255,255,.12);
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  flex-wrap:wrap;
+  color:#aebbaa;
+  font-size:.92rem;
+}
+.wegn-scope .legal-links{display:flex;gap:16px;flex-wrap:wrap}
+.wegn-scope .disclaimer{
+  margin:0;
+  padding:0 0 28px;
+  max-width:940px;
+  color:#9eac9b;
+  font-size:.84rem;
+  line-height:1.55;
+}
+
+@media(max-width:1040px){
+  .wegn-scope .links a:nth-child(-n+3){display:none}
+  .wegn-scope .brand img{width:290px}
+  .wegn-scope .ecosystem{grid-template-columns:1fr 1fr}
+  .wegn-scope .eco-item:nth-child(3){border-left:0;border-top:1px solid var(--line)}
+  .wegn-scope .eco-item:nth-child(4){border-top:1px solid var(--line)}
+  .wegn-scope .industries{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:900px){
+  .wegn-scope .hero-grid,.wegn-scope .why,.wegn-scope .contact{grid-template-columns:1fr}
+  .wegn-scope .cards{grid-template-columns:1fr}
+  .wegn-scope .footer-main{grid-template-columns:1fr 1fr}
+  .wegn-scope .hero-visual{min-height:460px}
+}
+@media(max-width:620px){
+  .wegn-scope .nav{min-height:84px}
+  .wegn-scope .brand img{width:210px;max-height:64px}
+  .wegn-scope .links a:not(.btn){display:none}
+  .wegn-scope .links .btn{min-height:42px;padding:0 15px}
+  .wegn-scope .hero{padding-top:48px;padding-bottom:90px}
+  .wegn-scope .ecosystem{grid-template-columns:1fr}
+  .wegn-scope .eco-item{border-left:0;border-top:1px solid var(--line)}
+  .wegn-scope .section-head{display:block}
+  .wegn-scope .section-head p{margin-top:12px}
+  .wegn-scope .industries{grid-template-columns:1fr 1fr}
+  .wegn-scope .why,.wegn-scope .contact{padding:30px}
+  .wegn-scope .why-grid{grid-template-columns:1fr}
+  .wegn-scope .footer-main{grid-template-columns:1fr}
+  .wegn-scope .disclaimer{padding-bottom:80px}
+}
+
+/* Fix: nav CTA clipped/overflowing below ~400px — the brand logo alone
+   (210px at the 620px tier above) leaves too little room for the
+   button once viewport width drops further. Shrink logo and button
+   just enough to keep the CTA on one line without overflow. */
+@media(max-width:400px){
+  .wegn-scope .nav{gap:10px}
+  .wegn-scope .brand img{width:130px}
+  .wegn-scope .links .btn{padding:0 12px;font-size:.8rem}
+}
+
+.wegn-scope .pricing-toolbar{
+  display:flex;justify-content:space-between;align-items:end;gap:24px;
+  padding:22px;border:1px solid var(--line);border-radius:22px;background:#fff;margin-bottom:22px
+}
+.wegn-scope .market-picker{display:grid;gap:8px;min-width:260px}
+.wegn-scope .market-picker label{font-size:.82rem;text-transform:uppercase;letter-spacing:.11em;font-weight:900;color:#517552}
+.wegn-scope .market-picker select{
+  min-height:50px;border:1px solid var(--line);border-radius:14px;padding:0 14px;background:#f8faf7;
+  color:var(--ink);font:inherit;font-weight:800
+}
+.wegn-scope .backend-status{display:flex;align-items:center;gap:12px;max-width:510px;color:#38503b}
+.wegn-scope .backend-status strong,.wegn-scope .backend-status small{display:block}
+.wegn-scope .backend-status small{margin-top:3px;color:var(--muted);line-height:1.4}
+.wegn-scope .status-dot{width:11px;height:11px;border-radius:50%;background:var(--green);box-shadow:0 0 0 6px rgba(107,199,44,.13)}
+.wegn-scope .pricing-state{margin:0 0 18px;color:var(--muted);font-weight:700}
+.wegn-scope .pricing-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.wegn-scope .price-card{
+  background:#fff;border:1px solid var(--line);border-radius:27px;padding:28px;
+  box-shadow:0 12px 32px rgba(18,42,18,.05);position:relative
+}
+.wegn-scope .price-card.featured{border:2px solid var(--green);transform:translateY(-4px)}
+.wegn-scope .price-badge{
+  position:absolute;top:18px;right:18px;border-radius:999px;padding:7px 10px;
+  background:#edf7e8;color:#3e7721;font-size:.76rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em
+}
+.wegn-scope .price-card h3{margin:0 0 8px;font-size:1.45rem}
+.wegn-scope .price-card .price{font-size:2.45rem;font-weight:950;letter-spacing:-.05em;margin:18px 0 2px}
+.wegn-scope .price-card .period{color:var(--muted);font-size:.9rem}
+.wegn-scope .price-card ul{padding-left:19px;color:#4f5d50;line-height:1.8;margin:22px 0}
+.wegn-scope .price-card .btn{width:100%}
+.wegn-scope .coming-soon{
+  border:1px dashed #b9c9b5;background:#fbfcfa;border-radius:28px;padding:48px;text-align:center;color:var(--muted)
+}
+.wegn-scope .coming-soon h3{color:var(--ink);font-size:2rem;margin:0 0 10px}
+.wegn-scope .pricing-note{
+  margin-top:22px;padding:17px 20px;border-radius:16px;background:#eef5eb;
+  border:1px solid #d9e8d4;color:#425944;line-height:1.5
+}
+
+.wegn-scope .ai-showcase{
+  display:grid;grid-template-columns:1fr 1fr;gap:38px;align-items:center;
+  padding:48px;border-radius:34px;background:linear-gradient(145deg,#0d2912,#183f1c);color:#fff
+}
+.wegn-scope .ai-copy h2{font-size:clamp(2.4rem,4.5vw,4.4rem);line-height:1;letter-spacing:-.055em;margin:0 0 18px}
+.wegn-scope .ai-copy p{color:#c8d9c5;line-height:1.65;max-width:610px}
+.wegn-scope .ai-capabilities{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}
+.wegn-scope .ai-capabilities span{
+  padding:9px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.07);font-size:.88rem;font-weight:750
+}
+.wegn-scope .ai-demo{background:#f8faf7;color:var(--ink);border-radius:25px;padding:22px;box-shadow:0 25px 55px rgba(0,0,0,.22)}
+.wegn-scope .ai-demo-head{display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:15px;margin-bottom:16px}
+.wegn-scope .ai-avatar{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--green-dark);color:#fff;font-weight:950}
+.wegn-scope .ai-demo-head strong,.wegn-scope .ai-demo-head span{display:block}
+.wegn-scope .ai-demo-head span{font-size:.82rem;color:#4f9a2b;margin-top:2px;font-weight:800}
+.wegn-scope .ai-message{max-width:88%;padding:13px 15px;border-radius:16px;line-height:1.5;font-size:.94rem}
+.wegn-scope .ai-message.bot{background:#eaf3e6;border-bottom-left-radius:5px}
+.wegn-scope .ai-message.response{margin-top:13px}
+.wegn-scope .ai-quick-actions{display:grid;gap:8px;margin-top:16px}
+.wegn-scope .ai-quick-actions button,.wegn-scope .ai-suggestions button{
+  border:1px solid var(--line);background:#fff;border-radius:13px;padding:11px 12px;text-align:left;
+  font:inherit;font-size:.87rem;font-weight:760;color:#38503b;cursor:pointer
+}
+.wegn-scope .ai-quick-actions button:hover,.wegn-scope .ai-suggestions button:hover{border-color:var(--green)}
+
+.wegn-scope .ai-launcher{
+  position:fixed;right:24px;bottom:22px;z-index:80;border:0;border-radius:999px;padding:14px 18px;
+  background:var(--green-dark);color:#fff;font:inherit;font-weight:900;box-shadow:0 15px 35px rgba(11,45,15,.3);cursor:pointer
+}
+.wegn-scope .ai-panel{
+  position:fixed;right:24px;bottom:82px;z-index:90;width:min(390px,calc(100vw - 32px));max-height:650px;
+  background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 28px 70px rgba(9,34,12,.26);
+  padding:18px;display:none
+}
+.wegn-scope .ai-panel.open{display:block}
+.wegn-scope .ai-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:13px}
+.wegn-scope .ai-panel-head strong,.wegn-scope .ai-panel-head span{display:block}
+.wegn-scope .ai-panel-head span{font-size:.78rem;color:var(--muted);margin-top:2px}
+.wegn-scope .ai-panel-head button{border:0;background:transparent;font-size:1.7rem;cursor:pointer;color:#566057}
+.wegn-scope .ai-chat{height:250px;overflow:auto;padding:14px 2px;display:flex;flex-direction:column;gap:10px}
+.wegn-scope .chat-bubble{max-width:88%;padding:11px 13px;border-radius:15px;line-height:1.45;font-size:.9rem}
+.wegn-scope .chat-bubble.bot{background:#edf5e9;align-self:flex-start;border-bottom-left-radius:5px}
+.wegn-scope .chat-bubble.user{background:var(--green-dark);color:#fff;align-self:flex-end;border-bottom-right-radius:5px}
+.wegn-scope .ai-suggestions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px}
+.wegn-scope .ai-form{display:grid;grid-template-columns:1fr auto;gap:8px}
+.wegn-scope .ai-form input{min-width:0;border:1px solid var(--line);border-radius:13px;padding:12px;font:inherit}
+.wegn-scope .ai-form button{border:0;border-radius:13px;padding:0 15px;background:var(--green-dark);color:#fff;font-weight:850;cursor:pointer}
+.wegn-scope .ai-disclosure{display:block;color:#7b847b;line-height:1.4;margin-top:10px}
+
+@media(max-width:900px){
+  .wegn-scope .pricing-cards,.wegn-scope .ai-showcase{grid-template-columns:1fr}
+  .wegn-scope .price-card.featured{transform:none}
+}
+@media(max-width:620px){
+  .wegn-scope .pricing-toolbar{display:grid;align-items:stretch}
+  .wegn-scope .market-picker{min-width:0}
+  /* Fix: the full-width pill launcher overlapped page content (hero
+     note, footer disclaimer) at narrow widths since it's fixed to the
+     viewport corner regardless of scroll position. Shrinking it to an
+     icon-only FAB reduces its footprint without hiding the feature. */
+  .wegn-scope .ai-launcher{right:16px;bottom:16px;padding:14px}
+  .wegn-scope .ai-launcher-label{display:none}
+  .wegn-scope .ai-panel{right:16px;bottom:74px}
+}
