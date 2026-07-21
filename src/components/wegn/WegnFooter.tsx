@@ -17,6 +17,8 @@ export default function WegnFooter() {
         </div>
         <div className="footer-col">
           <h4>Company</h4>
+          <Link to="/industries">Industries</Link>
+          <Link to="/pricing">Pricing</Link>
           <Link to="/about">About</Link>
           <Link to="/partners">Partners</Link>
           <Link to="/contact">Contact</Link>
