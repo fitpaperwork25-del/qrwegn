@@ -22,3 +22,12 @@ npm-debug.log*
 Thumbs.db
 .vercel
 .env*.local
+
+# Supabase CLI local state - ephemeral CLI cache (which project this
+# worktree is linked to, cached API versions), never meant to be
+# committed. QRBooker (this repo's fork-sibling) had this checked in
+# with the WRONG project ref, which pointed its CLI at this repo's own
+# database. This repo's current ref happens to be correct, but the same
+# gitignore gap existed here too - fixed as pre-flight for the
+# QRWegn <-> WSMS milestone, before any --linked query runs against it.
+supabase/.temp/
