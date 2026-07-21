@@ -28,6 +28,15 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 // returning anything beyond name + email, not just filtered down to it
 // after the fact.
 //
+// `businesses: [{id, name}]` (added for the QRWegn <-> WSMS milestone's
+// Platform Admin orphan-detection view, see
+// docs/WSMS_PRODUCT_INTEGRATION_PATTERN.md): the aggregate summary
+// below now also returns real per-business id/name pairs alongside the
+// existing counts, mirroring QRBooker's businesses-summary.ts shape —
+// only what orphan detection actually needs (real business IDs to
+// compare against WSMS's tenant list), never staff_pin, stripe ids, or
+// subscription_status.
+//
 // Matching is case-insensitive and partial (ilike with wildcards) —
 // production testing found the original exact-match query silently
 // reported "no match" for a real business (searching "dilla" found
@@ -106,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const [businesses, locations, orders] = await Promise.all([
-      supabase.from("businesses").select("id", { count: "exact", head: true }).neq("type", "platform"),
+      supabase.from("businesses").select("id, name").neq("type", "platform"),
       supabase.from("locations").select("id", { count: "exact", head: true }),
       supabase.from("orders").select("id", { count: "exact", head: true }),
     ]);
@@ -115,11 +124,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (locations.error) throw locations.error;
     if (orders.error) throw orders.error;
 
+    const businessRows = (businesses.data ?? []) as { id: string; name: string }[];
+
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).json({
-      businessCount: businesses.count ?? 0,
+      businessCount: businessRows.length,
       locationCount: locations.count ?? 0,
       orderCount: orders.count ?? 0,
+      businesses: businessRows,
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {
