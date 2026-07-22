@@ -4,6 +4,16 @@ import { Link } from "react-router-dom";
 import { fetchPricing } from "../../lib/pricing/fetchPricing";
 import WegnLayout from "../../components/wegn/WegnLayout";
 
+// WEGN Restaurants keeps its existing self-service /register path (out of
+// scope for the assisted-onboarding transition — see docs/WEGN_CUSTOMER_ACQUISITION_PROVISIONING_DESIGN_FREEZE.md).
+// WEGN Store and WEGN Appointments route to Contact with product context
+// until each has a real deep-link into its own registration surface.
+const ASSISTED_SETUP_PLAN_IDS = new Set(["wegn-store", "wegn-appointments"]);
+
+function ctaDestination(planId: string): string {
+  return ASSISTED_SETUP_PLAN_IDS.has(planId) ? `/contact?product=${planId}&intent=setup` : "/contact";
+}
+
 const COUNTRIES = [
   { code: "ET", label: "🇪🇹 Ethiopia" },
   { code: "UG", label: "🇺🇬 Uganda" },
@@ -93,7 +103,7 @@ export default function PricingPage() {
                           <li key={f}>{f}</li>
                         ))}
                       </ul>
-                      <Link className={`btn${plan.featured ? " primary" : ""}`} to="/contact">
+                      <Link className={`btn${plan.featured ? " primary" : ""}`} to={ctaDestination(plan.id)}>
                         {plan.ctaLabel}
                       </Link>
                     </article>

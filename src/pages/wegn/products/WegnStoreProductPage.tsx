@@ -45,14 +45,13 @@ export default function WegnStoreProductPage() {
           </div>
 
           <div className="actions" style={{ justifyContent: "center" }}>
-            <Link className="btn primary" to="/contact">
-              Get Started with WEGN Store →
+            <Link className="btn primary" to="/contact?product=wegn-store&intent=setup">
+              Request Setup
             </Link>
             <Link className="btn" to="/products">
               See all products
             </Link>
           </div>
-          <div className="hero-note">30-day free trial · No credit card required</div>
         </div>
       </section>
     </WegnLayout>

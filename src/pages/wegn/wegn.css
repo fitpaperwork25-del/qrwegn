@@ -303,6 +303,18 @@
 .wegn-scope .why-item strong{display:block;margin-bottom:5px}
 .wegn-scope .why-item span{color:#cbd7c8;font-size:.94rem}
 
+.wegn-scope .contact-context{
+  display:flex;
+  gap:12px;
+  margin-bottom:20px;
+  padding:18px 22px;
+  border-radius:16px;
+  background:var(--soft);
+  border:1px solid var(--line);
+  border-left:4px solid var(--green);
+}
+.wegn-scope .contact-context div{color:var(--muted);font-size:.92rem;line-height:1.6}
+.wegn-scope .contact-context strong{color:var(--green-dark)}
 .wegn-scope .contact{
   background:#fff;
   border:1px solid var(--line);
