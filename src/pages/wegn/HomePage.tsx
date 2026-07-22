@@ -11,28 +11,27 @@ export default function HomePage() {
         <div className="wrap hero-grid">
           <div>
             <div className="eyebrow">One ecosystem. Three focused products.</div>
-            <h1>
-              Build smarter.
-              <br />
-              Grow with <span>WEGN.</span>
-            </h1>
+            <h1>Run Your Business with the Devices You Already Own.</h1>
             <p className="hero-copy">
-              Practical technology for retail, hospitality, and appointment-based businesses—built to simplify
-              operations and strengthen customer connections.
+              WEGN runs on your laptop, desktop, tablet, or smartphone.
+              <br />
+              Add a barcode scanner and receipt printer when you need them.
+              <br />
+              No proprietary hardware required.
             </p>
             <div className="actions">
-              <Link className="btn primary" to="/products">
-                Explore WEGN Products
+              <Link className="btn primary" to="/register">
+                Start Free 30-Day Trial
               </Link>
-              <Link className="btn" to="/contact">
-                Request a Demo
+              <Link className="btn" to="/products">
+                Explore Products
               </Link>
             </div>
             <div className="hero-note">Wegn Store · QRWegn · QRBooker</div>
           </div>
 
           <div className="hero-visual">
-            <img src="/herolandingpage.png" alt="Wegn Store, QRWegn, and QRBooker working together as one connected platform" />
+            <img src="/hero.png" alt="A laptop, tablet, smartphone, barcode scanner, receipt printer, and QR table stand — the everyday devices WEGN runs on" />
             <div className="hero-overlay" />
             <div className="hero-badge">
               Built to connect growing businesses

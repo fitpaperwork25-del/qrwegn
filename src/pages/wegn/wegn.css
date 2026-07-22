@@ -127,8 +127,8 @@
   min-height:540px;
   border-radius:34px;
   overflow:hidden;
-  background:#050806;
-  border:1px solid #213723;
+  background:#ffffff;
+  border:1px solid var(--line);
   box-shadow:var(--shadow);
 }
 .wegn-scope .hero-visual img{
@@ -137,14 +137,11 @@
   object-fit:contain;
   object-position:center;
   display:block;
-  opacity:.93;
 }
 .wegn-scope .hero-overlay{
   position:absolute;
   inset:0;
-  background:
-    linear-gradient(180deg,rgba(3,8,4,.02),rgba(3,8,4,.35)),
-    radial-gradient(circle at 68% 18%,rgba(134,224,62,.12),transparent 30%);
+  background:linear-gradient(180deg,rgba(3,8,4,0),rgba(3,8,4,.08));
 }
 .wegn-scope .hero-badge{
   position:absolute;
