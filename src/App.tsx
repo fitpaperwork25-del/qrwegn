@@ -27,6 +27,11 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SupportRequestPage from "./pages/SupportRequestPage";
 import DemoDashboardPage from "./pages/DemoDashboardPage";
+import PrivacyPolicyPage from "./pages/wegn/legal/PrivacyPolicyPage";
+import TermsOfServicePage from "./pages/wegn/legal/TermsOfServicePage";
+import CookiePolicyPage from "./pages/wegn/legal/CookiePolicyPage";
+import AcceptableUsePage from "./pages/wegn/legal/AcceptableUsePage";
+import AccessibilityStatementPage from "./pages/wegn/legal/AccessibilityStatementPage";
 
 // Placeholders — replace with real pages as they are built
 const Placeholder = ({ name }: { name: string }) => (
@@ -61,11 +66,11 @@ export default function App() {
       <Route path="/onboarding-complete" element={<Placeholder name="OnboardingComplete" />} />
       <Route path="/success" element={<SuccessPage />} />
       <Route path="/help" element={<Placeholder name="HelpPage" />} />
-      <Route path="/terms" element={<Placeholder name="TermsPage" />} />
-      <Route path="/privacy" element={<Placeholder name="PrivacyPage" />} />
-      <Route path="/cookies" element={<Placeholder name="CookiePolicyPage" />} />
-      <Route path="/acceptable-use" element={<Placeholder name="AcceptableUsePage" />} />
-      <Route path="/accessibility" element={<Placeholder name="AccessibilityPage" />} />
+      <Route path="/terms" element={<TermsOfServicePage />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      <Route path="/cookies" element={<CookiePolicyPage />} />
+      <Route path="/acceptable-use" element={<AcceptableUsePage />} />
+      <Route path="/accessibility" element={<AccessibilityStatementPage />} />
       <Route path="/scan/:bizSlug" element={<ScanLandingPage />} />
       <Route path="/scan/:bizId/:locationId" element={<ScanPage />} />
       <Route path="/book/:slug" element={<Placeholder name="BookingPage" />} />
