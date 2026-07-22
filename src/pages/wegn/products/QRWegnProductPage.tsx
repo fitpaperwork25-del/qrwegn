@@ -86,8 +86,6 @@ function DemoDropdown({ onClose }: DemoDropdownProps) {
 
 export default function QRWegnProductPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [demoOpen, setDemoOpen] = useState(false);
   const demoRef = useRef<HTMLDivElement>(null);
@@ -121,12 +119,6 @@ export default function QRWegnProductPage() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [demoOpen]);
-
-  function handleWaitlist(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email) return;
-    window.location.href = `https://tally.so/r/EkvVa4?email=${encodeURIComponent(email)}`;
-  }
 
   return (
     <WegnLayout>
@@ -261,49 +253,6 @@ export default function QRWegnProductPage() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Waitlist */}
-      <section>
-        <div className="wrap" style={{ textAlign: "center" }}>
-          <div className="eyebrow" style={{ textAlign: "center" }}>
-            Early access
-          </div>
-          <h2>Be the first in.</h2>
-          <p style={{ color: "var(--muted)", marginBottom: 32 }}>Early access pricing for the first 50 restaurants.</p>
-          {submitted ? (
-            <div style={{ display: "inline-block", border: "1px solid var(--green)", borderRadius: 10, padding: "16px 32px", color: "var(--green-dark)", fontWeight: 700 }}>
-              You&rsquo;re on the list.
-            </div>
-          ) : (
-            <form onSubmit={handleWaitlist} style={{ display: "flex", gap: 0, maxWidth: 460, margin: "0 auto" }}>
-              <input
-                type="email"
-                required
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  background: "#fff",
-                  border: "1px solid var(--line)",
-                  borderRight: "none",
-                  borderRadius: "999px 0 0 999px",
-                  padding: "0 18px",
-                  minHeight: 48,
-                  color: "var(--ink)",
-                  fontSize: 14,
-                  outline: "none",
-                  font: "inherit",
-                }}
-              />
-              <button type="submit" className="btn primary" style={{ borderRadius: "0 999px 999px 0" }}>
-                Notify me
-              </button>
-            </form>
-          )}
         </div>
       </section>
 
