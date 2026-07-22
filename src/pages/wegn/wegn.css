@@ -33,7 +33,7 @@
   border-bottom:1px solid var(--line);
 }
 .wegn-scope .nav{
-  min-height:106px;
+  min-height:92px;
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -46,8 +46,8 @@
 }
 .wegn-scope .brand img{
   display:block;
-  width:350px;
-  max-height:88px;
+  width:245px;
+  max-height:62px;
   object-fit:contain;
   object-position:left center;
 }
@@ -81,15 +81,15 @@
 }
 
 .wegn-scope .hero{
-  padding:70px 0 34px;
+  padding:44px 0 26px;
   background:
     radial-gradient(circle at 78% 18%,rgba(107,199,44,.14),transparent 26%),
     linear-gradient(180deg,#fbfcfa,#f5f8f3);
 }
 .wegn-scope .hero-grid{
   display:grid;
-  grid-template-columns:.88fr 1.12fr;
-  gap:58px;
+  grid-template-columns:.95fr 1.05fr;
+  gap:48px;
   align-items:center;
 }
 .wegn-scope .eyebrow{
@@ -98,24 +98,24 @@
   letter-spacing:.17em;
   font-size:.82rem;
   font-weight:900;
-  margin-bottom:17px;
+  margin-bottom:10px;
 }
 .wegn-scope h1{
-  margin:0 0 20px;
-  font-size:clamp(3.35rem,6.4vw,6.4rem);
-  line-height:.96;
-  letter-spacing:-.065em;
+  margin:0 0 14px;
+  font-size:clamp(2.3rem,3.9vw,3.65rem);
+  line-height:1.08;
+  letter-spacing:-.03em;
 }
 .wegn-scope h1 span{color:var(--green)}
 .wegn-scope .hero-copy{
-  max-width:620px;
+  max-width:560px;
   color:var(--muted);
-  font-size:1.14rem;
-  line-height:1.6;
-  margin:0 0 28px;
+  font-size:1.06rem;
+  line-height:1.48;
+  margin:0 0 20px;
 }
 .wegn-scope .hero-note{
-  margin-top:20px;
+  margin-top:16px;
   color:#456047;
   font-weight:760;
   font-size:.96rem;
@@ -124,7 +124,7 @@
 
 .wegn-scope .hero-visual{
   position:relative;
-  min-height:540px;
+  min-height:460px;
   border-radius:34px;
   overflow:hidden;
   background:#ffffff;
@@ -378,7 +378,7 @@
 
 @media(max-width:1040px){
   .wegn-scope .links a:nth-child(-n+3){display:none}
-  .wegn-scope .brand img{width:290px}
+  .wegn-scope .brand img{width:200px}
   .wegn-scope .ecosystem{grid-template-columns:1fr 1fr}
   .wegn-scope .eco-item:nth-child(3){border-left:0;border-top:1px solid var(--line)}
   .wegn-scope .eco-item:nth-child(4){border-top:1px solid var(--line)}
@@ -391,8 +391,8 @@
   .wegn-scope .hero-visual{min-height:460px}
 }
 @media(max-width:620px){
-  .wegn-scope .nav{min-height:84px}
-  .wegn-scope .brand img{width:210px;max-height:64px}
+  .wegn-scope .nav{min-height:74px}
+  .wegn-scope .brand img{width:150px;max-height:45px}
   .wegn-scope .links a:not(.btn){display:none}
   .wegn-scope .links .btn{min-height:42px;padding:0 15px}
   .wegn-scope .hero{padding-top:48px;padding-bottom:90px}
@@ -413,7 +413,7 @@
    just enough to keep the CTA on one line without overflow. */
 @media(max-width:400px){
   .wegn-scope .nav{gap:10px}
-  .wegn-scope .brand img{width:130px}
+  .wegn-scope .brand img{width:90px}
   .wegn-scope .links .btn{padding:0 12px;font-size:.8rem}
 }
 
