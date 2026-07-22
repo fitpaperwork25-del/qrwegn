@@ -11,9 +11,9 @@ export default function PartnersPage() {
               <h2>Grow with WEGN.</h2>
               <p>Help businesses discover, adopt, and succeed with WEGN products in their local markets.</p>
               <p style={{ marginTop: 16 }}>
-                Sell any QRWegn plan and earn the first month&rsquo;s value — no limit on earnings, paid 10 days
-                after the business&rsquo;s first successful payment. QRBooker and Wegn Store partner terms follow
-                as each product opens for partner sales.
+                Sell WEGN Restaurants and earn the first month&rsquo;s value — no limit on earnings, paid 10 days
+                after the business&rsquo;s first successful payment. WEGN Appointments and WEGN Store partner terms
+                follow as each product opens for partner sales.
               </p>
             </div>
             <div className="actions">

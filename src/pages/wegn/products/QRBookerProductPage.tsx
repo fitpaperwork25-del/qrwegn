@@ -14,13 +14,13 @@ export default function QRBookerProductPage() {
             Live product
           </span>
           <div className="eyebrow" style={{ textAlign: "center" }}>
-            QRBooker
+            WEGN Appointments
           </div>
           <h1>Appointments and reservations, on the same WEGN foundation.</h1>
           <p className="hero-copy" style={{ margin: "0 auto 20px" }}>
-            QRBooker handles booking for service-based operators — clients reserve a slot, staff manage the
+            WEGN Appointments handles booking for service-based operators — clients reserve a slot, staff manage the
             schedule, and owners see the calendar fill up. It runs as its own product, built and operated
-            independently alongside QRWegn and Wegn Store under WEGN.
+            independently alongside WEGN Restaurants and WEGN Store under WEGN.
           </p>
           <div className="for" style={{ textAlign: "center" }}>
             Built for
@@ -34,12 +34,13 @@ export default function QRBookerProductPage() {
           </div>
           <div className="actions" style={{ justifyContent: "center" }}>
             <Link className="btn primary" to="/contact">
-              Ask about QRBooker →
+              Ask about WEGN Appointments →
             </Link>
             <Link className="btn" to="/products">
               See all products
             </Link>
           </div>
+          <div className="hero-note">30-day free trial · No credit card required</div>
         </div>
       </section>
 

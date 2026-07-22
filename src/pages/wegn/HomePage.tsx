@@ -27,7 +27,8 @@ export default function HomePage() {
                 Explore Products
               </Link>
             </div>
-            <div className="hero-note">Wegn Store · QRWegn · QRBooker</div>
+            <div className="hero-note">No credit card required</div>
+            <div className="hero-note">WEGN Store · WEGN Restaurants · WEGN Appointments</div>
           </div>
 
           <div className="hero-visual">

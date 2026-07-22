@@ -17,9 +17,9 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 // second authority that could drift from WSMS. A hardcoded response in
 // one file is trivially deleted.
 //
-// Data below mirrors the approved reference's embedded pricingData
-// object (wegn-shell-pricing-ai-v3.html) — same countries, same plans,
-// same "coming soon" markets — reproduced faithfully, not invented.
+// Data below reflects the approved WEGN Public Brand Alignment pricing
+// (flat per-product monthly pricing, not tiers) — same countries and
+// "coming soon" markets as before, plans updated to match.
 //
 // To replace this adapter with the real thing later: swap the body of
 // getPricing() below for a fetch() to WSMS's pricing endpoint (same
@@ -57,30 +57,30 @@ const COUNTRIES: Record<string, CountryData> = {
     status: "available",
     plans: [
       {
-        id: "starter",
-        name: "Starter",
-        price: "1,500 Br",
+        id: "wegn-store",
+        name: "WEGN Store",
+        price: "4,000 Br",
         period: "per month",
-        features: ["Core product access", "Single business location", "Standard support"],
-        ctaLabel: "Start with Starter",
+        features: ["Sales, inventory & purchasing", "Customers, staff & reporting", "30-day free trial", "No credit card required"],
+        ctaLabel: "Start WEGN Store",
         featured: false,
       },
       {
-        id: "business",
-        name: "Business",
+        id: "wegn-restaurants",
+        name: "WEGN Restaurants",
         price: "3,000 Br",
         period: "per month",
-        features: ["Expanded operations", "More staff access", "Priority support"],
-        ctaLabel: "Choose Business",
-        featured: true,
+        features: ["QR ordering & kitchen flow", "Floor service & cashier checkout", "30-day free trial", "No credit card required"],
+        ctaLabel: "Start WEGN Restaurants",
+        featured: false,
       },
       {
-        id: "enterprise",
-        name: "Enterprise",
-        price: "Contact us",
-        period: "custom commercial plan",
-        features: ["Multiple locations", "Implementation support", "Custom operational needs"],
-        ctaLabel: "Contact Sales",
+        id: "wegn-appointments",
+        name: "WEGN Appointments",
+        price: "1,500 Br",
+        period: "per month",
+        features: ["Client self-booking", "Staff scheduling & calendar", "30-day free trial", "No credit card required"],
+        ctaLabel: "Start WEGN Appointments",
         featured: false,
       },
     ],

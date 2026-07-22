@@ -5,7 +5,7 @@ export default function AccessibilityStatementPage() {
     <LegalPageLayout
       eyebrow="Legal"
       title="Accessibility Statement"
-      intro="WEGN is committed to making QRWegn, Wegn Store, QRBooker, and our public website usable by as many people as possible, including people with disabilities."
+      intro="WEGN is committed to making WEGN Restaurants, WEGN Store, WEGN Appointments, and our public website usable by as many people as possible, including people with disabilities."
       sections={[
         {
           heading: "Our Commitment",

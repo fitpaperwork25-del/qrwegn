@@ -5,7 +5,7 @@ export default function AcceptableUsePage() {
     <LegalPageLayout
       eyebrow="Legal"
       title="Acceptable Use Policy"
-      intro="This Acceptable Use Policy sets out the standards that apply to anyone using QRWegn, Wegn Store, QRBooker, or any other WEGN product."
+      intro="This Acceptable Use Policy sets out the standards that apply to anyone using WEGN Restaurants, WEGN Store, WEGN Appointments, or any other WEGN product."
       sections={[
         {
           heading: "Purpose",

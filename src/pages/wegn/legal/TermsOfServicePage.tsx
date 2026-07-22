@@ -5,7 +5,7 @@ export default function TermsOfServicePage() {
     <LegalPageLayout
       eyebrow="Legal"
       title="Terms of Service"
-      intro="These Terms of Service govern your access to and use of QRWegn, Wegn Store, QRBooker, and related WEGN products."
+      intro="These Terms of Service govern your access to and use of WEGN Restaurants, WEGN Store, WEGN Appointments, and related WEGN products."
       sections={[
         {
           heading: "Acceptance of Terms",
@@ -16,7 +16,7 @@ export default function TermsOfServicePage() {
         {
           heading: "Description of Service",
           body: [
-            "WEGN provides software products for ordering, retail, and booking, including QRWegn (menu and ordering), Wegn Store (retail commerce), and QRBooker (appointments). Features and availability may vary by market and plan.",
+            "WEGN provides software products for ordering, retail, and booking, including WEGN Restaurants (menu and ordering), WEGN Store (retail commerce), and WEGN Appointments (appointments). Features and availability may vary by market.",
           ],
         },
         {

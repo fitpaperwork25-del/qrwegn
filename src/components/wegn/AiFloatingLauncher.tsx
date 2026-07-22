@@ -34,14 +34,14 @@ export default function AiFloatingLauncher() {
 
   return (
     <>
-      <button id="aiLauncher" className="ai-launcher" type="button" aria-label="Open Wegn AI" onClick={() => setOpen(true)}>
-        <span>✨</span> <span className="ai-launcher-label">Ask Wegn AI</span>
+      <button id="aiLauncher" className="ai-launcher" type="button" aria-label="Open WEGN AI" onClick={() => setOpen(true)}>
+        <span>✨</span> <span className="ai-launcher-label">Ask WEGN AI</span>
       </button>
 
       <aside id="aiPanel" className={`ai-panel${open ? " open" : ""}`} aria-hidden={!open}>
         <div className="ai-panel-head">
           <div>
-            <strong>Wegn AI</strong>
+            <strong>WEGN AI</strong>
             <span>Website concierge prototype</span>
           </div>
           <button id="aiClose" type="button" aria-label="Close" onClick={() => setOpen(false)}>

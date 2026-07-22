@@ -4,26 +4,26 @@ const PRODUCTS = [
   {
     to: "/products/wegn-store",
     icon: "🏪",
-    name: "Wegn Store",
+    name: "WEGN Store",
     purpose: "Retail operations platform",
     chips: ["POS", "Inventory", "Purchasing", "Customers", "Staff", "Reporting"],
-    cta: "View Wegn Store",
+    cta: "View WEGN Store",
   },
   {
     to: "/products/qrwegn",
     icon: "🍽️",
-    name: "QRWegn",
+    name: "WEGN Restaurants",
     purpose: "Hospitality platform",
     chips: ["Restaurants", "Cafés", "Hotels", "Digital menus", "QR ordering", "Guest engagement"],
-    cta: "View QRWegn",
+    cta: "View WEGN Restaurants",
   },
   {
     to: "/products/qrbooker",
     icon: "📅",
-    name: "QRBooker",
+    name: "WEGN Appointments",
     purpose: "Appointment platform",
     chips: ["Salons", "Clinics", "Spas", "Consultants", "Scheduling", "Customer booking"],
-    cta: "View QRBooker",
+    cta: "View WEGN Appointments",
   },
 ];
 

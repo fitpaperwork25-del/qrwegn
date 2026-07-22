@@ -5,7 +5,7 @@ export default function PrivacyPolicyPage() {
     <LegalPageLayout
       eyebrow="Legal"
       title="Privacy Policy"
-      intro="This Privacy Policy explains how WEGN collects, uses, shares, and protects information across QRWegn, Wegn Store, and QRBooker."
+      intro="This Privacy Policy explains how WEGN collects, uses, shares, and protects information across WEGN Restaurants, WEGN Store, and WEGN Appointments."
       sections={[
         {
           heading: "Overview",

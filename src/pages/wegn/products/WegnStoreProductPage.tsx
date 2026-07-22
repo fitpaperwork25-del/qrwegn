@@ -14,12 +14,12 @@ export default function WegnStoreProductPage() {
             Live product
           </span>
           <div className="eyebrow" style={{ textAlign: "center" }}>
-            Wegn Store
+            WEGN Store
           </div>
           <h1>Commerce for operators who sell more than a service.</h1>
           <p className="hero-copy" style={{ margin: "0 auto 20px" }}>
-            Wegn Store is a product catalog and checkout built on the same WEGN foundation as QRWegn and QRBooker,
-            for operators who need retail alongside ordering or booking.
+            WEGN Store is a product catalog and checkout built on the same WEGN foundation as WEGN Restaurants and
+            WEGN Appointments, for operators who need retail alongside ordering or booking.
           </p>
 
           <div className="for" style={{ textAlign: "center" }}>
@@ -46,12 +46,13 @@ export default function WegnStoreProductPage() {
 
           <div className="actions" style={{ justifyContent: "center" }}>
             <Link className="btn primary" to="/contact">
-              Get Started with Wegn Store →
+              Get Started with WEGN Store →
             </Link>
             <Link className="btn" to="/products">
               See all products
             </Link>
           </div>
+          <div className="hero-note">30-day free trial · No credit card required</div>
         </div>
       </section>
     </WegnLayout>

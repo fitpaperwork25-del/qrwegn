@@ -141,11 +141,18 @@ export default function QRWegnProductPage() {
       <section className="hero">
         <div className="wrap hero-grid">
           <div>
+            <span
+              className="price-badge"
+              style={{ position: "static", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 16 }}
+            >
+              <span className="status-dot" style={{ width: 6, height: 6, boxShadow: "none" }} />
+              Live product
+            </span>
             <div className="eyebrow">Restaurant Operations Platform</div>
             <h1>Put your restaurant in order.</h1>
             <p className="hero-copy">
               From QR ordering to kitchen flow, floor service, cashier checkout, staff roles, tabs, payments, and
-              reports — QRWegn keeps every shift organized.
+              reports — WEGN Restaurants keeps every shift organized.
             </p>
             <div className="for">Built for</div>
             <div className="chips" style={{ marginBottom: 24 }}>
@@ -163,6 +170,7 @@ export default function QRWegnProductPage() {
                 See how it works
               </button>
             </div>
+            <div className="hero-note">30-day free trial · No credit card required</div>
           </div>
 
           <div
@@ -207,12 +215,12 @@ export default function QRWegnProductPage() {
         </div>
       </section>
 
-      {/* How QRWegn works */}
+      {/* How WEGN Restaurants works */}
       <section>
         <div className="wrap">
           <div className="section-head" style={{ justifyContent: "center", textAlign: "center", display: "block" }}>
             <div className="eyebrow" style={{ textAlign: "center" }}>
-              How QRWegn works
+              How WEGN Restaurants works
             </div>
           </div>
           <div className="industries">
@@ -263,7 +271,7 @@ export default function QRWegnProductPage() {
             Pricing &amp; partners
           </div>
           <p style={{ color: "var(--muted)", maxWidth: 500, margin: "0 auto 28px" }}>
-            QRWegn plan pricing and the WEGN Partner program live on their own pages.
+            WEGN Restaurants pricing and the WEGN Partner program live on their own pages.
           </p>
           <div className="actions" style={{ justifyContent: "center" }}>
             <Link className="btn primary" to="/pricing">
@@ -282,10 +290,10 @@ export default function QRWegnProductPage() {
           <div className="eyebrow" style={{ textAlign: "center" }}>
             Scan to try
           </div>
-          <p style={{ fontWeight: 800, marginBottom: 24 }}>Scan to try QRWegn</p>
+          <p style={{ fontWeight: 800, marginBottom: 24 }}>Scan to try WEGN Restaurants</p>
           <div style={{ display: "inline-block", padding: 16, border: "1px solid var(--line)", borderRadius: 20, background: "#fff", boxShadow: "0 12px 32px rgba(18,42,18,.05)" }}>
             {qrDataUrl ? (
-              <img src={qrDataUrl} alt="Scan to try QRWegn" width={200} height={200} style={{ display: "block", borderRadius: 8 }} />
+              <img src={qrDataUrl} alt="Scan to try WEGN Restaurants" width={200} height={200} style={{ display: "block", borderRadius: 8 }} />
             ) : (
               <div style={{ width: 200, height: 200, background: "var(--soft)", borderRadius: 8 }} />
             )}

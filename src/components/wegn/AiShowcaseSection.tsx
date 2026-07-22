@@ -15,7 +15,7 @@ export default function AiShowcaseSection() {
       <div className="wrap">
         <div className="ai-showcase">
           <div className="ai-copy">
-            <div className="eyebrow">Wegn AI</div>
+            <div className="eyebrow">WEGN AI</div>
             <h2>Help visitors find the right product instantly.</h2>
             <p>
               A website concierge can ask a few simple questions, recommend the right WEGN product, explain
@@ -33,7 +33,7 @@ export default function AiShowcaseSection() {
             <div className="ai-demo-head">
               <div className="ai-avatar">W</div>
               <div>
-                <strong>Wegn AI Concierge</strong>
+                <strong>WEGN AI Concierge</strong>
                 <span>Online</span>
               </div>
             </div>

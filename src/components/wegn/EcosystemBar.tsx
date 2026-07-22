@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 
 const ECO_ITEMS = [
-  { to: "/products/wegn-store", name: "Wegn Store", purpose: "Retail operations" },
-  { to: "/products/qrwegn", name: "QRWegn", purpose: "Hospitality experiences" },
-  { to: "/products/qrbooker", name: "QRBooker", purpose: "Appointments and scheduling" },
+  { to: "/products/wegn-store", name: "WEGN Store", purpose: "Retail operations" },
+  { to: "/products/qrwegn", name: "WEGN Restaurants", purpose: "Hospitality experiences" },
+  { to: "/products/qrbooker", name: "WEGN Appointments", purpose: "Appointments and scheduling" },
 ];
 
 export default function EcosystemBar() {

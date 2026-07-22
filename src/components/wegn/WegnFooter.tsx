@@ -11,9 +11,9 @@ export default function WegnFooter() {
         </div>
         <div className="footer-col">
           <h4>Products</h4>
-          <Link to="/products/wegn-store">Wegn Store</Link>
-          <Link to="/products/qrwegn">QRWegn</Link>
-          <Link to="/products/qrbooker">QRBooker</Link>
+          <Link to="/products/wegn-store">WEGN Store</Link>
+          <Link to="/products/qrwegn">WEGN Restaurants</Link>
+          <Link to="/products/qrbooker">WEGN Appointments</Link>
         </div>
         <div className="footer-col">
           <h4>Company</h4>
