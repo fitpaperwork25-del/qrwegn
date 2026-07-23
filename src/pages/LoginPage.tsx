@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/useAuth";
+import { linkIdentityAccount } from "../lib/identity/identityClient";
 import { ACCENT, BG, BORDER, TEXT, MUTED, RED } from "../constants/theme";
 
 const inputStyle: React.CSSProperties = {
@@ -45,6 +46,7 @@ export default function LoginPage() {
         : err.message);
       setLoading(false);
     } else {
+      void linkIdentityAccount();
       const dest = email.trim().toLowerCase() === "fitpaperwork25@gmail.com" ? "/admin" : from;
       navigate(dest, { replace: true });
     }
@@ -64,6 +66,7 @@ export default function LoginPage() {
           : err.message);
         setLoading(false);
       } else {
+        void linkIdentityAccount();
         navigate(from, { replace: true });
       }
     });
