@@ -2,12 +2,13 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { verifyAuth } from "../_shared/verifyAuth.ts";
 
 /**
- * Task 2 (Sprint 2): links the caller's own QRWegn owner account to the
- * WEGN Identity Service, fire-and-forget from LoginPage.tsx. Holds
- * IDENTITY_SERVICE_SECRET server-side only - the bootstrap shared
- * secret from wegn-identity's Task 1 (see that repo's README.md
- * "Security model" section), never a per-product secret yet, since
- * this is currently the only product connected.
+ * Task 2 (Sprint 2), credential updated in Task 5: links the caller's
+ * own QRWegn owner account to the WEGN Identity Service, fire-and-forget
+ * from LoginPage.tsx. Holds IDENTITY_CREDENTIAL server-side only - a
+ * scoped credential permitted only to call link-account with
+ * productKey "qrwegn" (see wegn-identity's README.md "Security model"
+ * section and credentialRegistry.ts). No longer the old shared bootstrap
+ * secret every consumer used through Task 4.
  *
  * No businessId, email, or auth_user_id is ever trusted from the
  * client - both come from verifyAuth's server-side verification of the
@@ -46,7 +47,7 @@ serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const identityUrl = Deno.env.get("IDENTITY_LINK_ACCOUNT_URL");
-  const identitySecret = Deno.env.get("IDENTITY_SERVICE_SECRET");
+  const identitySecret = Deno.env.get("IDENTITY_CREDENTIAL");
 
   if (!supabaseUrl || !supabaseAnonKey || !identityUrl || !identitySecret) {
     return jsonResponse({ error: "Server is not configured (missing required secrets)" }, 500);
