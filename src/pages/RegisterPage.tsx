@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { registerBusinessWithWsms } from "../lib/wsms/subscriptionClient";
+import { linkIdentityAccount } from "../lib/identity/identityClient";
 
 const ACCENT = "#E8C547";
 const BG = "#080808";
@@ -91,6 +92,7 @@ export default function RegisterPage() {
       return;
     }
     if (newBusiness) void registerBusinessWithWsms(newBusiness.id);
+    void linkIdentityAccount();
 
     // Fire welcome email — best-effort, don't block navigation
     fetch("/api/send-welcome", {

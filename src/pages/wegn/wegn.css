@@ -439,9 +439,6 @@
   min-height:50px;border:1px solid var(--line);border-radius:14px;padding:0 14px;background:#f8faf7;
   color:var(--ink);font:inherit;font-weight:800
 }
-.wegn-scope .backend-status{display:flex;align-items:center;gap:12px;max-width:510px;color:#38503b}
-.wegn-scope .backend-status strong,.wegn-scope .backend-status small{display:block}
-.wegn-scope .backend-status small{margin-top:3px;color:var(--muted);line-height:1.4}
 .wegn-scope .status-dot{width:11px;height:11px;border-radius:50%;background:var(--green);box-shadow:0 0 0 6px rgba(107,199,44,.13)}
 .wegn-scope .pricing-state{margin:0 0 18px;color:var(--muted);font-weight:700}
 .wegn-scope .pricing-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}

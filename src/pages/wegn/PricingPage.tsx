@@ -39,8 +39,7 @@ export default function PricingPage() {
               <h2>Pricing that fits each market</h2>
             </div>
             <p>
-              Prices are displayed by country and currency. In production, this section reads published plans
-              from the WEGN Platform Admin backend.
+              Prices are shown in your local currency where WEGN is available.
             </p>
           </div>
 
@@ -54,13 +53,6 @@ export default function PricingPage() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="backend-status">
-              <span className="status-dot" />
-              <div>
-                <strong>Backend-managed pricing</strong>
-                <small>Served from /api/pricing; production prices would come from Platform Admin.</small>
-              </div>
             </div>
           </div>
 

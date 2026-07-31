@@ -1,6 +1,14 @@
+import { Link } from "react-router-dom";
 import WegnLayout from "../../components/wegn/WegnLayout";
 
-const INDUSTRIES = ["Retail", "Grocery", "Restaurants", "Coffee Shops", "Hotels", "Professional Services"];
+const INDUSTRIES = [
+  { name: "Retail", to: "/products/wegn-store" },
+  { name: "Grocery", to: "/products/wegn-store" },
+  { name: "Restaurants", to: "/products/qrwegn" },
+  { name: "Coffee Shops", to: "/products/qrwegn" },
+  { name: "Hotels", to: "/products/qrwegn" },
+  { name: "Professional Services", to: "/products/qrbooker" },
+];
 
 export default function IndustriesPage() {
   return (
@@ -13,9 +21,9 @@ export default function IndustriesPage() {
           </div>
           <div className="industries">
             {INDUSTRIES.map((i) => (
-              <div key={i} className="industry">
-                {i}
-              </div>
+              <Link key={i.name} to={i.to} className="industry">
+                {i.name}
+              </Link>
             ))}
           </div>
         </div>
