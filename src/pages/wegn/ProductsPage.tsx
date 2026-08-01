@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { Link } from "react-router-dom";
 import WegnLayout from "../../components/wegn/WegnLayout";
 
@@ -8,6 +10,9 @@ const PRODUCTS = [
     name: "WEGN Store",
     purpose: "Manage sales, inventory, purchasing, customers, staff, and reporting in one place.",
     chips: ["Grocery stores", "Mini markets", "Retail shops", "Pharmacies", "Hardware stores", "Wholesalers"],
+    // Registration/trial destination for this product, matching the same
+    // URL used by this product's own "Start Free Trial" CTA.
+    trialUrl: "https://wegn-store-app.vercel.app/?intent=signup",
   },
   {
     to: "/products/qrwegn",
@@ -15,6 +20,7 @@ const PRODUCTS = [
     name: "WEGN Restaurants",
     purpose: "Create digital menus, ordering experiences, and guest engagement for hospitality businesses.",
     chips: ["Restaurants", "Coffee shops", "Hotels", "Cafés", "Lounges", "Resorts"],
+    trialUrl: "https://www.qrwegn.com/register",
   },
   {
     to: "/products/qrbooker",
@@ -22,10 +28,29 @@ const PRODUCTS = [
     name: "WEGN Appointments",
     purpose: "Manage appointments, schedules, customer bookings, and service availability.",
     chips: ["Salons", "Barbershops", "Clinics", "Spas", "Consultants", "Professionals"],
+    trialUrl: "https://www.qrbooker.app/register",
   },
 ];
 
 export default function ProductsPage() {
+  const [qrCodes, setQrCodes] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(
+      PRODUCTS.map((p) =>
+        QRCode.toDataURL(p.trialUrl, { width: 96, margin: 1, color: { dark: "#0d140e", light: "#ffffff" } }).then(
+          (dataUrl) => [p.to, dataUrl] as const,
+        ),
+      ),
+    ).then((entries) => {
+      if (!cancelled) setQrCodes(Object.fromEntries(entries));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <WegnLayout>
       <section id="products">
@@ -54,6 +79,18 @@ export default function ProductsPage() {
                 <Link className="card-link" to={p.to}>
                   Explore {p.name} →
                 </Link>
+                {qrCodes[p.to] && (
+                  <a
+                    className="card-qr"
+                    href={p.trialUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Scan to start your ${p.name} free trial`}
+                    title={`Scan to start your ${p.name} free trial`}
+                  >
+                    <img src={qrCodes[p.to]} alt="" aria-hidden="true" width={48} height={48} />
+                  </a>
+                )}
               </article>
             ))}
           </div>
