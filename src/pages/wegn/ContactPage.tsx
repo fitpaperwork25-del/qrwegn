@@ -36,9 +36,8 @@ export default function ContactPage() {
           {product && (
             <div className="contact-context">
               <div>
-                <strong>You&rsquo;re requesting setup for {product.name}.</strong> {product.price} · Assisted
-                setup · 30-day free trial, no credit card required. A member of the WEGN team will reach out to
-                get you set up — this isn&rsquo;t a self-service signup yet for this product.
+                <strong>You&rsquo;re getting in touch about {product.name}.</strong> {product.price} · 30-day
+                free trial, no credit card required. A member of the WEGN team will follow up with you shortly.
               </div>
             </div>
           )}

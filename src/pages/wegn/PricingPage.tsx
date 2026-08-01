@@ -4,14 +4,30 @@ import { Link } from "react-router-dom";
 import { fetchPricing } from "../../lib/pricing/fetchPricing";
 import WegnLayout from "../../components/wegn/WegnLayout";
 
-// WEGN Restaurants keeps its existing self-service /register path (out of
-// scope for the assisted-onboarding transition — see docs/WEGN_CUSTOMER_ACQUISITION_PROVISIONING_DESIGN_FREEZE.md).
-// WEGN Store and WEGN Appointments route to Contact with product context
-// until each has a real deep-link into its own registration surface.
-const ASSISTED_SETUP_PLAN_IDS = new Set(["wegn-store", "wegn-appointments"]);
+// Unified product journey: all three products are self-service now. This
+// was previously a two-tier map (WEGN Restaurants -> /register, WEGN Store
+// and WEGN Appointments -> assisted Contact) which had a real bug besides -
+// any plan id not in the assisted set (i.e. "wegn-restaurants") fell
+// through to plain "/contact" instead of "/register", so the pricing
+// card's own "Start WEGN Restaurants" button never actually started
+// anything. Each product now gets its real self-service destination:
+// WEGN Restaurants shares this deployment's own /register route; WEGN
+// Store has no route of its own (no router in that app) so it gets an
+// external link with the same ?intent=signup bootstrap
+// AuthGate.tsx now reads; WEGN Appointments is a separate deployment with
+// its own /register.
+const SELF_SERVICE_DESTINATIONS: Record<string, string> = {
+  "wegn-restaurants": "/register",
+  "wegn-store": "https://wegn-store-app.vercel.app/?intent=signup",
+  "wegn-appointments": "https://www.qrbooker.app/register",
+};
 
 function ctaDestination(planId: string): string {
-  return ASSISTED_SETUP_PLAN_IDS.has(planId) ? `/contact?product=${planId}&intent=setup` : "/contact";
+  return SELF_SERVICE_DESTINATIONS[planId] ?? "/contact";
+}
+
+function isExternalDestination(destination: string): boolean {
+  return destination.startsWith("http");
 }
 
 const COUNTRIES = [
@@ -95,9 +111,15 @@ export default function PricingPage() {
                           <li key={f}>{f}</li>
                         ))}
                       </ul>
-                      <Link className={`btn${plan.featured ? " primary" : ""}`} to={ctaDestination(plan.id)}>
-                        {plan.ctaLabel}
-                      </Link>
+                      {isExternalDestination(ctaDestination(plan.id)) ? (
+                        <a className={`btn${plan.featured ? " primary" : ""}`} href={ctaDestination(plan.id)}>
+                          {plan.ctaLabel}
+                        </a>
+                      ) : (
+                        <Link className={`btn${plan.featured ? " primary" : ""}`} to={ctaDestination(plan.id)}>
+                          {plan.ctaLabel}
+                        </Link>
+                      )}
                     </article>
                   ))
                 )}

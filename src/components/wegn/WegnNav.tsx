@@ -23,6 +23,9 @@ export default function WegnNav() {
               {link.label}
             </Link>
           ))}
+          <a href="https://wegn-home.vercel.app/login" className="nav-signin">
+            Sign In
+          </a>
           <Link className="btn primary" to="/products">
             Explore WEGN
           </Link>

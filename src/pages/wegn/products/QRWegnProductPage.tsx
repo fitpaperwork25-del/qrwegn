@@ -169,6 +169,9 @@ export default function QRWegnProductPage() {
               <button className="btn" onClick={() => setDemoOpen((o) => !o)}>
                 See how it works
               </button>
+              <button className="btn" onClick={() => navigate("/login")}>
+                Sign In
+              </button>
             </div>
             <div className="hero-note">30-day free trial · No credit card required</div>
           </div>

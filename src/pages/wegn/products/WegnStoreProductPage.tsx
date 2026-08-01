@@ -45,12 +45,18 @@ export default function WegnStoreProductPage() {
           </div>
 
           <div className="actions" style={{ justifyContent: "center" }}>
-            <Link className="btn primary" to="/contact?product=wegn-store&intent=setup">
-              Request Setup
-            </Link>
+            <a className="btn primary" href="https://wegn-store-app.vercel.app/?intent=signup">
+              Start Free Trial
+            </a>
+            <a className="btn" href="https://wegn-store-app.vercel.app/">
+              Sign In
+            </a>
             <Link className="btn" to="/products">
               See all products
             </Link>
+          </div>
+          <div className="hero-note" style={{ textAlign: "center" }}>
+            30-day free trial · No credit card required
           </div>
         </div>
       </section>

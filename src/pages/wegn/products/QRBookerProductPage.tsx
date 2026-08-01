@@ -33,12 +33,18 @@ export default function QRBookerProductPage() {
             ))}
           </div>
           <div className="actions" style={{ justifyContent: "center" }}>
-            <Link className="btn primary" to="/contact?product=wegn-appointments&intent=setup">
-              Request Setup
-            </Link>
+            <a className="btn primary" href="https://www.qrbooker.app/register">
+              Start Free Trial
+            </a>
+            <a className="btn" href="https://www.qrbooker.app/login">
+              Sign In
+            </a>
             <Link className="btn" to="/products">
               See all products
             </Link>
+          </div>
+          <div className="hero-note" style={{ textAlign: "center" }}>
+            30-day free trial · No credit card required
           </div>
         </div>
       </section>
