@@ -279,7 +279,7 @@
   font-size:.86rem;
   font-weight:700;
 }
-.wegn-scope .card-link{font-weight:900;color:var(--green-dark);display:inline-block}
+.wegn-scope .card-link{font-weight:900;color:var(--green-dark);display:inline-block;max-width:calc(100% - 64px)}
 
 .wegn-scope .industries{
   display:grid;
