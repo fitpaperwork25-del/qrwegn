@@ -20,11 +20,23 @@ export default function HomePage() {
               No proprietary hardware required.
             </p>
             <div className="actions">
-              <Link className="btn primary" to="/register">
-                Start Free 30-Day Trial
-              </Link>
-              <Link className="btn" to="/products">
-                Explore Products
+              {/*
+                This is the ecosystem homepage, not a single product's page -
+                it must never commit a visitor to one product before they've
+                chosen one. Previously "Start Free 30-Day Trial" linked
+                straight to /register, WEGN Restaurants' own signup route -
+                every visitor's trial silently started as a WEGN Restaurants
+                signup regardless of which product they actually wanted.
+                One button now, since a second button to the same
+                destination added nothing: it goes to /products (the
+                existing product-selection page - ChooseProductSection
+                just below, and ProductsPage.tsx's own cards), where each
+                product's own page has its own real "Start Free Trial" CTA
+                (see WegnStoreProductPage.tsx / QRWegnProductPage.tsx /
+                QRBookerProductPage.tsx).
+              */}
+              <Link className="btn primary" to="/products">
+                Start Free Trial
               </Link>
             </div>
             <div className="hero-note">No credit card required</div>
