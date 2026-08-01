@@ -17,7 +17,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * existing, already-proven use of the same Admin API call.
  */
 
-const REDIRECT_URL = "https://www.qrwegn.com";
+const REDIRECT_URL = "https://www.qrwegn.com/dashboard";
 
 function redirect(location: string): Response {
   return new Response(null, { status: 302, headers: { Location: location } });
