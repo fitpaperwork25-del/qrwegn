@@ -1112,7 +1112,7 @@ export default function DashboardPage() {
         <img src="/logo-dark.png" alt="" style={{ height: isMobile ? 22 : 28, width: "auto", flexShrink: 0 }} />
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 0, overflow: "hidden" }}>
           <span style={{ fontWeight: 900, fontSize: isMobile ? 18 : 24, letterSpacing: -0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{business.name}</span>
-          <span style={{ fontSize: 11, color: MUTED, marginTop: 2, letterSpacing: 1, textTransform: "uppercase" }}>Owner Dashboard</span>
+          <span style={{ fontSize: 11, color: MUTED, marginTop: 2, letterSpacing: 1, textTransform: "uppercase" }}>WEGN Restaurants · Owner Dashboard</span>
           <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap", justifyContent: "center" }}>
             <span style={{ ...badge(planColor(business.plan)) }}>{business.plan}</span>
             <span style={{ ...badge(statusColor(business.subscription_status)) }}>{business.subscription_status}</span>
