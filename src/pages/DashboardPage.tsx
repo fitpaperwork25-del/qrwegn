@@ -27,6 +27,12 @@ type StaffPin  = { id: string; name: string; role: string; is_active: boolean; c
 type ClosedTab  = { id: string; total: number; tip_amount: number | null; payment_method: string | null; closed_at: string; server_id: string | null; voided_at: string | null; void_reason: string | null; refund_amount: number };
 type ShiftClose = { id: string; shift_date: string; expected_cash: number; actual_cash: number; difference: number; tab_count: number; total_revenue: number; total_tips: number; note: string | null; created_at: string };
 
+// Reliable Business Registration Phase 2: mirrors RegisterPage.tsx's own
+// key of the same name - set there (or below) whenever the identity-link
+// or business-registry chain doesn't complete, read here to show a
+// visible "Registration incomplete" banner instead of failing silently.
+const BUSINESS_REGISTRY_INCOMPLETE_KEY = "qw_business_registry_incomplete";
+
 const TODAY = new Date().toISOString().slice(0, 10);
 const EMPTY_EXPENSE = { category: "", amount: "", description: "", expense_date: TODAY };
 const EMPTY_REVENUE = { category: "Dine-in", amount: "", description: "", date: TODAY };
@@ -103,6 +109,9 @@ export default function DashboardPage() {
 
   const [subscriptionBanner, setSubscriptionBanner] = useState<SubscriptionBanner | null>(null);
   const [subscriptionNoticeDismissed, setSubscriptionNoticeDismissed] = useState(false);
+
+  const [registryIncomplete, setRegistryIncomplete] = useState(false);
+  const [registryRetrying, setRegistryRetrying]     = useState(false);
 
   const [addingTable, setAddingTable]   = useState(false);
   const [newTableName, setNewTableName] = useState("");
@@ -332,16 +341,33 @@ export default function DashboardPage() {
           if (biz) {
             void registerBusinessWithWsms(biz.id);
             // Cross-product signup Phase A: same identity/business-link
-            // chain as RegisterPage.tsx, fire-and-forget here since the
-            // owner has already landed on this dashboard (via the magic-
-            // link fallback) - unlike a fresh registration, redirecting
-            // them away mid-load would be a surprise, not an expected
-            // next step. Still links the business into WEGN Identity so
-            // it appears in WEGN Home whenever they next visit there.
+            // chain as RegisterPage.tsx, fire-and-forget *relative to
+            // dashboard load* here since the owner has already landed on
+            // this dashboard (via the magic-link fallback) - unlike a
+            // fresh registration, redirecting them away mid-load would be
+            // a surprise, not an expected next step. Still links the
+            // business into WEGN Identity so it appears in WEGN Home
+            // whenever they next visit there.
+            //
+            // Reliable Business Registration Phase 2: the registry call
+            // itself is now awaited (inside this still-unawaited IIFE) so
+            // its outcome is known instead of discarded - a failure (after
+            // registerBusinessWithIdentity's own internal bounded retry)
+            // is surfaced via BUSINESS_REGISTRY_INCOMPLETE_KEY + the
+            // "Registration incomplete" banner below, not just logged.
             const bizId = biz.id;
             void (async () => {
               const linkResult = await linkIdentityAccount();
-              if (linkResult.ok && linkResult.wegnAccountId) void registerBusinessWithIdentity(bizId);
+              if (linkResult.ok && linkResult.wegnAccountId) {
+                const bizLinkResult = await registerBusinessWithIdentity(bizId);
+                if (bizLinkResult.ok) {
+                  localStorage.removeItem(BUSINESS_REGISTRY_INCOMPLETE_KEY);
+                  setRegistryIncomplete(false);
+                  return;
+                }
+              }
+              localStorage.setItem(BUSINESS_REGISTRY_INCOMPLETE_KEY, bizId);
+              setRegistryIncomplete(true);
             })();
           }
         } catch { /* ignore — fall through to no-business UI */ }
@@ -351,6 +377,9 @@ export default function DashboardPage() {
 
     setBusiness(biz);
     if (biz) {
+      if (localStorage.getItem(BUSINESS_REGISTRY_INCOMPLETE_KEY) === biz.id) {
+        setRegistryIncomplete(true);
+      }
       const [locRes, ordRes, catRes, tabsRes] = await Promise.all([
         supabase.from("locations").select("id, name, label, is_active").eq("business_id", biz.id).order("name"),
         supabase.from("orders").select("id, status, total, subtotal, tax, created_at, cancel_reason").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(20),
@@ -386,6 +415,29 @@ export default function DashboardPage() {
       setLoadError(e?.message || "Failed to load your dashboard. Please check your connection and try again.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Reliable Business Registration Phase 2: owner-triggered retry for the
+  // "Registration incomplete" banner. Awaited end-to-end (unlike the
+  // load()-time attempts, which must not block dashboard rendering) since
+  // this runs from an explicit button click, not page load.
+  async function retryBusinessRegistration() {
+    if (!business || registryRetrying) return;
+    setRegistryRetrying(true);
+    try {
+      const linkResult = await linkIdentityAccount();
+      if (linkResult.ok && linkResult.wegnAccountId) {
+        const bizLinkResult = await registerBusinessWithIdentity(business.id);
+        if (bizLinkResult.ok) {
+          localStorage.removeItem(BUSINESS_REGISTRY_INCOMPLETE_KEY);
+          setRegistryIncomplete(false);
+          return;
+        }
+      }
+      localStorage.setItem(BUSINESS_REGISTRY_INCOMPLETE_KEY, business.id);
+    } finally {
+      setRegistryRetrying(false);
     }
   }
 
@@ -1183,6 +1235,20 @@ export default function DashboardPage() {
           }}>
             <span>{subscriptionBanner.message}</span>
             <button onClick={() => setSubscriptionNoticeDismissed(true)} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "13px", textDecoration: "underline", whiteSpace: "nowrap" }}>Dismiss</button>
+          </div>
+        )}
+
+        {registryIncomplete && (
+          <div style={{
+            padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
+            background: "#2a1414", color: "#f44336", border: "1px solid #f4433644",
+            borderRadius: "8px", fontSize: "14px",
+          }}>
+            <span>Registration incomplete — we couldn't link {business?.name || "your business"} to your WEGN account. Your QRWegn dashboard is unaffected either way.</span>
+            <button onClick={retryBusinessRegistration} disabled={registryRetrying}
+              style={{ background: "none", border: "none", color: "inherit", cursor: registryRetrying ? "not-allowed" : "pointer", fontSize: "13px", textDecoration: "underline", whiteSpace: "nowrap" }}>
+              {registryRetrying ? "Retrying…" : "Retry"}
+            </button>
           </div>
         )}
 

@@ -10,6 +10,14 @@ import { linkIdentityAccount, registerBusinessWithIdentity } from "../lib/identi
 // PartnersPage.tsx's Tally link, is a hardcoded literal too).
 const WEGN_HOME_URL = "https://wegn-home.vercel.app";
 
+// Reliable Business Registration Phase 2: set whenever the identity-link
+// or business-registry chain below doesn't complete, so DashboardPage.tsx
+// can show a visible "Registration incomplete" state and offer a retry -
+// same client-side "stash it, read it back" pattern already used for
+// qw_pending_registration in this file/DashboardPage.tsx, not a schema
+// or architecture change.
+const BUSINESS_REGISTRY_INCOMPLETE_KEY = "qw_business_registry_incomplete";
+
 const ACCENT = "#E8C547";
 const BG = "#080808";
 const BORDER = "rgba(255,255,255,0.08)";
@@ -127,10 +135,19 @@ export default function RegisterPage() {
           const bizLinkResult = await registerBusinessWithIdentity(newBusiness.id);
           if (bizLinkResult.ok) {
             destination = `${WEGN_HOME_URL}/login?email=${encodeURIComponent(form.email.trim())}`;
+            localStorage.removeItem(BUSINESS_REGISTRY_INCOMPLETE_KEY);
+          } else {
+            // register-business-with-identity already retried internally
+            // (bounded, within its own idempotency envelope) and still
+            // failed - surface it on the dashboard instead of only logging.
+            localStorage.setItem(BUSINESS_REGISTRY_INCOMPLETE_KEY, newBusiness.id);
           }
+        } else {
+          localStorage.setItem(BUSINESS_REGISTRY_INCOMPLETE_KEY, newBusiness.id);
         }
       } catch (err) {
         console.error("[register] identity linking failed (non-blocking):", err);
+        localStorage.setItem(BUSINESS_REGISTRY_INCOMPLETE_KEY, newBusiness.id);
       }
     }
 
