@@ -44,12 +44,7 @@ export default function HomePage() {
           </div>
 
           <div className="hero-visual">
-            <img src="/hero.png" alt="A laptop, tablet, smartphone, barcode scanner, receipt printer, and QR table stand — the everyday devices WEGN runs on" />
-            <div className="hero-overlay" />
-            <div className="hero-badge">
-              Built to connect growing businesses
-              <span>Across Africa and beyond</span>
-            </div>
+            <img src="/hero.svg" alt="A laptop showing the WEGN Store dashboard, a tablet showing the WEGN Restaurants dashboard, and a smartphone showing the WEGN Appointments booking screen" />
           </div>
         </div>
       </section>

@@ -138,30 +138,6 @@
   object-position:center;
   display:block;
 }
-.wegn-scope .hero-overlay{
-  position:absolute;
-  inset:0;
-  background:linear-gradient(180deg,rgba(3,8,4,0),rgba(3,8,4,.08));
-}
-.wegn-scope .hero-badge{
-  position:absolute;
-  left:26px;
-  bottom:24px;
-  padding:14px 17px;
-  border-radius:16px;
-  color:#fff;
-  background:rgba(10,24,12,.78);
-  border:1px solid rgba(255,255,255,.16);
-  backdrop-filter:blur(12px);
-  font-weight:800;
-}
-.wegn-scope .hero-badge span{
-  display:block;
-  margin-top:3px;
-  color:#cce8c4;
-  font-size:.86rem;
-  font-weight:650;
-}
 
 .wegn-scope .ecosystem-bar{
   padding:0 0 24px;
