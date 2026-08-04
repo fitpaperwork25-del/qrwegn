@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import WegnLayout from "../../../components/wegn/WegnLayout";
 
-export default function QRBookerProductPage() {
+export default function WegnAppointmentsProductPage() {
   return (
     <WegnLayout>
       <section className="hero">

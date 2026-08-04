@@ -32,8 +32,8 @@ export default function HomePage() {
                 existing product-selection page - ChooseProductSection
                 just below, and ProductsPage.tsx's own cards), where each
                 product's own page has its own real "Start Free Trial" CTA
-                (see WegnStoreProductPage.tsx / QRWegnProductPage.tsx /
-                QRBookerProductPage.tsx).
+                (see WegnStoreProductPage.tsx / WegnRestaurantsProductPage.tsx /
+                WegnAppointmentsProductPage.tsx).
               */}
               <Link className="btn primary" to="/products">
                 Start Free Trial

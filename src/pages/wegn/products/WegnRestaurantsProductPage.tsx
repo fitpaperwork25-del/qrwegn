@@ -84,7 +84,7 @@ function DemoDropdown({ onClose }: DemoDropdownProps) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function QRWegnProductPage() {
+export default function WegnRestaurantsProductPage() {
   const navigate = useNavigate();
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [demoOpen, setDemoOpen] = useState(false);
