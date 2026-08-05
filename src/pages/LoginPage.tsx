@@ -97,7 +97,7 @@ export default function LoginPage() {
           style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
           onClick={() => navigate("/")}
         >
-          <img src="/logo-dark.png" alt="QR-Wegn" style={{ height: 32, width: "auto" }} />
+          <img src="/wegn-logo-dark.png" alt="WEGN" style={{ height: 32, width: "auto" }} />
         </div>
         <button
           onClick={() => navigate("/staff-login")}

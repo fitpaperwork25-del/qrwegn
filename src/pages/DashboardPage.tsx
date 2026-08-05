@@ -1161,7 +1161,7 @@ export default function DashboardPage() {
 
       {/* Nav */}
       <nav style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", padding: isMobile ? "14px 16px" : "18px 32px", borderBottom: `1px solid ${BORDER}`, gap: 12 }}>
-        <img src="/logo-dark.png" alt="" style={{ height: isMobile ? 22 : 28, width: "auto", flexShrink: 0 }} />
+        <img src="/wegn-logo-dark.png" alt="WEGN" style={{ height: isMobile ? 22 : 28, width: "auto", flexShrink: 0 }} />
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 0, overflow: "hidden" }}>
           <span style={{ fontWeight: 900, fontSize: isMobile ? 18 : 24, letterSpacing: -0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{business.name}</span>
           <span style={{ fontSize: 11, color: MUTED, marginTop: 2, letterSpacing: 1, textTransform: "uppercase" }}>WEGN Restaurants · Owner Dashboard</span>

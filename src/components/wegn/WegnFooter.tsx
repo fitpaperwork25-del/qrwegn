@@ -6,7 +6,7 @@ export default function WegnFooter() {
     <footer>
       <div className="wrap footer-main">
         <div className="footer-brand">
-          <WegnLogo />
+          <WegnLogo variant="dark" />
           <p>Practical technology for businesses that want to operate clearly, connect with customers, and grow.</p>
         </div>
         <div className="footer-col">
