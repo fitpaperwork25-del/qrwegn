@@ -44,7 +44,11 @@ export default function HomePage() {
           </div>
 
           <div className="hero-visual">
-            <img src="/hero.png" alt="A laptop showing the WEGN Store dashboard, a tablet showing the WEGN Restaurants dashboard, and a smartphone showing the WEGN Appointments booking screen" />
+            <img
+              src="/hero.png"
+              alt="WEGN ecosystem illustration"
+              className="w-full h-full object-contain"
+            />
           </div>
         </div>
       </section>
