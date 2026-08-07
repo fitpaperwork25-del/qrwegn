@@ -1244,7 +1244,7 @@ export default function DashboardPage() {
             background: "#2a1414", color: "#f44336", border: "1px solid #f4433644",
             borderRadius: "8px", fontSize: "14px",
           }}>
-            <span>Registration incomplete — we couldn't link {business?.name || "your business"} to your WEGN account. Your QRWegn dashboard is unaffected either way.</span>
+            <span>Registration incomplete — we couldn't link {business?.name || "your business"} to your WEGN account. Your WEGN Restaurants dashboard is unaffected either way.</span>
             <button onClick={retryBusinessRegistration} disabled={registryRetrying}
               style={{ background: "none", border: "none", color: "inherit", cursor: registryRetrying ? "not-allowed" : "pointer", fontSize: "13px", textDecoration: "underline", whiteSpace: "nowrap" }}>
               {registryRetrying ? "Retrying…" : "Retry"}

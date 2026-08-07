@@ -647,7 +647,7 @@ export default function AdminPage() {
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(68, 64, 50);
-      doc.text("Powered by QR-Wegn", CX + 0.06, pwY, { align: "center" });
+      doc.text("Powered by WEGN Restaurants", CX + 0.06, pwY, { align: "center" });
 
       cropMarks();
     }
@@ -1535,13 +1535,13 @@ export default function AdminPage() {
             </button>
 
             <p style={{ fontSize: 10, letterSpacing: 3, color: ACCENT, fontWeight: 700, textTransform: "uppercase", margin: "0 0 6px" }}>Operations Guide</p>
-            <h2 style={{ margin: "0 0 28px", fontWeight: 900, fontSize: 22 }}>QR-Wegn Admin Panel</h2>
+            <h2 style={{ margin: "0 0 28px", fontWeight: 900, fontSize: 22 }}>WEGN Restaurants Admin Panel</h2>
 
             {([
               {
                 title: "Platform Overview",
                 body: [
-                  "QR-Wegn is a QR-ordering platform for hospitality businesses. Each business gets a QR code per table — customers scan it, browse the menu, and place orders without an app.",
+                  "WEGN Restaurants is a QR-ordering platform for hospitality businesses. Each business gets a QR code per table — customers scan it, browse the menu, and place orders without an app.",
                   `Production URL: ${APP_URL}`,
                   "Stack: React + Vite frontend on Vercel, Supabase (Postgres + Auth + RLS), Stripe for billing.",
                 ],

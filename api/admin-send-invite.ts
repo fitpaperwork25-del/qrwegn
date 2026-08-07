@@ -22,7 +22,7 @@ function html(businessName: string, magicLink: string): string {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Your QR-Wegn dashboard is ready</title>
+  <title>Your WEGN Restaurants dashboard is ready</title>
 </head>
 <body style="margin:0;padding:0;background:#080808;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#080808;">
@@ -56,7 +56,7 @@ function html(businessName: string, magicLink: string): string {
           </td>
         </tr>
       </table>
-      <div style="font-size:28px;font-weight:900;color:#F0EDE8;letter-spacing:2px;line-height:1;">QR-Wegn</div>
+      <div style="font-size:28px;font-weight:900;color:#F0EDE8;letter-spacing:2px;line-height:1;">WEGN Restaurants</div>
       <div style="margin-top:8px;font-size:10px;font-weight:600;color:#E8C547;letter-spacing:5px;">SCAN &middot; ORDER &middot; SERVE</div>
     </td>
   </tr>
@@ -74,7 +74,7 @@ function html(businessName: string, magicLink: string): string {
   <tr>
     <td style="padding:20px 32px 36px;">
       <p style="margin:0;font-size:16px;line-height:1.75;color:#999999;">
-        Your QR ordering dashboard on QR-Wegn is ready and waiting for you.
+        Your QR ordering dashboard on WEGN Restaurants is ready and waiting for you.
         Click the button below to log in &mdash; no password needed, this link signs you straight in.
       </p>
     </td>
@@ -129,7 +129,7 @@ function html(businessName: string, magicLink: string): string {
         <a href="mailto:fitpaperwork25@gmail.com" style="color:#E8C547;text-decoration:none;">fitpaperwork25@gmail.com</a>
       </p>
       <p style="margin:0;font-size:11px;color:#444444;letter-spacing:1px;">
-        &copy; 2026 QR-Wegn &nbsp;&middot;&nbsp; SCAN &middot; ORDER &middot; SERVE
+        &copy; 2026 WEGN Restaurants &nbsp;&middot;&nbsp; SCAN &middot; ORDER &middot; SERVE
       </p>
     </td>
   </tr>
@@ -167,9 +167,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!magicLink) return res.status(500).json({ error: "Failed to generate magic link" });
 
   const { error: sendErr } = await resend.emails.send({
-    from: "QR-Wegn <onboarding@resend.dev>",
+    from: "WEGN Restaurants <onboarding@resend.dev>",
     to: email,
-    subject: `Your QR-Wegn dashboard is ready, ${businessName}`,
+    subject: `Your WEGN Restaurants dashboard is ready, ${businessName}`,
     html: html(businessName, magicLink),
   });
 

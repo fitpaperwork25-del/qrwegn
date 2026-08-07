@@ -58,7 +58,7 @@ export async function printBrotherLabels({ businessId, businessName, tables }) {
   }
 
   try {
-    await IDocument.StartPrint("QR-Wegn Labels", 0);
+    await IDocument.StartPrint("WEGN Restaurants Labels", 0);
 
     for (let i = 0; i < tables.length; i++) {
       const table = tables[i];
